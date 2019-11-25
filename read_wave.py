@@ -10,8 +10,8 @@ import wavio
 import os
 import matplotlib.pyplot as plt
 
-os.chdir('/home/bhossein/BMBF project/code')
-#==============================
+os.chdir('/home/bhossein/BMBF project/code_repo')
+#%%==============================
 #plt.close('all')
 
 #i_file = 2
@@ -65,3 +65,6 @@ plt.xlabel('samples')
 plt.figure()
 #plt.plot(w.data[34745:35450,0],color = plt_color)
 plt.scatter(range(705),w.data[34745:35450,0],color = plt_color)
+
+assert w.data.shape[0] == 61090
+    
