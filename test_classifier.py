@@ -91,6 +91,9 @@ def create_loaders(data, bs=128, jobs=0):
 #trn_sz = 3810  # only the first `trn_sz` rows in each array include labelled data
 
 ecg_data = Dataset(IDs,target)
+trn_dl = DataLoader(ecg_data, batch_size=2, shuffle=0, num_workers=0)
+
+
 test_size = 0.25
 
 datasets = create_datasets(IDs, target, test_size, seed=seed)
@@ -118,6 +121,5 @@ acc_history = []
 #%%===============  Learning loop
 millis = round(time.monotonic() * 1000)
 
-for i, batch in enumerate(trn_dl):
-    if i<1:
-        x, y_batch = [t.to(device) for t in batch]
+for local_batch, local_labels in trn_dl:
+    break
