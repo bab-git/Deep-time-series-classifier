@@ -53,7 +53,7 @@ class Dataset(data.Dataset):
         y = self.labels[index]
         assert y <= self.labels.max()
         # Load data and get label
-        if y == 1:
+        if y == 0:
             main_path = '/vol/hinkelstn/data/FILTERED/atrial_fibrillation_8k/'
         else:
             main_path = '/vol/hinkelstn/data/FILTERED/sinus_rhythm_8k/'
@@ -62,11 +62,11 @@ class Dataset(data.Dataset):
         path = main_path+ID
         w = wavio.read(path)        
 #        X = w.data.transpose(1,0)
-        X = torch.tensor(w.data[1000:6000,:].transpose(1,0))
+        X = torch.tensor(w.data[1000:2128,:].transpose(1,0)).float()
 #        X = torch.tensor(w.data.transpose(1,0)).view(1,2,X.shape[1])
         
         
-        y = torch.tensor(y)
+        y = torch.tensor(y).long()
 #        y = torch.tensor(y).view(1,1,1)
                   
 #        data_tensor = TensorDataset(X.float(),y.long())

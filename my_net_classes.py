@@ -6,6 +6,9 @@ Created on Tue Nov 26 13:53:16 2019
 @author: bhossein
 """
 
+#import torch
+from torch import nn
+
 #%% ==================         
 class _SepConv1d(nn.Module):
     """  simple separable convolution implementation.
@@ -58,7 +61,7 @@ class Flatten(nn.Module):
         return x.view(-1)
 #%% ==================         
 class Classifier(nn.Module):
-    def __init__(self, raw_ni, fft_ni, no, drop=.5):
+    def __init__(self, raw_ni, no, drop=.5):
         super().__init__()
         
         self.raw = nn.Sequential(
@@ -70,22 +73,23 @@ class Classifier(nn.Module):
             nn.Dropout(drop), nn.Linear(256, 64), nn.ReLU(inplace=True),
             nn.Dropout(drop), nn.Linear( 64, 64), nn.ReLU(inplace=True))
         
-        self.fft = nn.Sequential(
-            SepConv1d(fft_ni,  32, 8, 2, 4, drop=drop),
-            SepConv1d(    32,  64, 8, 2, 4, drop=drop),
-            SepConv1d(    64, 128, 8, 4, 4, drop=drop),
-            SepConv1d(   128, 128, 8, 4, 4, drop=drop),
-            SepConv1d(   128, 256, 8, 2, 3),
-            Flatten(),
-            nn.Dropout(drop), nn.Linear(256, 64), nn.ReLU(inplace=True),
-            nn.Dropout(drop), nn.Linear( 64, 64), nn.ReLU(inplace=True))
+#        self.fft = nn.Sequential(
+#            SepConv1d(fft_ni,  32, 8, 2, 4, drop=drop),
+#            SepConv1d(    32,  64, 8, 2, 4, drop=drop),
+#            SepConv1d(    64, 128, 8, 4, 4, drop=drop),
+#            SepConv1d(   128, 128, 8, 4, 4, drop=drop),
+#            SepConv1d(   128, 256, 8, 2, 3),
+#            Flatten(),
+#            nn.Dropout(drop), nn.Linear(256, 64), nn.ReLU(inplace=True),
+#            nn.Dropout(drop), nn.Linear( 64, 64), nn.ReLU(inplace=True))
         
         self.out = nn.Sequential(
-            nn.Linear(128, 64), nn.ReLU(inplace=True), nn.Linear(64, no))
+#            nn.Linear(128, 64), nn.ReLU(inplace=True), 
+            nn.Linear(64, no))
         
-    def forward(self, t_raw, t_fft):
+    def forward(self, t_raw):
         raw_out = self.raw(t_raw)
-        fft_out = self.fft(t_fft)
-        t_in = torch.cat([raw_out, fft_out], dim=1)
-        out = self.out(t_in)
+#        fft_out = self.fft(t_fft)
+#        t_in = torch.cat([raw_out, fft_out], dim=1)
+        out = self.out(raw_out)
         return out
