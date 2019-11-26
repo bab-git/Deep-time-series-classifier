@@ -41,7 +41,7 @@ IDs.extend(os.listdir(main_path))
 target = np.ones(16000)
 target[8000:]=2
 
-#==================== test and train splits
+#%%==================== test and train splits
 from sklearn.model_selection import train_test_split
 X_train, X_test, y_train, y_test = train_test_split(IDs, target, test_size=0.25, random_state=1)
 X_val, X_test, y_val, y_test = train_test_split(X_test, y_test, test_size=0.5, random_state=1)
@@ -90,8 +90,9 @@ def create_loaders(data, bs=128, jobs=0):
 "creating dataset"     
 #trn_sz = 3810  # only the first `trn_sz` rows in each array include labelled data
 
+     
 ecg_data = Dataset(IDs,target)
-trn_dl = DataLoader(ecg_data, batch_size=2, shuffle=0, num_workers=0)
+trn_dl = DataLoader(ecg_data, batch_size=2, shuffle=0, num_workers=1)
 
 
 test_size = 0.25

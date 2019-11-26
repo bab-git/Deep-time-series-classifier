@@ -27,6 +27,7 @@ import torch
 #from torch.optim.lr_scheduler import _LRScheduler
 #from torch.utils.data import TensorDataset, DataLoader
 from torch.utils import data
+from torch.utils.data import TensorDataset
 
 import wavio
 # %%==============    
@@ -57,8 +58,40 @@ class Dataset(data.Dataset):
 #        list_f = os.listdir(main_path)        
         path = main_path+ID
         w = wavio.read(path)        
-        X = w.data
+#        X = w.data.transpose(1,0)
+        X = torch.tensor(w.data[1000:6000,:].transpose(1,0))
+#        X = torch.tensor(w.data.transpose(1,0)).view(1,2,X.shape[1])
         
         y = self.labels[index]
+        y = torch.tensor(y)
+#        y = torch.tensor(y).view(1,1,1)
+                  
+#        data_tensor = TensorDataset(X.float(),y.long())
         
         return X, y
+#        return data_tensor
+    
+#    def __getindex__(self, index):
+#        'Generates one sample of data'
+#        # Select sample
+#        ID = self.list_IDs[index]
+#        
+#        # Load data and get label
+#        if index < 8000:
+#            main_path = '/vol/hinkelstn/data/FILTERED/atrial_fibrillation_8k/'
+#        else:
+#            main_path = '/vol/hinkelstn/data/FILTERED/sinus_rhythm_8k/'
+#            
+##        list_f = os.listdir(main_path)        
+#        path = main_path+ID
+#        w = wavio.read(path)        
+#        X = w.data.transpose(1,0)
+#        
+#        y = self.labels[index]
+#        
+#        X = torch.tensor(w.data.transpose(1,0)).view(1,2,X.shape[1])
+#        
+#        data_tensor = TensorDataset(X.float(),torch.tensor(y).long().view(1,1,1))
+##                                    torch.tensor(y).long().view(1,1,1))
+#        
+#        return data_tensor
