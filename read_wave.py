@@ -14,8 +14,11 @@ os.chdir('/home/bhossein/BMBF project/code_repo')
 #%%==============================
 #plt.close('all')
 
+sub_dim = [2*4,4]
+
 #i_file = 2
 i_file = np.random.randint(8000, size = 1)
+
 #i_class = 2 #1:normal  2:atrial
 i_class = np.random.randint(2, size = 1)+1
 

@@ -54,7 +54,7 @@ ecg_datasets = create_datasets(IDs, target, test_size, seed=seed, t_range = t_ra
 print(dedent('''
              Dataset shapes:
              inputs: {}
-             target: {}'''.format((ecg_datasets[0][0][0].shape[0],len(IDs)),target.shape)))
+             target: {}'''.format((ecg_datasets[0][0][0].shape,len(IDs)),target.shape)))
 
 device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 #device = torch.device('cpu')
@@ -99,7 +99,7 @@ class Classifier(nn.Module):
         return out
     
 #%% ==================   Initialization              
-trn_dl, val_dl, tst_dl = create_loaders(ecg_datasets, bs=64, jobs = 8)
+trn_dl, val_dl, tst_dl = create_loaders(ecg_datasets, bs=16*128, jobs = 4)
 
 raw_feat = ecg_datasets[0][0][0].shape[0]
 raw_size = ecg_datasets[0][0][0].shape[1]
@@ -120,6 +120,13 @@ trn_sz = len(trn_dl.dataset.labels)
 
 model = Classifier(raw_feat, num_classes, raw_size/(2*4**3)).to(device)
 
+
+#if torch.cuda.device_count() > 1:
+#    print("Let's use", torch.cuda.device_count(), "GPUs!")    
+#    model = nn.DataParallel(model,device_ids=[0,1,5]).cuda()
+
+
+
 criterion = nn.CrossEntropyLoss (reduction = 'sum')
 
 opt = optim.Adam(model.parameters(), lr=lr)
@@ -128,7 +135,7 @@ print('Start model training')
 epoch = 0
 
 #%%===============  Learning loop
-millis = round(time.time())
+#millis = round(time.time())
 
 
 #millis = round(time.monotonic() * 1000)
@@ -136,6 +143,7 @@ while epoch < n_epochs:
     
     model.train()
     epoch_loss = 0
+    millis = round(time.time())
     
 #    print('trainig....')
     for i, batch in enumerate(trn_dl):
@@ -165,7 +173,7 @@ while epoch < n_epochs:
     acc = correct / total * 100
     acc_history.append(acc)
 
-    millis2 = round(time.time())    
+    millis2 = round(time.time())
 
     if epoch % base ==0:
 #       print('Epoch: {epoch:3d}. Loss: {epoch_loss:.4f}. Acc.: {acc:2.2%}')
@@ -185,6 +193,7 @@ while epoch < n_epochs:
             break
     epoch += 1
 
+torch.save(model.state_dict(), 'best_ended.pth')
 print('Done!')    
 
 

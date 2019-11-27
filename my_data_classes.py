@@ -32,6 +32,8 @@ from torch.utils import data
 from sklearn.model_selection import train_test_split
 
 import wavio
+
+from scipy import stats
 # %%==============    
 
 class Dataset(data.Dataset):
@@ -56,22 +58,23 @@ class Dataset(data.Dataset):
         # Load data and get label
         if y == 0:
 #            main_path = '/vol/hinkelstn/data/FILTERED/atrial_fibrillation_8k/'
-            main_path = 'sftp://bhossein@rosenblatt/data/bhosseini/hinkelstn/FILTERED/atrial_fibrillation_8k/'
+            main_path = '/data/bhosseini/hinkelstn/FILTERED/atrial_fibrillation_8k/'
         else:
 #            main_path = '/vol/hinkelstn/data/FILTERED/sinus_rhythm_8k/'
-            main_path = 'sftp://bhossein@rosenblatt/data/bhosseini/hinkelstn/FILTERED/sinus_rhythm_8k/'
+            main_path = '/data/bhosseini/hinkelstn/FILTERED/sinus_rhythm_8k/'
             
             
         
             
 #        list_f = os.listdir(main_path)        
         path = main_path+ID
-        w = wavio.read(path)        
+        w = wavio.read(path)
+        w_zm = stats.zscore(w.data,axis = 0, ddof = 1)
 #        X = w.data.transpose(1,0)
         if self.t_range:
-            X = torch.tensor(w.data[self.t_range,:].transpose(1,0)).float()
+            X = torch.tensor(w_zm[self.t_range,:].transpose(1,0)).float()
         else:
-            X = torch.tensor(w.data.transpose(1,0)).float()
+            X = torch.tensor(w_zm.transpose(1,0)).float()
                 
 #        X = torch.tensor(w.data.transpose(1,0)).view(1,2,X.shape[1])
         
