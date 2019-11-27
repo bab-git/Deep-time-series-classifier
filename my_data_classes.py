@@ -36,10 +36,11 @@ import wavio
 
 class Dataset(data.Dataset):
     'Characterizes a dataset for PyTorch'    
-    def __init__(self,list_IDs, labels):
+    def __init__(self,list_IDs, labels, t_range=None):
         'Initialization'
         self.labels = labels
-        self.list_IDs = list_IDs
+        self.list_IDs = list_IDs        
+        self.t_range = t_range
 #        self.path = path
         
     def __len__(self):
@@ -54,15 +55,24 @@ class Dataset(data.Dataset):
         assert y <= self.labels.max()
         # Load data and get label
         if y == 0:
-            main_path = '/vol/hinkelstn/data/FILTERED/atrial_fibrillation_8k/'
+#            main_path = '/vol/hinkelstn/data/FILTERED/atrial_fibrillation_8k/'
+            main_path = 'sftp://bhossein@rosenblatt/data/bhosseini/hinkelstn/FILTERED/atrial_fibrillation_8k/'
         else:
-            main_path = '/vol/hinkelstn/data/FILTERED/sinus_rhythm_8k/'
+#            main_path = '/vol/hinkelstn/data/FILTERED/sinus_rhythm_8k/'
+            main_path = 'sftp://bhossein@rosenblatt/data/bhosseini/hinkelstn/FILTERED/sinus_rhythm_8k/'
+            
+            
+        
             
 #        list_f = os.listdir(main_path)        
         path = main_path+ID
         w = wavio.read(path)        
 #        X = w.data.transpose(1,0)
-        X = torch.tensor(w.data[1000:2128,:].transpose(1,0)).float()
+        if self.t_range:
+            X = torch.tensor(w.data[self.t_range,:].transpose(1,0)).float()
+        else:
+            X = torch.tensor(w.data.transpose(1,0)).float()
+                
 #        X = torch.tensor(w.data.transpose(1,0)).view(1,2,X.shape[1])
         
         
@@ -74,7 +84,7 @@ class Dataset(data.Dataset):
         return X, y
         
 #%% ================== PyTorch Datasets and Data Loaders
-def create_datasets(IDs, target, test_size, valid_pct=0.1, seed=None):
+def create_datasets(IDs, target, test_size, valid_pct=0.1, seed=None, t_range=None):
     """
     Creating train/test/validation splits
     
@@ -91,9 +101,9 @@ def create_datasets(IDs, target, test_size, valid_pct=0.1, seed=None):
     
     
     
-    trn_ds = Dataset([IDs[i] for i in trn_idx],target[trn_idx])
-    tst_ds = Dataset([IDs[i] for i in tst_idx],target[tst_idx])
-    val_ds = Dataset([IDs[i] for i in val_idx],target[val_idx])
+    trn_ds = Dataset([IDs[i] for i in trn_idx],target[trn_idx],t_range)
+    tst_ds = Dataset([IDs[i] for i in tst_idx],target[tst_idx],t_range)
+    val_ds = Dataset([IDs[i] for i in val_idx],target[val_idx],t_range)
     
     return trn_ds, val_ds, tst_ds
 
@@ -105,5 +115,4 @@ def create_loaders(data, bs=128, jobs=0):
     trn_dl = DataLoader(trn_ds, batch_size=bs, shuffle=True, num_workers=jobs)
     val_dl = DataLoader(val_ds, batch_size=bs, shuffle=False, num_workers=jobs)
     tst_dl = DataLoader(tst_ds, batch_size=bs, shuffle=False, num_workers=jobs)
-    return trn_dl, val_dl, tst_dl         
-    
+    return trn_dl, val_dl, tst_dl             

@@ -60,36 +60,36 @@ class Flatten(nn.Module):
             return x.view(x.size(0), -1)
         return x.view(-1)
 #%% ==================         
-class Classifier(nn.Module):
-    def __init__(self, raw_ni, no, drop=.5):
-        super().__init__()
-        
-        self.raw = nn.Sequential(
-            SepConv1d(raw_ni,  32, 8, 2, 3, drop=drop),
-            SepConv1d(    32,  64, 8, 4, 2, drop=drop),
-            SepConv1d(    64, 128, 8, 4, 2, drop=drop),
-            SepConv1d(   128, 256, 8, 4, 2),
-            Flatten(),
-            nn.Dropout(drop), nn.Linear(256, 64), nn.ReLU(inplace=True),
-            nn.Dropout(drop), nn.Linear( 64, 64), nn.ReLU(inplace=True))
-        
-#        self.fft = nn.Sequential(
-#            SepConv1d(fft_ni,  32, 8, 2, 4, drop=drop),
-#            SepConv1d(    32,  64, 8, 2, 4, drop=drop),
-#            SepConv1d(    64, 128, 8, 4, 4, drop=drop),
-#            SepConv1d(   128, 128, 8, 4, 4, drop=drop),
-#            SepConv1d(   128, 256, 8, 2, 3),
+#class Classifier(nn.Module):
+#    def __init__(self, raw_ni, no, drop=.5):
+#        super().__init__()
+#        
+#        self.raw = nn.Sequential(
+#            SepConv1d(raw_ni,  32, 8, 2, 3, drop=drop),
+#            SepConv1d(    32,  64, 8, 4, 2, drop=drop),
+#            SepConv1d(    64, 128, 8, 4, 2, drop=drop),
+#            SepConv1d(   128, 256, 8, 4, 2),
 #            Flatten(),
 #            nn.Dropout(drop), nn.Linear(256, 64), nn.ReLU(inplace=True),
 #            nn.Dropout(drop), nn.Linear( 64, 64), nn.ReLU(inplace=True))
-        
-        self.out = nn.Sequential(
-#            nn.Linear(128, 64), nn.ReLU(inplace=True), 
-            nn.Linear(64, no))
-        
-    def forward(self, t_raw):
-        raw_out = self.raw(t_raw)
-#        fft_out = self.fft(t_fft)
-#        t_in = torch.cat([raw_out, fft_out], dim=1)
-        out = self.out(raw_out)
-        return out
+#        
+##        self.fft = nn.Sequential(
+##            SepConv1d(fft_ni,  32, 8, 2, 4, drop=drop),
+##            SepConv1d(    32,  64, 8, 2, 4, drop=drop),
+##            SepConv1d(    64, 128, 8, 4, 4, drop=drop),
+##            SepConv1d(   128, 128, 8, 4, 4, drop=drop),
+##            SepConv1d(   128, 256, 8, 2, 3),
+##            Flatten(),
+##            nn.Dropout(drop), nn.Linear(256, 64), nn.ReLU(inplace=True),
+##            nn.Dropout(drop), nn.Linear( 64, 64), nn.ReLU(inplace=True))
+#        
+#        self.out = nn.Sequential(
+##            nn.Linear(128, 64), nn.ReLU(inplace=True), 
+#            nn.Linear(64, no))
+#        
+#    def forward(self, t_raw):
+#        raw_out = self.raw(t_raw)
+##        fft_out = self.fft(t_fft)
+##        t_in = torch.cat([raw_out, fft_out], dim=1)
+#        out = self.out(raw_out)
+#        return out

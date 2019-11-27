@@ -24,8 +24,9 @@ import os
 os.chdir('/home/bhossein/BMBF project/code_repo')
 
 from my_data_classes import create_datasets, create_loaders
-from my_net_classes import Classifier
+from my_net_classes import SepConv1d, _SepConv1d, Flatten
 
+import pickle
 
 #%% =======================
 seed = 1
@@ -42,12 +43,13 @@ IDs.extend(os.listdir(main_path))
 
 target = np.ones(16000)
 target[0:8000]=0
+t_range = range(1000,1512)
 
 #%%==================== test and train splits
 "creating dataset"     
 test_size = 0.25
 
-ecg_datasets = create_datasets(IDs, target, test_size, seed=seed)
+ecg_datasets = create_datasets(IDs, target, test_size, seed=seed, t_range = t_range)
 
 print(dedent('''
              Dataset shapes:
@@ -58,15 +60,53 @@ device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 #device = torch.device('cpu')
 
 print ('device is:',device)
-  
+
+#%% ==================   Classifier design
+class Classifier(nn.Module):
+    def __init__(self, raw_ni, no, n_flt, drop=.5):
+        super().__init__()
+        
+        assert int(n_flt) == n_flt
+        
+        self.raw = nn.Sequential(
+            SepConv1d(raw_ni,  32, 8, 2, 3, drop=drop),
+            SepConv1d(    32,  64, 8, 4, 2, drop=drop),
+            SepConv1d(    64, 128, 8, 4, 2, drop=drop),
+            SepConv1d(   128, 256, 8, 4, 2),
+            Flatten(),
+            nn.Dropout(drop), nn.Linear(256*int(n_flt), 64), nn.ReLU(inplace=True),
+            nn.Dropout(drop), nn.Linear( 64, 64), nn.ReLU(inplace=True))
+        
+#        self.fft = nn.Sequential(
+#            SepConv1d(fft_ni,  32, 8, 2, 4, drop=drop),
+#            SepConv1d(    32,  64, 8, 2, 4, drop=drop),
+#            SepConv1d(    64, 128, 8, 4, 4, drop=drop),
+#            SepConv1d(   128, 128, 8, 4, 4, drop=drop),
+#            SepConv1d(   128, 256, 8, 2, 3),
+#            Flatten(),
+#            nn.Dropout(drop), nn.Linear(256, 64), nn.ReLU(inplace=True),
+#            nn.Dropout(drop), nn.Linear( 64, 64), nn.ReLU(inplace=True))
+        
+        self.out = nn.Sequential(
+#            nn.Linear(128, 64), nn.ReLU(inplace=True), 
+            nn.Linear(64, no))
+        
+    def forward(self, t_raw):
+        raw_out = self.raw(t_raw)
+#        fft_out = self.fft(t_fft)
+#        t_in = torch.cat([raw_out, fft_out], dim=1)
+        out = self.out(raw_out)
+        return out
+    
 #%% ==================   Initialization              
-trn_dl, val_dl, tst_dl = create_loaders(ecg_datasets, bs=128)
+trn_dl, val_dl, tst_dl = create_loaders(ecg_datasets, bs=64, jobs = 8)
 
 raw_feat = ecg_datasets[0][0][0].shape[0]
+raw_size = ecg_datasets[0][0][0].shape[1]
 
 lr = 0.001
 #n_epochs = 3000
-n_epochs = 300
+n_epochs = 3000
 iterations_per_epoch = len(trn_dl)
 num_classes = 2
 best_acc = 0
@@ -78,7 +118,7 @@ acc_history = []
 
 trn_sz = len(trn_dl.dataset.labels)
 
-model = Classifier(raw_feat, num_classes).to(device)
+model = Classifier(raw_feat, num_classes, raw_size/(2*4**3)).to(device)
 
 criterion = nn.CrossEntropyLoss (reduction = 'sum')
 
@@ -88,15 +128,16 @@ print('Start model training')
 epoch = 0
 
 #%%===============  Learning loop
-millis = round(time.monotonic() * 1000)
+millis = round(time.time())
 
 
-millis = round(time.monotonic() * 1000)
+#millis = round(time.monotonic() * 1000)
 while epoch < n_epochs:
     
     model.train()
     epoch_loss = 0
     
+#    print('trainig....')
     for i, batch in enumerate(trn_dl):
         x_raw, y_batch = [t.to(device) for t in batch]
         opt.zero_grad()
@@ -113,6 +154,7 @@ while epoch < n_epochs:
     model.eval()
     correct, total = 0, 0
     
+#    print('validation....')
     for batch in val_dl:
         x_raw, y_batch = [t.to(device) for t in batch]
         out = model(x_raw)
@@ -123,7 +165,7 @@ while epoch < n_epochs:
     acc = correct / total * 100
     acc_history.append(acc)
 
-    millis2 = round(time.monotonic() * 1000)    
+    millis2 = round(time.time())    
 
     if epoch % base ==0:
 #       print('Epoch: {epoch:3d}. Loss: {epoch_loss:.4f}. Acc.: {acc:2.2%}')
@@ -131,10 +173,11 @@ while epoch < n_epochs:
        base *= step 
        
     if acc > best_acc:
+        print('Epoch %d best model being saved with accuracy: %2.2f' % (epoch,best_acc))
         trials = 0
         best_acc = acc
-        torch.save(model.state_dict(), 'best.pth')
-        print('Epoch %d best model saved with accuracy: %2.2f' % (epoch,best_acc))
+        torch.save(model.state_dict(), 'best.pth')        
+        pickle.dump({'epoch':epoch,'acc_history':acc_history},open("variables.p","wb"))
     else:
         trials += 1
         if trials >= patience:
@@ -144,3 +187,56 @@ while epoch < n_epochs:
 
 print('Done!')    
 
+
+#%%===========================        
+def smooth(y, box_pts):
+    box = np.ones(box_pts)/box_pts
+    y_smooth = np.convolve(y, box, mode = 'same')
+    return y_smooth
+
+#%%==========================  training curve
+f, ax = plt.subplots(1,2, figsize=(12,4))    
+ax[0].plot(loss_history, label = 'loss')
+ax[0].set_title('Validation Loss History')
+ax[0].set_xlabel('Epoch no.')
+ax[0].set_ylabel('Loss')
+
+ax[1].plot(smooth(acc_history, 5)[:-2], label='acc')
+#ax[1].plot(acc_history, label='acc')
+ax[1].set_title('Validation Accuracy History')
+ax[1].set_xlabel('Epoch no.')
+ax[1].set_ylabel('Accuracy');
+
+#%%==========================  test result
+test_results = []
+model.load_state_dict(torch.load('best_best.pth'))
+model.eval()
+
+correct, total = 0, 0
+
+batch = []
+for batch in tst_dl:
+        x_raw, y_batch = [t.to(device) for t in batch]
+        out = model(x_raw)
+        preds = F.log_softmax(out, dim = 1).argmax(dim=1)
+        total += y_batch.size(0)
+        correct += (preds ==y_batch).sum().item()
+        
+acc = correct / total * 100
+
+print('Accuracy on test data: ',acc)
+
+
+assert 1==2
+#%%===============  Learning loop
+model1 = nn.Sequential(
+            SepConv1d(2,  32, 8, 2, 3, drop=drop),
+            SepConv1d(    32,  64, 8, 4, 2, drop=drop),
+            SepConv1d(    64, 128, 8, 4, 2, drop=drop),
+            SepConv1d(   128, 256, 8, 4, 2),
+            Flatten(),
+#            nn.Linear(256, 64), nn.ReLU(inplace=True),
+#            nn.Linear( 64, 64), nn.ReLU(inplace=True)
+            ).to(device)
+model_out = model1(x_raw)
+model_out.shape
