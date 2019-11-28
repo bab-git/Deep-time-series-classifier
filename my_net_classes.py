@@ -60,6 +60,17 @@ class Flatten(nn.Module):
             return x.view(x.size(0), -1)
         return x.view(-1)
 #%% ==================         
+class parameters():
+    """
+    saves the training parameters  
+    """
+    def __init__(self, lr, epoch, patience, step):
+        self.lr = lr    
+        self.epoch = epoch                
+        self.patience = patience
+        self.step = step
+
+#%% ==================         
 #class Classifier(nn.Module):
 #    def __init__(self, raw_ni, no, drop=.5):
 #        super().__init__()

@@ -37,20 +37,7 @@ file = list_f[i_file[0]]
 path = main_path+file
 
 #==============================
-#rate = 20  # samples per second
-#T = 3         # sample duration (seconds)
-#f = 2.0     # sound frequency (Hz)
-#t = np.linspace(0, T, T*rate, endpoint=False)
-#x = np.sin(2*np.pi * f * t)
-#wavio.write("sine24.wav", x, rate, sampwidth=3)
-
-#w = wavio.read("sine24.wav")
 w = wavio.read(path)
-#plt.figure(figsize=(8,6))
-#fig, ax = plt.subplots(2,1,1)
-
-
-
 
 plt.figure(figsize=(8,6))
 #plt.subplots(2,1,1)
@@ -62,11 +49,7 @@ plt.subplot(212)
 plt.plot(w.data[:,1],color = plt_color)
 plt.xlabel('samples')
 
-#plt.figure(figsize=(8,6))
-#plt.plot(t,x)
-#
 plt.figure()
-#plt.plot(w.data[34745:35450,0],color = plt_color)
 plt.scatter(range(705),w.data[34745:35450,0],color = plt_color)
 
 assert w.data.shape[0] == 61090

@@ -18,15 +18,18 @@ from torch import optim
 from torch.nn import functional as F
 from torch.optim.lr_scheduler import _LRScheduler
 #from torch.utils.data import TensorDataset, DataLoader
-
+import datetime
+import pickle
+from git import Repo
 
 import os
 os.chdir('/home/bhossein/BMBF project/code_repo')
 
 from my_data_classes import create_datasets, create_loaders
-from my_net_classes import SepConv1d, _SepConv1d, Flatten
+from my_net_classes import SepConv1d, _SepConv1d, Flatten, parameters
 
-import pickle
+
+
 
 #%% =======================
 seed = 1
@@ -107,7 +110,7 @@ raw_size = ecg_datasets[0][0][0].shape[1]
 lr = 0.001
 #n_epochs = 3000
 n_epochs = 3000
-iterations_per_epoch = len(trn_dl)
+#iterations_per_epoch = len(trn_dl)
 num_classes = 2
 best_acc = 0
 patience, trials = 500, 0
@@ -193,7 +196,24 @@ while epoch < n_epochs:
             break
     epoch += 1
 
-torch.save(model.state_dict(), 'best_ended.pth')
+now = datetime.datetime.now()
+date_stamp = str(now.strftime("%m_%d_%H_%M"))
+
+torch.save(model.stat_dict(), 'best_ended_'+date_stamp+'.pth')
+
+params = parameters(lr, epoch, patience, step)
+pickle.dump({'params':params,'acc_history':acc_history, 'ecg_datasets':ecg_datasets},open("variables_ended_"+date_stamp+".p","wb"))
+
+#-----git push
+#if os.path.isfile(load_file):
+#repo = Repo(os.getcwd())
+#repo.index.add(["variables_ended.p"])
+#repo.index.add(["best_ended.pth"])
+##repo.index.add(["variables.p"])
+#repo.index.commit("Training finished on: "+str(datetime.datetime.now()))
+#origin = repo.remotes.origin
+#origin.push()
+
 print('Done!')    
 
 
