@@ -25,10 +25,8 @@ from git import Repo
 import os
 os.chdir('/home/bhossein/BMBF project/code_repo')
 
-from my_data_classes import create_datasets, create_loaders
-from my_net_classes import SepConv1d, _SepConv1d, Flatten, parameters
-
-
+from my_data_classes import create_datasets, create_loaders, read_data, create_datasets_file
+from my_net_classes import SepConv1d, _SepConv1d, Flatten, parameters, Classifier_1dconv
 
 
 #%% =======================
@@ -46,6 +44,7 @@ IDs.extend(os.listdir(main_path))
 
 target = np.ones(16000)
 target[0:8000]=0
+
 t_range = range(1000,1512)
 
 #%%==================== test and train splits
@@ -64,49 +63,10 @@ device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 
 print ('device is:',device)
 
-#%% ==================   Classifier design
-class Classifier(nn.Module):
-    def __init__(self, raw_ni, no, n_flt, drop=.5):
-        super().__init__()
-        
-        assert int(n_flt) == n_flt
-        
-        self.raw = nn.Sequential(
-            SepConv1d(raw_ni,  32, 8, 2, 3, drop=drop),
-            SepConv1d(    32,  64, 8, 4, 2, drop=drop),
-            SepConv1d(    64, 128, 8, 4, 2, drop=drop),
-            SepConv1d(   128, 256, 8, 4, 2),
-            Flatten(),
-            nn.Dropout(drop), nn.Linear(256*int(n_flt), 64), nn.ReLU(inplace=True),
-            nn.Dropout(drop), nn.Linear( 64, 64), nn.ReLU(inplace=True))
-        
-#        self.fft = nn.Sequential(
-#            SepConv1d(fft_ni,  32, 8, 2, 4, drop=drop),
-#            SepConv1d(    32,  64, 8, 2, 4, drop=drop),
-#            SepConv1d(    64, 128, 8, 4, 4, drop=drop),
-#            SepConv1d(   128, 128, 8, 4, 4, drop=drop),
-#            SepConv1d(   128, 256, 8, 2, 3),
-#            Flatten(),
-#            nn.Dropout(drop), nn.Linear(256, 64), nn.ReLU(inplace=True),
-#            nn.Dropout(drop), nn.Linear( 64, 64), nn.ReLU(inplace=True))
-        
-        self.out = nn.Sequential(
-#            nn.Linear(128, 64), nn.ReLU(inplace=True), 
-            nn.Linear(64, no))
-        
-    def forward(self, t_raw):
-        raw_out = self.raw(t_raw)
-#        fft_out = self.fft(t_fft)
-#        t_in = torch.cat([raw_out, fft_out], dim=1)
-        out = self.out(raw_out)
-        return out
-    
+
 #%% ==================   Initialization              
-trn_dl, val_dl, tst_dl = create_loaders(ecg_datasets, bs=16*128, jobs = 4)
 
-raw_feat = ecg_datasets[0][0][0].shape[0]
-raw_size = ecg_datasets[0][0][0].shape[1]
-
+batch_size = 16*128
 lr = 0.001
 #n_epochs = 3000
 n_epochs = 3000
@@ -119,9 +79,13 @@ step = 2
 loss_history = []
 acc_history = []
 
+trn_dl, val_dl, tst_dl = create_loaders(ecg_datasets, bs=batch_size, jobs = 4)
+
+raw_feat = ecg_datasets[0][0][0].shape[0]
+raw_size = ecg_datasets[0][0][0].shape[1]
 trn_sz = len(trn_dl.dataset.labels)
 
-model = Classifier(raw_feat, num_classes, raw_size/(2*4**3)).to(device)
+model = Classifier_1dconv(raw_feat, num_classes, raw_size/(2*4**3)).to(device)
 
 
 #if torch.cuda.device_count() > 1:
@@ -150,6 +114,7 @@ while epoch < n_epochs:
     
 #    print('trainig....')
     for i, batch in enumerate(trn_dl):
+#        break
         x_raw, y_batch = [t.to(device) for t in batch]
         opt.zero_grad()
         out = model (x_raw)
@@ -201,8 +166,10 @@ date_stamp = str(now.strftime("%m_%d_%H_%M"))
 
 torch.save(model.stat_dict(), 'best_ended_'+date_stamp+'.pth')
 
-params = parameters(lr, epoch, patience, step)
+params = parameters(lr, epoch, patience, step, batch_size, t_range)
 pickle.dump({'params':params,'acc_history':acc_history, 'ecg_datasets':ecg_datasets},open("variables_ended_"+date_stamp+".p","wb"))
+
+print("Model is saved to: "+'best_ended_'+date_stamp+'.pth')
 
 #-----git push
 #if os.path.isfile(load_file):
@@ -238,7 +205,7 @@ ax[1].set_ylabel('Accuracy');
 
 #%%==========================  test result
 test_results = []
-model.load_state_dict(torch.load('best_best.pth'))
+#model.load_state_dict(torch.load('best_best.pth'))
 model.eval()
 
 correct, total = 0, 0
@@ -259,7 +226,7 @@ print('Accuracy on test data: ',acc)
 assert 1==2
 #%%===============  Learning loop
 model1 = nn.Sequential(
-            SepConv1d(2,  32, 8, 2, 3, drop=drop),
+            SepConv1d(     2,  32, 8, 2, 3, drop=drop),
             SepConv1d(    32,  64, 8, 4, 2, drop=drop),
             SepConv1d(    64, 128, 8, 4, 2, drop=drop),
             SepConv1d(   128, 256, 8, 4, 2),
@@ -269,3 +236,15 @@ model1 = nn.Sequential(
             ).to(device)
 model_out = model1(x_raw)
 model_out.shape
+
+#%%===============  loading a learned model
+t_stamp = "_11_29_15_19"
+loaded_file = pickle.load(open("variables_ended"+t_stamp+".p","rb"))
+acc_history = loaded_file['acc_history']
+epoch = loaded_file['epoch']
+model.load_state_dict(torch.load('best_ended'+t_stamp+'.pth'))
+#checkpoint = torch.load('best_ended_11_27_17_13.pth')
+#model.load_state_dict(checkpoint['model_state_dict'])
+#optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+#epoch = checkpoint['epoch']
+#loss = checkpoint['loss']
