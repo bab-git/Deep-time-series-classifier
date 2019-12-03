@@ -38,8 +38,13 @@ class SepConv1d(nn.Module):
         super().__init__()
         assert drop is None or (0.0 < drop < 1.0)
         layers = [_SepConv1d(ni, no, kernel, stride, pad)]
+        
+#        if drop is not None:
+#            layers.append(nn.Dropout(drop))      
+        
         if activ:
             layers.append(activ())        
+        
         if batch_norm:
             layers.append(nn.BatchNorm1d(num_features = no))
         if drop is not None:
@@ -93,7 +98,7 @@ class Classifier_1dconv(nn.Module):
                 SepConv1d(raw_ni,  32, 8, 2, 3, drop=drop, batch_norm = batch_norm),  #out: raw_size/str
                 SepConv1d(    32,  64, 8, 4, 2, drop=drop, batch_norm = batch_norm),
                 SepConv1d(    64, 128, 8, 4, 2, drop=drop, batch_norm = batch_norm),
-                SepConv1d(   128, 256, 8, 4, 2),
+                SepConv1d(   128, 256, 8, 4, 2, batch_norm = batch_norm),
                 Flatten(),
                 nn.Dropout(drop), nn.Linear(flat_in, 64), nn.ReLU(inplace=True),
                 nn.BatchNorm1d(num_features = 64),
