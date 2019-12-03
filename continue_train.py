@@ -7,16 +7,16 @@ Created on Thu Nov 28 12:17:33 2019
 """
 
 import time
-from textwrap import dedent
-import matplotlib.pyplot as plt
+#from textwrap import dedent
+#import matplotlib.pyplot as plt
 import numpy as np
 
 import torch
 from torch import nn
 from torch import optim
 from torch.nn import functional as F
-from torch.utils.data import TensorDataset, DataLoader
-import datetime
+#from torch.utils.data import TensorDataset, DataLoader
+#import datetime
 import pickle
 
 import os
@@ -48,9 +48,11 @@ loaded_vars = pickle.load(open("train_"+t_stamp+"_variables.p","rb"))
 #loaded_file = pickle.load(open("variables"+t_stamp+".p","rb"))
 #loaded_file = pickle.load(open("variables_ended"+t_stamp+".p","rb"))
 
-loaded_split = pickle.load(open("train_"+t_stamp+"_split.p","rb"))
+#loaded_split = pickle.load(open("train_"+t_stamp+"_split.p","rb"))
+ecg_datasets = torch.load('train_'+save_name+'.pth', map_location=lambda storage, loc: storage.cuda('cuda:'+cuda_num))
+#ecg_datasets = torch.load('train_'+save_name+'_split.p', map_location=lambda storage, loc: storage.cuda('cuda:'+cuda_num))
 
-ecg_datasets = loaded_split['ecg_datasets']
+#ecg_datasets = loaded_split['ecg_datasets']
 
 if ecg_datasets[0].tensors[0].device != device:
     ecg_datasets = list(ecg_datasets)
@@ -105,6 +107,7 @@ opt = optim.Adam(model.parameters(), lr=lr)
 print('Continue training for model: '+t_stamp+" with best val-acc of %2.2f" % (best_acc))
 epoch = loaded_vars['params'].epoch
 
+assert n_epochs > epoch
 
 
 #%%===============  Learning loop

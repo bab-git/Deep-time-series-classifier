@@ -202,3 +202,9 @@ def create_datasets_file(raw_x, target, test_size, valid_pct=0.1, seed=None, t_r
                            target[val_idx].long())
     
     return trn_ds, val_ds, tst_ds
+
+#%% ================== smoothening the output
+def smooth(y, box_pts):
+    box = np.ones(box_pts)/box_pts
+    y_smooth = np.convolve(y, box, mode = 'same')
+    return y_smooth

@@ -25,12 +25,13 @@ from git import Repo
 import os
 os.chdir('/home/bhossein/BMBF project/code_repo')
 
-from my_data_classes import create_datasets, create_loaders, read_data, create_datasets_file
-from my_net_classes import SepConv1d, _SepConv1d, Flatten, parameters, Classifier_1dconv
+from my_data_classes import create_datasets, create_loaders, read_data, create_datasets_file, smooth
+import my_net_classes
+from my_net_classes import SepConv1d, _SepConv1d, Flatten, parameters
 
 
 #%% =======================
-seed = 1
+seed = 11
 np.random.seed(seed)
 
 #==================== data IDs
@@ -81,9 +82,9 @@ print ('device is:',device)
 
 #%% ==================   Initialization              
 
-#batch_size = 32
-#batch_size = (2**3)*64
-batch_size = (2**2)*64
+#batch_size = 64
+batch_size = (2**3)*64
+#batch_size = (2**2)*64
 #batch_size = "full"
 lr = 0.001
 #n_epochs = 3000
@@ -103,7 +104,10 @@ raw_feat = trn_ds[0][0].shape[0]
 raw_size = trn_ds[0][0].shape[1]
 trn_sz = len(trn_ds)
 
-model = Classifier_1dconv(raw_feat, num_classes, raw_size/(2*4**3)).to(device)
+model = my_net_classes.Classifier_1dconv(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
+#model = my_net_classes.Classifier_1dconv_BN(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
+#model = Classifier_1dconv(raw_feat, num_classes, raw_size/(2*4**3)).to(device)
+#model = Classifier_1dconv(raw_feat, num_classes, raw_size).to(device)
 
 
 #if torch.cuda.device_count() > 1:
@@ -123,7 +127,8 @@ save_name = input("Enter a save-file name for this trainig: ")
 print('Start model training')
 epoch = 0
 
-pickle.dump({'ecg_datasets':ecg_datasets},open("train_"+save_name+"_split.p","wb"))
+#pickle.dump({'ecg_datasets':ecg_datasets},open("train_"+save_name+"_split.p","wb"))
+torch.save(ecg_datasets, 'train_'+save_name+'.pth')
 #%%===============  Learning loop
 #millis = round(time.time())
 
@@ -182,7 +187,7 @@ while epoch < n_epochs:
 #        torch.save(model.state_dict(), 'best.pth')        
         torch.save(model.state_dict(), "train_"+save_name+'_best.pth')
 #        pickle.dump({'epoch':epoch,'acc_history':acc_history},open("train_"+save_name+"variables.p","wb"))
-        params = parameters(lr, epoch, patience, step, batch_size, t_range)
+        params = parameters(lr, epoch, patience, step, batch_size, t_range, seed, test_size)
         pickle.dump({'params':params,'acc_history':acc_history, 'loss_history':loss_history},open("train_"+save_name+"_variables.p","wb"))
         
     else:
@@ -214,10 +219,10 @@ print('Done!')
 
 
 #%%===========================        
-def smooth(y, box_pts):
-    box = np.ones(box_pts)/box_pts
-    y_smooth = np.convolve(y, box, mode = 'same')
-    return y_smooth
+#def smooth(y, box_pts):
+#    box = np.ones(box_pts)/box_pts
+#    y_smooth = np.convolve(y, box, mode = 'same')
+#    return y_smooth
 
 #%%==========================  visualize training curve
 f, ax = plt.subplots(1,2, figsize=(12,4))    
@@ -267,18 +272,38 @@ model_out = model1(x_raw)
 model_out.shape
 
 #%%===============  loading a learned model
-t_stamp = "batch_512_B"
+import my_net_classes
+
+#save_name = "batch_512_BN_B"
+save_name = "1dconv_b512_BNM_B"
+#save_name = "1dconv_b512_BNA_B"
+#save_name = "batch_512_BNA"
+#save_name = "batch_512_BN"
+#save_name = "batch_512_B"
 #t_stamp = "_batch_512_11_29_17_03"
 
-loaded_vars = pickle.load(open("train_"+t_stamp+"_variables.p","rb"))
+loaded_vars = pickle.load(open("train_"+save_name+"_variables.p","rb"))
 #loaded_file = pickle.load(open("variables"+t_stamp+".p","rb"))
 #loaded_file = pickle.load(open("variables_ended"+t_stamp+".p","rb"))
 
-loaded_split = pickle.load(open("train_"+t_stamp+"_split.p","rb"))
+#loaded_split = pickle.load(open("train_"+save_name+"_split.p","rb"))
+#ecg_datasets = torch.load('train_'+save_name+'.pth', map_location=lambda storage, loc: storage.cuda('cuda:'+str(cuda_num)))
+device = torch.device('cuda:'+str(cuda_num) if torch.cuda.is_available() else 'cpu')
+
+load_ECG =  torch.load ('raw_x_all.pt') 
+raw_x = load_ECG['raw_x'].to(device)
+target = torch.tensor(load_ECG['target']).to(device)
+params = loaded_vars['params']
+#seed = params.seed
+#test_size = params.test_size
+np.random.seed(seed)
+t_range = params.t_range
+ecg_datasets = create_datasets_file(raw_x, target, test_size, seed=seed, t_range = t_range)
+
 
 acc_history = loaded_vars['acc_history']
-#loss_history = loaded_file['loss_history']
-ecg_datasets = loaded_split['ecg_datasets']
+loss_history = loaded_vars['loss_history']
+#ecg_datasets = loaded_split['ecg_datasets']
 trn_ds, val_ds, tst_ds = ecg_datasets
 batch_size = loaded_vars['params'].batch_size
 trn_dl, val_dl, tst_dl = create_loaders(ecg_datasets, bs=batch_size, jobs = 0)
@@ -289,8 +314,13 @@ num_classes = 2
 device = ecg_datasets[0].tensors[0].device
 #device = torch.device('cuda:4' if torch.cuda.is_available() else 'cpu')
 
-model = Classifier_1dconv(raw_feat, num_classes, raw_size/(2*4**3)).to(device)
-model.load_state_dict(torch.load("train_"+t_stamp+'_best.pth'))
+
+model = my_net_classes.Classifier_1dconv(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
+#model = my_net_classes.Classifier_1dconv_BN(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
+model.load_state_dict(torch.load("train_"+save_name+'_best.pth'))
+
+#model = Classifier_1dconv(raw_feat, num_classes, raw_size/(2*4**3)).to(device)
+#model.load_state_dict(torch.load("train_"+save_name+'_best.pth'))
 
 model.eval()
 
@@ -298,27 +328,29 @@ correct, total = 0, 0
 
 batch = []
 x_raw, y_batch = [t.to(device) for t in tst_ds.tensors]
+#x_raw, y_batch = [t.to(device) for t in val_ds.tensors]
 out = model(x_raw)
 preds = F.log_softmax(out, dim = 1).argmax(dim=1)
 total += y_batch.size(0)
 correct += (preds ==y_batch).sum().item()
         
 acc = correct / total * 100
+print('Accuracy on test data: ',acc)
 
 #-----------------------  visualize training curve
 f, ax = plt.subplots(1,2, figsize=(12,4))    
-#ax[0].plot(loss_history, label = 'loss')
-ax[0].set_title('Validation Loss History')
+ax[0].plot(loss_history, label = 'loss')
+ax[0].set_title('Validation Loss History: '+save_name)
 ax[0].set_xlabel('Epoch no.')
 ax[0].set_ylabel('Loss')
 
 ax[1].plot(smooth(acc_history, 5)[:-2], label='acc')
-ax[1].plot(acc_history, label='acc')
-ax[1].set_title('Validation Accuracy History')
+#ax[1].plot(acc_history, label='acc')
+ax[1].set_title('Validation Accuracy History: '+save_name)
 ax[1].set_xlabel('Epoch no.')
 ax[1].set_ylabel('Accuracy');
 
-print('Accuracy on test data: ',acc)
+
 
 #checkpoint = torch.load('best_ended_11_27_17_13.pth')
 #model.load_state_dict(checkpoint['model_state_dict'])
