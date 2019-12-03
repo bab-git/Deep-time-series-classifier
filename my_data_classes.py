@@ -132,7 +132,7 @@ def create_loaders(data, bs=128, jobs=0):
     return trn_dl, val_dl, tst_dl             
 
 #%% ================== read all data 
-def read_data():
+def read_data(save_file = 'temp_save'):
     IDs = []
     main_path = '/vol/hinkelstn/data/FILTERED/atrial_fibrillation_8k/'    
     IDs.extend(os.listdir(main_path))
@@ -142,7 +142,8 @@ def read_data():
 
     target = np.ones(16000)
     target[0:8000]=0
-    t_range = range(0,6000)
+#    t_range = range(0,6000)
+    t_range = range(40000,50000)
     
     raw_x=torch.empty((len(IDs),2,len(t_range)), dtype=float)
     i=0;
@@ -155,11 +156,11 @@ def read_data():
         assert y <= target.max()
         # Load data and get label
         if y == 0:
-#            main_path = '/vol/hinkelstn/data/FILTERED/atrial_fibrillation_8k/'
-                        main_path = '/data/bhosseini/hinkelstn/FILTERED/atrial_fibrillation_8k/'
+            main_path = '/vol/hinkelstn/data/FILTERED/atrial_fibrillation_8k/'
+#                        main_path = '/data/bhosseini/hinkelstn/FILTERED/atrial_fibrillation_8k/'
         else:
-#            main_path = '/vol/hinkelstn/data/FILTERED/sinus_rhythm_8k/'
-                        main_path = '/data/bhosseini/hinkelstn/FILTERED/sinus_rhythm_8k/'            
+            main_path = '/vol/hinkelstn/data/FILTERED/sinus_rhythm_8k/'
+#                        main_path = '/data/bhosseini/hinkelstn/FILTERED/sinus_rhythm_8k/'            
         path = main_path+ID
         w = wavio.read(path)
         w_zm = stats.zscore(w.data,axis = 0, ddof = 1)
@@ -171,7 +172,7 @@ def read_data():
         raw_x [i,:,:]= X
         i +=1
         #        X = torch.tensor(w.data.transpose(1,0)).view(1,2,X.shape[1])     
-    torch.save({'raw_x':raw_x, 'target':target},'raw_x_all.pt')
+    torch.save({'raw_x':raw_x, 'target':target}, save_file+'.pt')
     return target, raw_x
 
 #%% ================== test/train using all read data

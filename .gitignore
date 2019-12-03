@@ -20,3 +20,4 @@ train_batch_256_split.p
 train_batch_32_B_split.p
 train_batch_512_B_split.p
 train_batch_512_BNA.pth
+raw_x_4k_5K.pt

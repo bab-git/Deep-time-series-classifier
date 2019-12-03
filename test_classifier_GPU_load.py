@@ -16,11 +16,11 @@ import torch
 from torch import nn
 from torch import optim
 from torch.nn import functional as F
-from torch.optim.lr_scheduler import _LRScheduler
+#from torch.optim.lr_scheduler import _LRScheduler
 #from torch.utils.data import TensorDataset, DataLoader
-import datetime
+#import datetime
 import pickle
-from git import Repo
+#from git import Repo
 
 import os
 os.chdir('/home/bhossein/BMBF project/code_repo')
@@ -31,7 +31,7 @@ from my_net_classes import SepConv1d, _SepConv1d, Flatten, parameters
 
 
 #%% =======================
-seed = 11
+seed = 1
 np.random.seed(seed)
 
 #==================== data IDs
@@ -46,7 +46,7 @@ np.random.seed(seed)
 #target = np.ones(16000)
 #target[0:8000]=0
 
-t_range = range(1000,1512)
+t_range = range(40000,40512)
 
 #%%==================== test and train splits
 "creating dataset"     
@@ -128,8 +128,8 @@ print('Start model training')
 epoch = 0
 
 #pickle.dump({'ecg_datasets':ecg_datasets},open("train_"+save_name+"_split.p","wb"))
-torch.save(ecg_datasets, 'train_'+save_name+'.pth')
-#%%===============  Learning loop
+#torch.save(ecg_datasets, 'train_'+save_name+'.pth')
+#%%===============  Learning loop`
 #millis = round(time.time())
 
 
@@ -254,7 +254,7 @@ correct += (preds ==y_batch).sum().item()
         
 acc = correct / total * 100
 
-print('Accuracy on test data: ',acc)
+print('Accuracy on test data:  %2.2f' %(acc))
 
 
 assert 1==2
@@ -274,8 +274,10 @@ model_out.shape
 #%%===============  loading a learned model
 import my_net_classes
 
+save_name = "1dconv_b512_drop1B"
+#save_name = "1dconv_b512_drop1"
 #save_name = "batch_512_BN_B"
-save_name = "1dconv_b512_BNM_B"
+#save_name = "1dconv_b512_BNM_B"
 #save_name = "1dconv_b512_BNA_B"
 #save_name = "batch_512_BNA"
 #save_name = "batch_512_BN"
@@ -294,8 +296,8 @@ load_ECG =  torch.load ('raw_x_all.pt')
 raw_x = load_ECG['raw_x'].to(device)
 target = torch.tensor(load_ECG['target']).to(device)
 params = loaded_vars['params']
-#seed = params.seed
-#test_size = params.test_size
+seed = params.seed
+test_size = params.test_size
 np.random.seed(seed)
 t_range = params.t_range
 ecg_datasets = create_datasets_file(raw_x, target, test_size, seed=seed, t_range = t_range)
@@ -335,7 +337,7 @@ total += y_batch.size(0)
 correct += (preds ==y_batch).sum().item()
         
 acc = correct / total * 100
-print('Accuracy on test data: ',acc)
+print('Accuracy on test data:  %2.2f' %(acc))
 
 #-----------------------  visualize training curve
 f, ax = plt.subplots(1,2, figsize=(12,4))    
