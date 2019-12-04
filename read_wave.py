@@ -12,7 +12,8 @@ import matplotlib.pyplot as plt
 
 from my_data_classes import create_datasets, create_loaders, read_data, create_datasets_file, smooth
 
-os.chdir('/home/bhossein/BMBF project/code_repo')
+#os.chdir('/home/bhossein/BMBF project/code_repo')
+
 #%%==============================
 plt.close('all')
 
@@ -23,17 +24,22 @@ plt.figure(figsize=(18,10))
 plt.subplots_adjust(wspace = 0.2, hspace = 0.5)
 
 i_file = np.random.randint(8000, size = int(n/2))
+i_file[0] =  4225 #Unwanted peeks
+i_file[1] =  1869 #Unwanted peeks
+
+AF_file_list = []
+SIN_file_list = []
 
 for i_data in range(n):
     if i_data < n/2:        
-        main_path = '/vol/hinkelstn/data/FILTERED/sinus_rhythm_8k/'
+        main_path = 'C:\Hinkelstien/data/FILTERED/sinus_rhythm_8k/'
         plt_color = 'b'
         plt_title = 'Sinus'
         i_f = i_data
         i_plt_row = i_data+1
         i_plt_cl = 4+i_data+1
     else:
-        main_path = '/vol/hinkelstn/data/FILTERED/atrial_fibrillation_8k/'    
+        main_path = 'C:\Hinkelstien/data/FILTERED/atrial_fibrillation_8k/'    
         plt_color = 'r'
         plt_title = 'AF'
         i_f = int(i_data-n/2)
@@ -45,8 +51,13 @@ for i_data in range(n):
     path = main_path+file        
       
     w = wavio.read(path)
+<<<<<<< HEAD
     w.data = w.data[40000:50000,:]
         
+=======
+    w.data = w.data[30000:500000]    
+    
+>>>>>>> 11f589090fd7d9e05d9a51e20f20b5ecbc40af13
     plt.subplot(4,4,i_plt_row)
     #plt.figure(figsize=(8,6))
     plt.plot(w.data[:,0],color = plt_color)
@@ -58,8 +69,17 @@ for i_data in range(n):
     
 #    plt.figure()
 #    plt.scatter(range(705),w.data[34745:35450,0],color = plt_color)
+<<<<<<< HEAD
     
 assert 1==2
+=======
+    if i_data <n/2:
+        AF_file_list.append(file)
+    else:
+        SIN_file_list.append(file)
+#AF_file_list = [{}]        
+assert 1== 61090
+>>>>>>> 11f589090fd7d9e05d9a51e20f20b5ecbc40af13
 
 # %%================= individual files  
     
@@ -72,11 +92,11 @@ i_class = 1 #1:normal  2:atrial
     
 #path = '/data/BMBF/sample/filtered atrial waves/8aae6985-c0b9-41d4-ac89-9f721b8019d2.wav'
 if i_class==1:
-    main_path = '/vol/hinkelstn/data/FILTERED/sinus_rhythm_8k/'
+    main_path = 'C:\Hinkelstien/data/FILTERED/sinus_rhythm_8k/'
     plt_color = 'b'
     plt_title = 'normal sinus rhythm'
 else:
-    main_path = '/vol/hinkelstn/data/FILTERED/atrial_fibrillation_8k/'    
+    main_path = 'C:\Hinkelstien/data/FILTERED/atrial_fibrillation_8k/'    
     plt_color = 'r'
     plt_title = 'Atrial Fibrilation'
     
@@ -86,19 +106,22 @@ path = main_path+file
 
 #==============================
 w = wavio.read(path)
+w.data = w.data[30000:50000,:]
 
 plt.figure(figsize=(8,6))
 #plt.subplots(2,1,1)
-plt.subplot(211)
+plt.subplot(311)
 #plt.figure(figsize=(8,6))
 plt.plot(w.data[:,0],color = plt_color)
 plt.title(plt_title+', sample_id:'+str(i_file))
-plt.subplot(212)
+plt.subplot(312)
 plt.plot(w.data[:,1],color = plt_color)
+plt.subplot(313)
+plt.plot(w.data[:,1]-w.data[:,0],color = plt_color)
 plt.xlabel('samples')
 
-plt.figure()
-plt.scatter(range(705),w.data[34745:35450,0],color = plt_color)
+#plt.figure()
+#plt.scatter(range(705),w.data[34745:35450,0],color = plt_color)
 
 assert w.data.shape[0] == 61090
     
