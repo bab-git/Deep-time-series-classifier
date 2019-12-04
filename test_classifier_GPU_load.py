@@ -50,7 +50,7 @@ np.random.seed(seed)
 #target = np.ones(16000)
 #target[0:8000]=0
 
-t_range = range(40000,40512)
+t_range = range(1000,1512)
 
 #%%==================== test and train splits
 "creating dataset"     
