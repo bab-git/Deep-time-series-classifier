@@ -278,12 +278,12 @@ model_out.shape
 #%%===============  loading a learned model
 import my_net_classes
 
-#save_name = "1dconv_b512_t4K"
+save_name = "1dconv_b512_t4K"
 #save_name = "1dconv_b512_drop1B"
 #save_name = "1dconv_b512_drop1"
 #save_name = "batch_512_BN_B"
 #save_name = "1dconv_b512_BNM_B"
-save_name = "1dconv_b512_BNA_B"
+#save_name = "1dconv_b512_BNA_B"
 #save_name = "batch_512_BNA"
 #save_name = "batch_512_BN"
 #save_name = "batch_512_B"
