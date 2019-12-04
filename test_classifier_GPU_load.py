@@ -23,12 +23,11 @@ import pickle
 #from git import Repo
 
 import os
-os.chdir('/home/bhossein/BMBF project/code_repo')
+#os.chdir('/home/bhossein/BMBF project/code_repo')
 
 from my_data_classes import create_datasets, create_loaders, read_data, create_datasets_file, smooth
 import my_net_classes
 from my_net_classes import SepConv1d, _SepConv1d, Flatten, parameters
-
 
 #%% =======================
 seed = 1
