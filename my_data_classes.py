@@ -209,3 +209,13 @@ def smooth(y, box_pts):
     box = np.ones(box_pts)/box_pts
     y_smooth = np.convolve(y, box, mode = 'same')
     return y_smooth
+
+
+#%% ================== smoothening the output
+def wave_harsh_peaks(data):
+    T = len(data)
+    t_base = 500
+    for i in range(0,np.floor(T/t_base).astype(int)):
+        np.mean(data[i*t_base:(i+1)*t_base])
+        
+        

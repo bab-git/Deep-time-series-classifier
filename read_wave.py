@@ -10,6 +10,8 @@ import wavio
 import os
 import matplotlib.pyplot as plt
 
+from my_data_classes import create_datasets, create_loaders, read_data, create_datasets_file, smooth
+
 os.chdir('/home/bhossein/BMBF project/code_repo')
 #%%==============================
 plt.close('all')
@@ -43,6 +45,7 @@ for i_data in range(n):
     path = main_path+file        
       
     w = wavio.read(path)
+    w.data = w.data[40000:50000,:]
         
     plt.subplot(4,4,i_plt_row)
     #plt.figure(figsize=(8,6))
@@ -56,7 +59,7 @@ for i_data in range(n):
 #    plt.figure()
 #    plt.scatter(range(705),w.data[34745:35450,0],color = plt_color)
     
-#assert w.data.shape[0] == 61090
+assert 1==2
 
 # %%================= individual files  
     
