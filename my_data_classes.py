@@ -34,7 +34,10 @@ from sklearn.model_selection import train_test_split
 
 import wavio
 
+import matplotlib.pyplot as plt
+
 from scipy import stats
+import scipy.stats
 
 import os
 # %%==============    
@@ -212,10 +215,27 @@ def smooth(y, box_pts):
 
 
 #%% ================== smoothening the output
-def wave_harsh_peaks(data):
+def wave_harsh_peaks(data, th_ratio = 3, silent  = None):
     T = len(data)
-    t_base = 500
-    for i in range(0,np.floor(T/t_base).astype(int)):
-        np.mean(data[i*t_base:(i+1)*t_base])
-        
+    t_base = 2000
+    
+#    for i in range(0,np.floor(T/t_base).astype(int)):
+#        np.mean(data[i*t_base:(i+1)*t_base])
+    max_list = [max(data[i*t_base:(i+1)*t_base]) for i in range(0,np.floor(T/t_base).astype(int))]
+    mean_max = np.mean(max_list)
+    thresh = mean_max*th_ratio
+#    lim = 0.005 
+#    data_masked = scipy.stats.mstats.winsorize(data, limits=[0, 0.001])
+    
+#    plt.figure()
+#    plt.plot(data, color = 'b')
+#    plt.plot(data_masked, color = 'r')
+    if not silent:
+        plt.figure()
+        plt.grid()
+        plt.scatter(range(len(max_list)), max_list)
+        plt.scatter(range(len(max_list)), mean_max*np.ones(len(max_list)), color = 'g')
+        plt.scatter(range(len(max_list)), thresh*np.ones(len(max_list)), color = 'r')
+    return max_list, mean_max, thresh
+    
         

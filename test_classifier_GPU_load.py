@@ -62,7 +62,8 @@ device = torch.device('cuda:'+cuda_num if torch.cuda.is_available() else 'cpu')
 #device = torch.device('cuda:4' if torch.cuda.is_available() else 'cpu')
 #device = torch.device('cpu')
 
-load_ECG =  torch.load ('raw_x_all.pt') 
+load_ECG =  torch.load ('raw_x_4k_5K.pt') 
+#load_ECG =  torch.load ('raw_x_all.pt') 
 raw_x = load_ECG['raw_x'].to(device)
 #raw_x.pin_memory = True
 target = torch.tensor(load_ECG['target']).to(device)
@@ -289,6 +290,9 @@ save_name = "1dconv_b512_t4K"
 #save_name = "batch_512_B"
 #t_stamp = "_batch_512_11_29_17_03"
 
+load_ECG =  torch.load ('raw_x_4k_5K.pt') 
+#load_ECG =  torch.load ('raw_x_all.pt') 
+
 loaded_vars = pickle.load(open("train_"+save_name+"_variables.p","rb"))
 #loaded_file = pickle.load(open("variables"+t_stamp+".p","rb"))
 #loaded_file = pickle.load(open("variables_ended"+t_stamp+".p","rb"))
@@ -298,12 +302,11 @@ loaded_vars = pickle.load(open("train_"+save_name+"_variables.p","rb"))
 #device = torch.device('cuda:'+str(cuda_num) if torch.cuda.is_available() else 'cpu')
 device = torch.device('cpu')
 
-load_ECG =  torch.load ('raw_x_all.pt') 
 raw_x = load_ECG['raw_x'].to(device)
 target = torch.tensor(load_ECG['target']).to(device)
 params = loaded_vars['params']
-#seed = params.seed
-#test_size = params.test_size
+seed = params.seed
+test_size = params.test_size
 np.random.seed(seed)
 t_range = params.t_range
 ecg_datasets = create_datasets_file(raw_x, target, test_size, seed=seed, t_range = t_range)
@@ -319,7 +322,7 @@ raw_feat = ecg_datasets[0][0][0].shape[0]
 raw_size = ecg_datasets[0][0][0].shape[1]
 num_classes = 2
 
-device = ecg_datasets[0].tensors[0].device
+#device = ecg_datasets[0].tensors[0].device
 #device = torch.device('cuda:4' if torch.cuda.is_available() else 'cpu')
 
 
@@ -327,7 +330,7 @@ device = ecg_datasets[0].tensors[0].device
 model = my_net_classes.Classifier_1dconv(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
 #model = my_net_classes.Classifier_1dconv_BN(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
 
-if torch.cuda.is_available():
+if torch.cuda.is_available()*0:
 #    model.load_state_dict(torch.load("train_"+save_name+'_best.pth'))
     model.load_state_dict(torch.load("train_"+save_name+'_best.pth', map_location=lambda storage, loc: storage.cuda('cuda:'+str(cuda_num))))
 else:
