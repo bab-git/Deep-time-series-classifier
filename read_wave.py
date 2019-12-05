@@ -51,13 +51,8 @@ for i_data in range(n):
     path = main_path+file        
       
     w = wavio.read(path)
-<<<<<<< HEAD
     w.data = w.data[40000:50000,:]
-        
-=======
-    w.data = w.data[30000:500000]    
-    
->>>>>>> 11f589090fd7d9e05d9a51e20f20b5ecbc40af13
+  
     plt.subplot(4,4,i_plt_row)
     #plt.figure(figsize=(8,6))
     plt.plot(w.data[:,0],color = plt_color)

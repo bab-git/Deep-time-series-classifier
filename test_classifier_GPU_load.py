@@ -1,16 +1,16 @@
 import time
-from collections import defaultdict
-from functools import partial
-from multiprocessing import cpu_count
-from pathlib import Path
-from textwrap import dedent
+#from collections import defaultdict
+#from functools import partial
+#from multiprocessing import cpu_count
+#from pathlib import Path
+#from textwrap import dedent
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
+#import pandas as pd
 
-from sklearn.externals import joblib
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder, StandardScaler
+#from sklearn.externals import joblib
+#from sklearn.model_selection import train_test_split
+#from sklearn.preprocessing import LabelEncoder, StandardScaler
 
 import torch
 from torch import nn
@@ -27,8 +27,8 @@ import os
 #dname = os.path.dirname(abspath)
 #os.chdir(dname)
 
-#os.chdir('/home/bhossein/BMBF project/code_repo')
-os.chdir('C:\Hinkelstien\code_repo')
+os.chdir('/home/bhossein/BMBF project/code_repo')
+#os.chdir('C:\Hinkelstien\code_repo')
 
 from my_data_classes import create_datasets, create_loaders, read_data, create_datasets_file, smooth
 import my_net_classes
@@ -295,7 +295,8 @@ loaded_vars = pickle.load(open("train_"+save_name+"_variables.p","rb"))
 
 #loaded_split = pickle.load(open("train_"+save_name+"_split.p","rb"))
 #ecg_datasets = torch.load('train_'+save_name+'.pth', map_location=lambda storage, loc: storage.cuda('cuda:'+str(cuda_num)))
-device = torch.device('cuda:'+str(cuda_num) if torch.cuda.is_available() else 'cpu')
+#device = torch.device('cuda:'+str(cuda_num) if torch.cuda.is_available() else 'cpu')
+device = torch.device('cpu')
 
 load_ECG =  torch.load ('raw_x_all.pt') 
 raw_x = load_ECG['raw_x'].to(device)
@@ -327,7 +328,8 @@ model = my_net_classes.Classifier_1dconv(raw_feat, num_classes, raw_size, batch_
 #model = my_net_classes.Classifier_1dconv_BN(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
 
 if torch.cuda.is_available():
-    model.load_state_dict(torch.load("train_"+save_name+'_best.pth'))
+#    model.load_state_dict(torch.load("train_"+save_name+'_best.pth'))
+    model.load_state_dict(torch.load("train_"+save_name+'_best.pth', map_location=lambda storage, loc: storage.cuda('cuda:'+str(cuda_num))))
 else:
     model.load_state_dict(torch.load("train_"+save_name+'_best.pth', map_location=lambda storage, loc: storage))
 
