@@ -15,6 +15,7 @@ Created on Mon Nov 25 16:12:40 2019
 #import matplotlib.pyplot as plt
 import numpy as np
 #import pandas as pd
+import pickle
 
 #from sklearn.externals import joblib
 #from sklearn.model_selection import train_test_split
@@ -34,7 +35,10 @@ from sklearn.model_selection import train_test_split
 
 import wavio
 
+import matplotlib.pyplot as plt
+
 from scipy import stats
+import scipy.stats
 
 import os
 # %%==============    
@@ -132,7 +136,7 @@ def create_loaders(data, bs=128, jobs=0):
     return trn_dl, val_dl, tst_dl             
 
 #%% ================== read all data 
-def read_data(save_file = 'temp_save'):
+def read_data(save_file = 'temp_save' , t_length = 10000 , t_range = None):
     IDs = []
     main_path = '/vol/hinkelstn/data/FILTERED/atrial_fibrillation_8k/'    
     IDs.extend(os.listdir(main_path))
@@ -143,16 +147,22 @@ def read_data(save_file = 'temp_save'):
     target = np.ones(16000)
     target[0:8000]=0
 #    t_range = range(0,6000)
-    t_range = range(40000,50000)
+#    t_range = range(40000,50000)
+#    t_range = range(0,60000)
     
-    raw_x=torch.empty((len(IDs),2,len(t_range)), dtype=float)
-    i=0;
+    raw_x=torch.empty((len(IDs),2,t_length), dtype=float)
+#    raw_x=torch.empty((len(IDs),2,len(t_range)), dtype=float)
+    i_ID=0;
     #    for i, ID in enumerate(IDs):
-    while i< len(IDs):
-        ID = IDs[i]
-        if i % 100 == 0:
-            print(i)
-        y = target[i]
+    list_reject = []
+    while i_ID< len(IDs):
+        ID = IDs[i_ID]
+        print(i_ID)
+        pickle.dump({'i_ID':i_ID},open("read_data_i_ID.p","wb"))
+        if i_ID % 100 == 0:
+#            pickle.dump({'i_ID':i_ID},open("read_data_i_ID.p","wb"))
+            print(i_ID)
+        y = target[i_ID]
         assert y <= target.max()
         # Load data and get label
         if y == 0:
@@ -163,18 +173,59 @@ def read_data(save_file = 'temp_save'):
 #                        main_path = '/data/bhosseini/hinkelstn/FILTERED/sinus_rhythm_8k/'            
         path = main_path+ID
         w = wavio.read(path)
+        
+        #------------------ cliping the range
+        reject_flag = 0
+        data_trim=np.zeros([t_length,w.data.shape[1]])
+        for i_dim in range(w.data.shape[1]):
+            trimm_out = wave_harsh_peaks(w.data[:,i_dim], ax  = 'silent', t_base = 3000)
+            max_list, mean_max, thresh, crop_t, trimmed_t = trimm_out
+#            mean_max, trimmed_t = (trimm_out[1],trimm_out[4])
+            
+            
+            list_t = trimmed_t-np.roll(trimmed_t,1) 
+            
+            
+#            [lamZbda x: ]
+            list_t[(list_t != 1) & (list_t != 0)] = 0
+            for i_t in range(len(list_t)):
+                if i_t+t_length > w.data.shape[0]:
+                    list_reject = np.append(list_reject,ID)
+                    reject_flag = 1
+                    break
+                if sum(list_t[i_t:i_t+t_length]) == t_length:
+                    break
+            assert reject_flag == 0
+            t_start = list_t[i_t]            
+            data_trim[:,i_dim] = w.data[trimmed_t[t_start:t_start+t_length],i_dim]            
+                
+        w.data = data_trim
         w_zm = stats.zscore(w.data,axis = 0, ddof = 1)
         if t_range:
             X = torch.tensor(w_zm[t_range,:].transpose(1,0)).float()
         else:
             X = torch.tensor(w_zm.transpose(1,0)).float()
         
-        raw_x [i,:,:]= X
-        i +=1
+        raw_x [i_ID,:,:]= X
+        i_ID +=1
+        
         #        X = torch.tensor(w.data.transpose(1,0)).view(1,2,X.shape[1])     
     torch.save({'raw_x':raw_x, 'target':target}, save_file+'.pt')
     return target, raw_x
 
+
+plt.figure()
+plt.subplot(211)
+plt.plot(w.data[0,:])
+plt.subplot(212)
+plt.plot(w.data[1,:])
+
+data_trim = raw_x[i_ID-2,:,:]
+plt.figure()
+plt.subplot(211)
+plt.plot(data_trim[0,:])
+plt.subplot(212)
+plt.plot(data_trim[1,:])
 #%% ================== test/train using all read data
 def create_datasets_file(raw_x, target, test_size, valid_pct=0.1, seed=None, t_range=None):
     """
@@ -212,10 +263,41 @@ def smooth(y, box_pts):
 
 
 #%% ================== smoothening the output
-def wave_harsh_peaks(data):
-    T = len(data)
-    t_base = 500
-    for i in range(0,np.floor(T/t_base).astype(int)):
-        np.mean(data[i*t_base:(i+1)*t_base])
+def wave_harsh_peaks(data, th_ratio = 3, ax  = None, t_base = 3000):
+    T = len(data)    
+    
+#    for i in range(0,np.floor(T/t_base).astype(int)):
+#        np.mean(data[i*t_base:(i+1)*t_base])
+    max_list = [max(data[i*t_base:(i+1)*t_base]) for i in range(0,np.floor(T/t_base).astype(int))]
+    mean_max = np.mean(max_list)
+    thresh = mean_max*th_ratio
+
+    list_p = np.where(data>mean_max)[0]    
+    list_p1 = np.roll(list_p,1)
+    list_p1[0] = 0
+    del_p = (list_p-list_p1)
+    list_p2 = [list_p[i] for i in np.where(del_p>1)[0]]
+    
+    crop_t = []
+    for t in list_p2:
+        crop_t = np.append(crop_t,np.arange(t-400,t))
+        crop_t = np.append(crop_t,np.arange(t,t+400))
+    
+    crop_t = np.delete(crop_t,np.where((crop_t < 0) | (crop_t > len(data))))
+    
+    trimmed_t = [i for i in range(len(data)) if i not in crop_t]
+#    plt.plot(trimmed_t, data[trimmed_t], color = 'y')
+    
+    if ax is not 'silent':
+        if not ax:
+           plt.figure()
+           ax = plt
         
+        ax.grid()
+        ax.scatter(range(len(max_list)), max_list)
+        ax.scatter(range(len(max_list)), mean_max*np.ones(len(max_list)), color = 'g')
+        ax.scatter(range(len(max_list)), thresh*np.ones(len(max_list)), color = 'r')
+        
+    return max_list, mean_max, thresh, crop_t, trimmed_t
+    
         

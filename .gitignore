@@ -1,8 +1,6 @@
 debug.log
 debug.log
 debug.log
-raw_x.pt
-raw_x_all.pt
 variables__batch_512_11_29_17_03.p
 variables_ended_11_29_14_51.p
 variables_batch_512_11_29_15_57.p
@@ -20,4 +18,6 @@ train_batch_256_split.p
 train_batch_32_B_split.p
 train_batch_512_B_split.p
 train_batch_512_BNA.pth
-raw_x_4k_5K.pt
+raw_x_40k_50K.pt
+raw_x.pt
+raw_x_all.pt
