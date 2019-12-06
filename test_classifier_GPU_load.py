@@ -297,12 +297,14 @@ loaded_vars = pickle.load(open("train_"+save_name+"_variables.p","rb"))
 #ecg_datasets = torch.load('train_'+save_name+'.pth', map_location=lambda storage, loc: storage.cuda('cuda:'+str(cuda_num)))
 device = torch.device('cuda:'+str(cuda_num) if torch.cuda.is_available() else 'cpu')
 
-load_ECG =  torch.load ('raw_x_all.pt') 
+load_ECG =  torch.load ('raw_x_4k_5k.pt') 
+#load_ECG =  torch.load ('raw_x_all.pt') 
+
 raw_x = load_ECG['raw_x'].to(device)
 target = torch.tensor(load_ECG['target']).to(device)
 params = loaded_vars['params']
-#seed = params.seed
-#test_size = params.test_size
+seed = params.seed
+test_size = params.test_size
 np.random.seed(seed)
 t_range = params.t_range
 ecg_datasets = create_datasets_file(raw_x, target, test_size, seed=seed, t_range = t_range)
