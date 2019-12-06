@@ -8,13 +8,15 @@ Created on Wed Nov 13 10:28:34 2019
 import numpy as np
 import wavio
 import os
+os.chdir('/home/bhossein/BMBF project/code_repo')
+
 import matplotlib.pyplot as plt
 import scipy
 
 from my_data_classes import create_datasets, create_loaders, read_data, create_datasets_file, smooth, wave_harsh_peaks
 import my_data_classes
 
-os.chdir('/home/bhossein/BMBF project/code_repo')
+
 
 #%%==============================
 plt.close('all')
@@ -73,38 +75,43 @@ for i_data in range(n):
     plt.plot(channel,color = plt_color)
     plt.title(plt_title+', sample_id:'+str(i_file[i_f]))
     plt.grid()
-    max_list, mean_max, thresh = wave_harsh_peaks(channel, silent  = True)
+    
+    trimm_out = wave_harsh_peaks(channel, ax  = 'silent', t_base = 3000)
+    max_list, mean_max, trimmed_t = (trimm_out[0],trimm_out[1],trimm_out[4])
     list_p = np.where(channel>mean_max)    
-    plt.scatter(list_p, channel[list_p], color = 'g')
+    plt.scatter(list_p, channel[list_p], color = 'g')    
+    data_masked = channel[trimmed_t]
+    #data_masked = scipy.stats.mstats.winsorize(channel, limits=[0, 0.001])
+    plt.plot(trimmed_t, data_masked,color = 'y')
+    plt.grid()
     
-    data_masked = scipy.stats.mstats.winsorize(channel, limits=[0, 0.001])
-    plt.plot(data_masked,color = 'y')
-    
-    plt.subplot(4,sub_dim[1],i_plt_ch1x)     
-    
-    
+        
+    plt.subplot(4,sub_dim[1],i_plt_ch1x)         
     plt.grid()
     plt.scatter(range(len(max_list)), max_list)
     plt.scatter(range(len(max_list)), mean_max*np.ones(len(max_list)), color = 'g')
-    plt.scatter(range(len(max_list)), thresh*np.ones(len(max_list)), color = 'r')
+#    plt.scatter(range(len(max_list)), thresh*np.ones(len(max_list)), color = 'r')
 
     channel = w.data[:,1]    
     plt.subplot(4,sub_dim[1],i_plt_ch2)
     plt.plot(w.data[:,1],color = plt_color)
     plt.xlabel('samples')
     plt.grid()
-    max_list, mean_max, thresh = wave_harsh_peaks(channel, silent  = True)
-    list_p = np.where(channel>mean_max)    
-    plt.scatter(list_p, channel[list_p], color = 'g')
-    data_masked = scipy.stats.mstats.winsorize(channel, limits=[0, 0.001])
-    plt.plot(data_masked,color = 'y')
     
-    plt.subplot(4,sub_dim[1],i_plt_ch2x)
-    max_list, mean_max, thresh = wave_harsh_peaks(w.data[:,1], silent  = True)
+    trimm_out = wave_harsh_peaks(channel, ax  = 'silent', t_base = 3000)
+    max_list, mean_max, trimmed_t = (trimm_out[0],trimm_out[1],trimm_out[4])
+    list_p = np.where(channel>mean_max)    
+    plt.scatter(list_p, channel[list_p], color = 'g')    
+    data_masked = channel[trimmed_t]
+    #data_masked = scipy.stats.mstats.winsorize(channel, limits=[0, 0.001])
+    plt.plot(trimmed_t, data_masked,color = 'y')
+    plt.grid()
+    
+    plt.subplot(4,sub_dim[1],i_plt_ch2x)    
     plt.grid()
     plt.scatter(range(len(max_list)), max_list)
     plt.scatter(range(len(max_list)), mean_max*np.ones(len(max_list)), color = 'g')
-    plt.scatter(range(len(max_list)), thresh*np.ones(len(max_list)), color = 'r')
+#    plt.scatter(range(len(max_list)), thresh*np.ones(len(max_list)), color = 'r')
     
     
     
@@ -123,11 +130,12 @@ assert 1== 61090
 # %%================= individual files  
     
            
-i_file = 6587
+#i_file = 4123
 #i_file = np.random.randint(8000, size = 1).item()
+i_file = 7850
 
-#i_class = 0 #0:normal  1:atrial
-i_class = np.random.randint(2, size = 1)+1    
+i_class = 0 #0:normal  1:atrial
+#i_class = np.random.randint(2, size = 1)+1    
     
 #path = '/data/BMBF/sample/filtered atrial waves/8aae6985-c0b9-41d4-ac89-9f721b8019d2.wav'
 if i_class==0:
@@ -149,23 +157,59 @@ path = main_path+file
 w = wavio.read(path)
 #w.data = w.data[30000:50000,:]
 
-plt.figure(figsize=(8,6))
-#plt.subplots(2,1,1)
-plt.subplot(311)
-#plt.figure(figsize=(8,6))
-plt.plot(w.data[:,0],color = plt_color)
-plt.title(plt_title+', sample_id:'+str(i_file))
-plt.subplot(312)
-plt.plot(w.data[:,1],color = plt_color)
-plt.subplot(313)
-plt.plot(w.data[:,1]-w.data[:,0],color = plt_color)
-plt.xlabel('samples')
-plt.grid()
+fig, axes = plt.subplots(3, 1, sharex=True)
 
-#plt.figure()
-#plt.scatter(range(705),w.data[34745:35450,0],color = plt_color)
+#plt.figure(figsize=(8,6))
+#plt.subplots(2,1,1)
+#plt.subplot(311)
+#plt.figure(figsize=(8,6))
+i_ax = 0
+channel = w.data[:,0]
+
+axes[i_ax].plot(channel,color = plt_color)
+#plt.plot(w.data[:,0],color = plt_color)
+plt.title(plt_title+', sample_id:'+str(i_file))
+
+trimm_out = wave_harsh_peaks(channel, ax  = 'silent', t_base = 3000)
+mean_max, trimmed_t = (trimm_out[1],trimm_out[4])
+list_p = np.where(channel>mean_max)    
+axes[i_ax].scatter(list_p, channel[list_p], color = 'g')    
+data_masked = channel[trimmed_t]
+#data_masked = scipy.stats.mstats.winsorize(channel, limits=[0, 0.001])
+axes[i_ax].plot(trimmed_t, data_masked,color = 'y')
+axes[i_ax].grid()
+
+#plt.subplot(312)
+i_ax = 1
+channel = w.data[:,1]
+
+axes[i_ax].plot(channel,color = plt_color)
+plt.title(plt_title+', sample_id:'+str(i_file))
+trimm_out = wave_harsh_peaks(channel, ax  = 'silent', t_base = 3000)
+mean_max, trimmed_t = (trimm_out[1],trimm_out[4])
+list_p = np.where(channel>mean_max)    
+axes[i_ax].scatter(list_p, channel[list_p], color = 'g')    
+data_masked = channel[trimmed_t]
+axes[i_ax].plot(trimmed_t, data_masked,color = 'y')
+axes[i_ax].grid()
+
+i_ax = 2
+channel = w.data[:,1]-w.data[:,0]
+
+axes[i_ax].plot(channel,color = plt_color)
+plt.title(plt_title+', sample_id:'+str(i_file))
+trimm_out = wave_harsh_peaks(channel, ax  = 'silent', t_base = 3000)
+mean_max, trimmed_t = (trimm_out[1],trimm_out[4])
+list_p = np.where(channel>mean_max)    
+axes[i_ax].scatter(list_p, channel[list_p], color = 'g')    
+data_masked = channel[trimmed_t]
+axes[i_ax].plot(trimmed_t, data_masked,color = 'y')
+#plt.xlabel('samples')
+axes[i_ax].grid()
 
 my_data_classes.wave_harsh_peaks(w.data[:,0])
+
+my_data_classes.wave_harsh_peaks(w.data[:,1])
 
 assert w.data.shape[0] == 61090
     
@@ -218,3 +262,29 @@ hp.plotter(wd, m)
 #display computed measures
 for measure in m.keys():
     print('%s: %f' %(measure, m[measure]))
+
+
+# %%========================== only plot
+w = wavio.read(path)
+w.data = w.data[0:5000,:]
+t = np.arange(0,len(w.data)) / w.rate
+
+fig, axes = plt.subplots(3, 1, sharex=True)
+
+#plt.subplot(311)
+#plt.figure(figsize=(8,6))
+axes[0].plot(t, w.data[:,0],color = plt_color)
+#plt.plot(w.data[:,0],color = plt_color)
+axes[0].set_title("normal sinus,   "+ file)
+#axes[0].set_title(plt_title+', sample_id:'+str(i_file))
+axes[0].grid()
+axes[0].set_ylabel('Channel I')
+
+axes[1].plot(t, w.data[:,1],color = plt_color)
+axes[1].grid()
+axes[1].set_ylabel('Channel III')
+
+axes[2].plot(t, w.data[:,1]-w.data[:,0],color = plt_color)
+plt.xlabel('Seconds')
+axes[2].grid()
+axes[2].set_ylabel('Channel III - Channel I')

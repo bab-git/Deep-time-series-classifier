@@ -62,7 +62,9 @@ device = torch.device('cuda:'+cuda_num if torch.cuda.is_available() else 'cpu')
 #device = torch.device('cuda:4' if torch.cuda.is_available() else 'cpu')
 #device = torch.device('cpu')
 
-load_ECG =  torch.load ('raw_x_4k_5K.pt') 
+#load_ECG =  torch.load ('raw_x_40k_50K.pt') 
+load_ECG =  torch.load ('raw_x_6K.pt') 
+
 #load_ECG =  torch.load ('raw_x_all.pt') 
 raw_x = load_ECG['raw_x'].to(device)
 #raw_x.pin_memory = True
