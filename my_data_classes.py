@@ -140,10 +140,12 @@ def create_loaders(data, bs=128, jobs=0):
 #%% ================== read all data 
 def read_data(save_file = 'temp_save' , t_length = 7500 , t_base = 3000, t_range = None):
     IDs = []
-    main_path = '/vol/hinkelstn/data/FILTERED/atrial_fibrillation_8k/'    
+#    main_path = '/vol/hinkelstn/data/FILTERED/atrial_fibrillation_8k/'
+    main_path = 'C:\Hinkelstien\data/FILTERED/atrial_fibrillation_8k/'
     IDs.extend(os.listdir(main_path))
     IDs = os.listdir(main_path)
-    main_path = '/vol/hinkelstn/data/FILTERED/sinus_rhythm_8k/'
+#    main_path = '/vol/hinkelstn/data/FILTERED/sinus_rhythm_8k/'
+    main_path = 'C:\Hinkelstien\data/FILTERED/sinus_rhythm_8k/'
     IDs.extend(os.listdir(main_path))
 
     target = np.ones(16000)
@@ -164,7 +166,7 @@ def read_data(save_file = 'temp_save' , t_length = 7500 , t_base = 3000, t_range
         del t_start, T
         
         ID = IDs[i_ID]
-#        print('sample: %d , time: %5.2f (s)' % (i_ID, millis2-millis))
+        print('sample: %d , time: %5.2f (s)' % (i_ID, millis2-millis))
         
         millis = (time.time())
 #        pickle.dump({'i_ID':i_ID},open("read_data_i_ID.p","wb"))
@@ -175,11 +177,11 @@ def read_data(save_file = 'temp_save' , t_length = 7500 , t_base = 3000, t_range
         assert y <= target.max()
         # Load data and get label
         if y == 0:
-            main_path = '/vol/hinkelstn/data/FILTERED/atrial_fibrillation_8k/'
-#                        main_path = '/data/bhosseini/hinkelstn/FILTERED/atrial_fibrillation_8k/'
+#            main_path = '/vol/hinkelstn/data/FILTERED/atrial_fibrillation_8k/'
+            main_path = 'C:\Hinkelstien\data/FILTERED/atrial_fibrillation_8k/'
         else:
-            main_path = '/vol/hinkelstn/data/FILTERED/sinus_rhythm_8k/'
-#                        main_path = '/data/bhosseini/hinkelstn/FILTERED/sinus_rhythm_8k/'            
+#            main_path = '/vol/hinkelstn/data/FILTERED/sinus_rhythm_8k/'
+            main_path = 'C:\Hinkelstien\data/FILTERED/sinus_rhythm_8k/'            
         path = main_path+ID
         w = wavio.read(path)
         
@@ -187,8 +189,7 @@ def read_data(save_file = 'temp_save' , t_length = 7500 , t_base = 3000, t_range
 #        reject_flag = 0
         T = len(w.data)
         data_trim=np.zeros([t_length,w.data.shape[1]])
-        
-        
+                
         data = w.data
         t_base = 3000
         max_list = [data[i*t_base:(i+1)*t_base].max(axis = 0) for i in range(0,np.floor(T/t_base).astype(int))]
@@ -201,10 +202,12 @@ def read_data(save_file = 'temp_save' , t_length = 7500 , t_base = 3000, t_range
         crop_t = np.unique([i for t in list_p2 for i in range(t-400,t+400)])
         crop_t = np.delete(crop_t,np.where((crop_t < 0) | (crop_t > T)))    
 #        crop_t = np.random.randint(1,1000,1000)
-         
-        trimmed_t = [i for i in range(T) if i not in crop_t]
-#        trimmed_t = np.random.randint(1,1000,1000)
         
+        trimmed_t = np.arange(T)
+        trimmed_t = np.delete(trimmed_t,crop_t)
+        
+#        trimmed_t = [i for i in range(T) if i not in crop_t]
+#        trimmed_t = range(T)
        
 #        trimm_out = wave_harsh_peaks_all(w.data, t_base = 3000)        
 #        mean_max, trimmed_t = trimm_out            
@@ -224,21 +227,21 @@ def read_data(save_file = 'temp_save' , t_length = 7500 , t_base = 3000, t_range
             t_start = list_t[ind_list[0]-1]+1
                
 ##-------------- loop version     
-#        reject_flag = 0
-#        list_t = trimmed_t-np.roll(trimmed_t,1)
-#        list_t[(list_t != 1) & (list_t != 0)] = 0
-#        for i_t in range(len(list_t)):
-#            if i_t+t_length > w.data.shape[0]:
+        reject_flag = 0
+        list_t = trimmed_t-np.roll(trimmed_t,1)
+        list_t[(list_t != 1) & (list_t != 0)] = 0
+        for i_t in range(len(list_t)):
+            if i_t+t_length > w.data.shape[0]:
 #                list_reject = np.append(list_reject,ID)
-#                reject_flag = 1
-#                break
-#            if sum(list_t[i_t:i_t+t_length]) == t_length:
-#                break
-#        assert reject_flag == 0
-#        
-#        t_start0 = i_t
-#        
-#        assert t_start0 == t_start
+                reject_flag = 1
+                break
+            if sum(list_t[i_t:i_t+t_length]) == t_length:
+                break
+        assert reject_flag == 0
+        
+        t_start0 = i_t
+        
+        assert t_start0 == t_start
 ##-------------- loop version             
 
         
