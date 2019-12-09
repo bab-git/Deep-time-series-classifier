@@ -138,7 +138,7 @@ i_class = 0 #0:normal  1:atrial
 #i_class = np.random.randint(2, size = 1)+1    
     
 #path = '/data/BMBF/sample/filtered atrial waves/8aae6985-c0b9-41d4-ac89-9f721b8019d2.wav'
-if i_class==0:
+if i_class==1:
 #    main_path = 'C:\Hinkelstien/data/FILTERED/sinus_rhythm_8k/'
     main_path = '/vol/hinkelstn/data/FILTERED/sinus_rhythm_8k/'    
     plt_color = 'b'
@@ -288,3 +288,43 @@ axes[2].plot(t, w.data[:,1]-w.data[:,0],color = plt_color)
 plt.xlabel('Seconds')
 axes[2].grid()
 axes[2].set_ylabel('Channel III - Channel I')
+
+
+# %%============================= bad data list
+bad_list = []
+bad_files = []
+
+IDs = []
+main_path = '/vol/hinkelstn/data/FILTERED/atrial_fibrillation_8k/'    
+IDs.extend(os.listdir(main_path))
+IDs = os.listdir(main_path)
+main_path = '/vol/hinkelstn/data/FILTERED/sinus_rhythm_8k/'
+IDs.extend(os.listdir(main_path))
+
+target = np.ones(16000)
+target[0:8000]=0
+
+for i_ID, ID in enumerate(IDs):
+#    ID = IDs[i_ID]
+#    print('sample: %d , time: %5.2f (s)' % (i_ID, millis2-millis))
+#        print(millis2-millis)
+#    millis = (time.time())
+#    pickle.dump({'i_ID':i_ID},open("read_data_i_ID.p","wb"))
+    if i_ID % 1000 == 0:
+#            pickle.dump({'i_ID':i_ID},open("read_data_i_ID.p","wb"))
+        print(i_ID)
+    y = target[i_ID]
+#    assert y <= target.max()
+    # Load data and get label
+    if y == 0:
+        main_path = '/vol/hinkelstn/data/FILTERED/atrial_fibrillation_8k/'
+#                        main_path = '/data/bhosseini/hinkelstn/FILTERED/atrial_fibrillation_8k/'
+    else:
+        main_path = '/vol/hinkelstn/data/FILTERED/sinus_rhythm_8k/'
+#                        main_path = '/data/bhosseini/hinkelstn/FILTERED/sinus_rhythm_8k/'            
+    path = main_path+ID
+    w = wavio.read(path)
+    if len(w.data) < 5000:
+        bad_list = np.append(bad_list,i_ID)
+        bad_files = np.append(bad_files,ID)
+        
