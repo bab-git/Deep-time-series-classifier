@@ -21,3 +21,4 @@ train_batch_512_BNA.pth
 raw_x_40k_50K.pt
 raw_x.pt
 raw_x_all.pt
+raw_x_8K_non_sync.pt

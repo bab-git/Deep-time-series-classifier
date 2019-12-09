@@ -136,7 +136,7 @@ def create_loaders(data, bs=128, jobs=0):
     return trn_dl, val_dl, tst_dl             
 
 #%% ================== read all data 
-def read_data(save_file = 'temp_save' , t_length = 10000 , t_range = None):
+def read_data(save_file = 'temp_save' , t_length = 8000 , t_range = None):
     IDs = []
     main_path = '/vol/hinkelstn/data/FILTERED/atrial_fibrillation_8k/'    
     IDs.extend(os.listdir(main_path))
@@ -179,8 +179,14 @@ def read_data(save_file = 'temp_save' , t_length = 10000 , t_range = None):
         data_trim=np.zeros([t_length,w.data.shape[1]])
         for i_dim in range(w.data.shape[1]):
             trimm_out = wave_harsh_peaks(w.data[:,i_dim], ax  = 'silent', t_base = 3000)
-            max_list, mean_max, thresh, crop_t, trimmed_t = trimm_out
-#            mean_max, trimmed_t = (trimm_out[1],trimm_out[4])
+#            max_list, mean_max, thresh, crop_t, trimmed_t = trimm_out
+            mean_max, trimmed_t = (trimm_out[1],trimm_out[4])
+            list_p = np.where(w.data[:,i_dim]>mean_max)    
+            plt.subplot(2,1,i_dim+1)
+            plt.scatter(list_p, w.data[list_p,i_dim], color = 'g')    
+            data_masked = w.data[trimmed_t,i_dim]            
+            plt.plot(trimmed_t, data_masked,color = 'y')
+#            axes[i_ax].grid()
             
             
             list_t = trimmed_t-np.roll(trimmed_t,1) 
@@ -214,18 +220,18 @@ def read_data(save_file = 'temp_save' , t_length = 10000 , t_range = None):
     return target, raw_x
 
 
-plt.figure()
-plt.subplot(211)
-plt.plot(w.data[0,:])
-plt.subplot(212)
-plt.plot(w.data[1,:])
-
-data_trim = raw_x[i_ID-2,:,:]
-plt.figure()
-plt.subplot(211)
-plt.plot(data_trim[0,:])
-plt.subplot(212)
-plt.plot(data_trim[1,:])
+#plt.figure()
+#plt.subplot(211)
+#plt.plot(w.data[:,0])
+#plt.subplot(212)
+#plt.plot(w.data[:,1])
+#
+#data_trim = raw_x[i_ID-2,:,:]
+#plt.figure()
+#plt.subplot(211)
+#plt.plot(data_trim[0,:])
+#plt.subplot(212)
+#plt.plot(data_trim[1,:])
 #%% ================== test/train using all read data
 def create_datasets_file(raw_x, target, test_size, valid_pct=0.1, seed=None, t_range=None):
     """
