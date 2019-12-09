@@ -166,7 +166,7 @@ def read_data(save_file = 'temp_save' , t_length = 7500 , t_base = 3000, t_range
         del t_start, T
         
         ID = IDs[i_ID]
-        print('sample: %d , time: %5.2f (s)' % (i_ID, millis2-millis))
+#        print('sample: %d , time: %5.2f (s)' % (i_ID, millis2-millis))
         
         millis = (time.time())
 #        pickle.dump({'i_ID':i_ID},open("read_data_i_ID.p","wb"))
@@ -227,21 +227,21 @@ def read_data(save_file = 'temp_save' , t_length = 7500 , t_base = 3000, t_range
             t_start = list_t[ind_list[0]-1]+1
                
 ##-------------- loop version     
-        reject_flag = 0
-        list_t = trimmed_t-np.roll(trimmed_t,1)
-        list_t[(list_t != 1) & (list_t != 0)] = 0
-        for i_t in range(len(list_t)):
-            if i_t+t_length > w.data.shape[0]:
-#                list_reject = np.append(list_reject,ID)
-                reject_flag = 1
-                break
-            if sum(list_t[i_t:i_t+t_length]) == t_length:
-                break
-        assert reject_flag == 0
-        
-        t_start0 = i_t
-        
-        assert t_start0 == t_start
+#        reject_flag = 0
+#        list_t = trimmed_t-np.roll(trimmed_t,1)
+#        list_t[(list_t != 1) & (list_t != 0)] = 0
+#        for i_t in range(len(list_t)):
+#            if i_t+t_length > w.data.shape[0]:
+##                list_reject = np.append(list_reject,ID)
+#                reject_flag = 1
+#                break
+#            if sum(list_t[i_t:i_t+t_length]) == t_length:
+#                break
+#        assert reject_flag == 0
+#        
+#        t_start0 = i_t
+#        
+#        assert t_start0 == t_start
 ##-------------- loop version             
 
         
