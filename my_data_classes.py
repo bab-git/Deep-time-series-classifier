@@ -140,12 +140,12 @@ def create_loaders(data, bs=128, jobs=0):
 #%% ================== read all data 
 def read_data(save_file = 'temp_save' , t_length = 7500 , t_base = 3000, t_range = None):
     IDs = []
-#    main_path = '/vol/hinkelstn/data/FILTERED/atrial_fibrillation_8k/'
-    main_path = 'C:\Hinkelstien\data/FILTERED/atrial_fibrillation_8k/'
+    main_path = '/vol/hinkelstn/data/FILTERED/atrial_fibrillation_8k/'
+#    main_path = 'C:\Hinkelstien\data/FILTERED/atrial_fibrillation_8k/'
     IDs.extend(os.listdir(main_path))
     IDs = os.listdir(main_path)
-#    main_path = '/vol/hinkelstn/data/FILTERED/sinus_rhythm_8k/'
-    main_path = 'C:\Hinkelstien\data/FILTERED/sinus_rhythm_8k/'
+    main_path = '/vol/hinkelstn/data/FILTERED/sinus_rhythm_8k/'
+#    main_path = 'C:\Hinkelstien\data/FILTERED/sinus_rhythm_8k/'
     IDs.extend(os.listdir(main_path))
 
     target = np.ones(16000)
@@ -177,11 +177,11 @@ def read_data(save_file = 'temp_save' , t_length = 7500 , t_base = 3000, t_range
         assert y <= target.max()
         # Load data and get label
         if y == 0:
-#            main_path = '/vol/hinkelstn/data/FILTERED/atrial_fibrillation_8k/'
-            main_path = 'C:\Hinkelstien\data/FILTERED/atrial_fibrillation_8k/'
+            main_path = '/vol/hinkelstn/data/FILTERED/atrial_fibrillation_8k/'
+#            main_path = 'C:\Hinkelstien\data/FILTERED/atrial_fibrillation_8k/'
         else:
-#            main_path = '/vol/hinkelstn/data/FILTERED/sinus_rhythm_8k/'
-            main_path = 'C:\Hinkelstien\data/FILTERED/sinus_rhythm_8k/'            
+            main_path = '/vol/hinkelstn/data/FILTERED/sinus_rhythm_8k/'
+#            main_path = 'C:\Hinkelstien\data/FILTERED/sinus_rhythm_8k/'            
         path = main_path+ID
         w = wavio.read(path)
         
