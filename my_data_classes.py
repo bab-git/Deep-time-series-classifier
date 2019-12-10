@@ -138,7 +138,7 @@ def create_loaders(data, bs=128, jobs=0):
     return trn_dl, val_dl, tst_dl             
 
 #%% ================== read all data 
-def read_data(save_file = 'temp_save' , t_length = 7500 , t_base = 3000, t_range = None):
+def read_data(save_file = 'temp_save' , t_length = 8000 , t_base = 3000, t_range = None):
     IDs = []
     path_data = 'C:\Hinkelstien\data/FILTERED/atrial_fibrillation_8k/'
     path_data = np.append(path_data,'C:\Hinkelstien\data/FILTERED/atrial_fibrillation_8k/')
@@ -160,14 +160,12 @@ def read_data(save_file = 'temp_save' , t_length = 7500 , t_base = 3000, t_range
 #    raw_x=torch.empty((len(IDs),2,len(t_range)), dtype=float)
     i_ID=0;
     #    for i, ID in enumerate(IDs):
-#    list_reject = []    
+    list_reject = []    
     millis = (time.time())
     millis2 = (time.time())
     t_start = 0;  T = 0
-    i_ID = 300
     while i_ID< len(IDs):        
-        del t_start, T
-        
+        del t_start, T        
         ID = IDs[i_ID]
         print('sample: %d , time: %5.2f (s)' % (i_ID, millis2-millis))
         
@@ -190,45 +188,54 @@ def read_data(save_file = 'temp_save' , t_length = 7500 , t_base = 3000, t_range
         
         #------------------ cliping the range
 #        reject_flag = 0
-        T = len(w.data)
-        data_trim=np.zeros([t_length,w.data.shape[1]])
+        
+#        data_trim=np.zeros([t_length,w.data.shape[1]])                        
+
+        trimm_flg = 0
+        thresh_step = 1.05
+        thresh_rate = 1
+        while trimm_flg ==0:
+            trimm_out = wave_harsh_peaks_all(w.data, t_base = 3000, thresh_rate = thresh_rate)
+            mean_max, list_t, trimmed_t = trimm_out
+    
+    
+    #        data = w.data
+    #        t_base = 3000
+#            del t_start, T
+#            T = len(w.data)
+    #        max_list = [data[i*t_base:(i+1)*t_base].max(axis = 0) for i in range(0,np.floor(T/t_base).astype(int))]
+    #        mean_max = np.mean(max_list, axis =0)
+    #        thresh = thresh_rate*mean_max.copy()
+    #        list_peaks = np.where(np.sum(data > thresh, axis = 1))[0]
+    #        list_p1 = np.roll(list_peaks,1)
+    #        list_p1[0] = 0
+    #        del_p = (list_peaks-list_p1)
+    #        list_p2 = [list_peaks[i] for i in np.where(del_p>1)[0]]
+    #        crop_t = np.unique([i for t in list_p2 for i in range(t-400,t+400)])
+    #        crop_t = np.delete(crop_t,np.where((crop_t < 0) | (crop_t > T)))    
+    #        
+    #        trimmed_t = np.arange(T)
+    #        trimmed_t = np.delete(trimmed_t,crop_t)                       
+    #                
+    #        list_t0 = trimmed_t-np.roll(trimmed_t,1)
+    #        list_t = np.where(list_t0 !=1)[0]
+    #        list_t = np.append(list_t,len(trimmed_t))
+    
+    
+            if len(list_t)==1:
+                t_start = 1
+                trimm_flg = 1
+            else:
                 
-        data = w.data
-        t_base = 3000
-        max_list = [data[i*t_base:(i+1)*t_base].max(axis = 0) for i in range(0,np.floor(T/t_base).astype(int))]
-        mean_max = np.mean(max_list, axis =0)    
-        list_peaks = np.where(np.sum(data > mean_max, axis = 1))[0]
-        list_p1 = np.roll(list_peaks,1)
-        list_p1[0] = 0
-        del_p = (list_peaks-list_p1)
-        list_p2 = [list_peaks[i] for i in np.where(del_p>1)[0]]
-        crop_t = np.unique([i for t in list_p2 for i in range(t-400,t+400)])
-        crop_t = np.delete(crop_t,np.where((crop_t < 0) | (crop_t > T)))    
-#        crop_t = np.random.randint(1,1000,1000)
-        
-        trimmed_t = np.arange(T)
-        trimmed_t = np.delete(trimmed_t,crop_t)
-        
-#        trimmed_t = [i for i in range(T) if i not in crop_t]
-#        trimmed_t = range(T)
-       
-#        trimm_out = wave_harsh_peaks_all(w.data, t_base = 3000)        
-#        mean_max, trimmed_t = trimm_out            
-#        trimmed_t = list(range(T))
-        
-        
-        list_t0 = trimmed_t-np.roll(trimmed_t,1)
-        list_t = np.where(list_t0 !=1)[0]
-        list_t = np.append(list_t,len(trimmed_t))
-        if len(list_t)==1:
-            t_start = 1
-        else:
-            
-            temp1 = list_t-np.roll(list_t,1)
-            ind_list = np.where(t_length+1 < temp1)[0]
-            assert len(ind_list) > 0
-            t_start = list_t[ind_list[0]-1]+1
-               
+                temp1 = list_t-np.roll(list_t,1)
+                ind_list = np.where(t_length+1 < temp1)[0]
+                if len(ind_list) > 0:
+                    t_start = list_t[ind_list[0]-1]+1
+                    trimm_flg = 1
+                else:
+                    thresh_rate = thresh_rate * thresh_step                    
+                    
+#               
 ##-------------- loop version     
 #        reject_flag = 0
 #        list_t = trimmed_t-np.roll(trimmed_t,1)
@@ -246,7 +253,10 @@ def read_data(save_file = 'temp_save' , t_length = 7500 , t_base = 3000, t_range
 #        
 #        assert t_start0 == t_start
 ##-------------- loop version             
-
+        if thresh_rate > 1:
+            print ("For ID: %d , thresh %2.2f" % (i_ID, thresh_rate))
+            list_reject = np.append(list_reject,{'i_ID':i_ID,'thresh':thresh_rate})
+#            pickle.dump(list_reject,open("read_data_i_ID.p","wb"))
         
         t_select = trimmed_t[t_start:t_start+t_length]
         data_trim = w.data[t_select,:]
@@ -256,10 +266,12 @@ def read_data(save_file = 'temp_save' , t_length = 7500 , t_base = 3000, t_range
 #            plt.subplot(2,1,i_f+1)
 #            plt.plot(w.data[:,i_f], color = 'b')
 ##                plt.scatter(list_peaks, w.data[list_peaks.astype(int),i_f], color = 'g')    
-##            plt.scatter(t_select, data_trim[:,i_f], color = 'y')
-#            plt.scatter(trimmed_t, w.data[trimmed_t,i_f], color = 'y')
+#            if i_f == 0:
+#                plt.scatter(t_select, data_trim[:,0], color = 'm')
+#            if i_f == 1:
+#                plt.scatter(trimmed_t, w.data[trimmed_t,1], color = 'y')
 ##                plt.scatter(crop_t, data[crop_t.astype(int),i_f], color = 'g')         
-##                
+####                
         w.data = data_trim
         w_zm = stats.zscore(w.data,axis = 0, ddof = 1)
         if t_range:
@@ -273,6 +285,8 @@ def read_data(save_file = 'temp_save' , t_length = 7500 , t_base = 3000, t_range
         millis2 = (time.time())
         
         #        X = torch.tensor(w.data.transpose(1,0)).view(1,2,X.shape[1])     
+    
+    pickle.dump(list_reject,open("read_data_i_ID.p","wb"))        
     torch.save({'raw_x':raw_x, 'target':target}, save_file+'.pt')
     return target, raw_x
 
@@ -365,68 +379,41 @@ def wave_harsh_peaks(data, th_ratio = 3, ax  = None, t_base = 3000):
     
 
 #%% ================== trimming both channels
-def wave_harsh_peaks_all(data, ax  = None, t_base = 3000):
-    
+def wave_harsh_peaks_all(data, t_base = 3000, thresh_rate = 1):
     T = len(data)
-#    list_peaks = np.zeros(T)
-#    list_peaks = []
-    
-    
     
     max_list = [data[i*t_base:(i+1)*t_base].max(axis = 0) for i in range(0,np.floor(T/t_base).astype(int))]
+    
     mean_max = np.mean(max_list, axis =0)    
-    list_peaks = np.where(np.sum(data > mean_max, axis = 1))[0]
     
-#    for i_dim in range(data.shape[1]):
-#        data_ch = data[:,i_dim]    
+    thresh = thresh_rate*mean_max.copy()
+    list_peaks = np.where(np.sum(data > thresh, axis = 1))[0]
+    if len(list_peaks) == 0:
+        crop_t = []
+    else:        
+        list_p1 = np.roll(list_peaks,1)
+        list_p1[0] = 0
+        del_p = (list_peaks-list_p1)
+        list_p2 = [list_peaks[i] for i in np.where(del_p>1)[0]]
+        crop_t = np.unique([i for t in list_p2 for i in range(t-400,t+400)])
+        crop_t = np.delete(crop_t,np.where((crop_t < 0) | (crop_t > T)))    
+    
+    trimmed_t = np.arange(T)
+    trimmed_t = np.delete(trimmed_t,crop_t)
+           
+    
+    list_t0 = trimmed_t-np.roll(trimmed_t,1)
+    list_t = np.where(list_t0 !=1)[0]
+    list_t = np.append(list_t,len(trimmed_t))
+#    if len(list_t)==1:
+#        t_start = 1
+#    else:
 #        
-#    #    for i in range(0,np.floor(T/t_base).astype(int)):
-#    #        np.mean(data[i*t_base:(i+1)*t_base])
-#        max_list = [max(data_ch[i*t_base:(i+1)*t_base]) for i in range(0,np.floor(T/t_base).astype(int))]
-#        mean_max = np.mean(max_list)
-##        thresh = mean_max*th_ratio
-#    
-#        list_p = np.where(data_ch>mean_max)[0]
-#        list_peaks = np.append( list_peaks,list_p)
-#    del list_p
+#        temp1 = list_t-np.roll(list_t,1)
+#        ind_list = np.where(t_length+1 < temp1)[0]
+#        assert len(ind_list) > 0
+#        t_start = list_t[ind_list[0]-1]+1
     
-#    plt.figure()
-#    for i_f in range(2):
-#        plt.subplot(2,1,i_f+1)
-#        plt.plot(data[:,i_f], color = 'b')
-#        plt.scatter(list_peaks, data[list_peaks.astype(int),i_f], color = 'g')    
-##        plt.scatter(crop_t, data[crop_t.astype(int),i_f], color = 'g')            
-    
-    list_p1 = np.roll(list_peaks,1)
-    list_p1[0] = 0
-    del_p = (list_peaks-list_p1)
-    list_p2 = [list_peaks[i] for i in np.where(del_p>1)[0]]
-
-        
-#    crop_t = []
-    
-    crop_t = np.unique([i for t in list_p2 for i in range(t-400,t+400)])
-    
-#    for t in list_p2:
-#        crop_t = np.append(crop_t,np.arange(t-400,t))
-#        crop_t = np.append(crop_t,np.arange(t,t+400))
-#    
-    crop_t = np.delete(crop_t,np.where((crop_t < 0) | (crop_t > T)))
-#    crop_t = np.random.randint(1,1000,1000)
-    
-    trimmed_t = [i for i in range(T) if i not in crop_t]
-#    plt.plot(trimmed_t, data[trimmed_t], color = 'y')
-    
-#    if ax is not 'silent':
-#        if not ax:
-#           plt.figure()
-#           ax = plt
-#        
-#        ax.grid()
-#        ax.scatter(range(len(max_list)), max_list)
-#        ax.scatter(range(len(max_list)), mean_max*np.ones(len(max_list)), color = 'g')
-#        ax.scatter(range(len(max_list)), thresh*np.ones(len(max_list)), color = 'r')
-        
-    return mean_max, trimmed_t
+    return mean_max, list_t, trimmed_t
     
                 

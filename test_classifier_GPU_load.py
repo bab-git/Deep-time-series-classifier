@@ -35,7 +35,8 @@ import my_net_classes
 from my_net_classes import SepConv1d, _SepConv1d, Flatten, parameters
 
 #%% =======================
-seed = 1
+#seed = 11
+seed = int(input ('Enter seed value for randomizing the splits (default = 11):'))
 np.random.seed(seed)
 
 #==================== data IDs
@@ -50,7 +51,19 @@ np.random.seed(seed)
 #target = np.ones(16000)
 #target[0:8000]=0
 
-t_range = range(1000,1512)
+#t_range = range(1000,1512)
+
+t_win = 2**11
+#t_shift = 400
+t_shift = None
+
+t_range = range(t_win)
+#load_ECG =  torch.load ('raw_x_all.pt') 
+#load_ECG =  torch.load ('raw_x_40k_50K.pt') 
+#load_ECG =  torch.load ('raw_x_6K.pt') 
+#load_ECG =  torch.load ('raw_x_8K_sync.pt')
+load_ECG =  torch.load ('raw_x_8K_sync_win2K.pt')
+            
 
 #%%==================== test and train splits
 "creating dataset"     
@@ -62,13 +75,35 @@ device = torch.device('cuda:'+cuda_num if torch.cuda.is_available() else 'cpu')
 #device = torch.device('cuda:4' if torch.cuda.is_available() else 'cpu')
 #device = torch.device('cpu')
 
-#load_ECG =  torch.load ('raw_x_40k_50K.pt') 
-load_ECG =  torch.load ('raw_x_6K.pt') 
+if t_shift:
+    raw_x = load_ECG['raw_x']    
+    length = raw_x.shape[2]
+    n_win = np.floor(length / t_shift) - np.floor(t_win / t_shift)    
+    raw_x_extend = torch.empty([raw_x.shape[0]*n_win.astype(int),raw_x.shape[1],t_win])
+    target_extend = torch.empty(raw_x.shape[0]*n_win.astype(int))    
+    target = load_ECG['target']
 
-#load_ECG =  torch.load ('raw_x_all.pt') 
-raw_x = load_ECG['raw_x'].to(device)
-#raw_x.pin_memory = True
-target = torch.tensor(load_ECG['target']).to(device)
+    print("Extracting temporal windows from ECG files..." )
+                                      
+    for i_data in range(raw_x.shape[0]):    
+#        if i_data % 500 ==0:
+#            print("data number: "+str(i_data))
+        for i_win in range(int(n_win)):
+                    
+            i_ext = i_data*n_win+i_win
+            
+            raw_x_extend[int(i_ext),:,:] = raw_x[i_data,:,i_win*t_shift:i_win*t_shift+t_win] 
+            target_extend[int(i_ext)] = target[i_data]                
+    
+    del raw_x, target
+    raw_x = raw_x_extend.to(device)
+    target = target_extend.to(device)
+    
+else:
+
+    raw_x = load_ECG['raw_x'].to(device)
+    #raw_x.pin_memory = True
+    target = torch.tensor(load_ECG['target']).to(device)
 
 
 ecg_datasets = create_datasets_file(raw_x, target, test_size, seed=seed, t_range = t_range)
@@ -84,7 +119,7 @@ trn_ds, val_ds, tst_ds = ecg_datasets
 
 
 
-print ('device is:',device)
+print ('device is loaded to device:',device)
 
 
 #%% ==================   Initialization              
@@ -111,7 +146,8 @@ raw_feat = trn_ds[0][0].shape[0]
 raw_size = trn_ds[0][0].shape[1]
 trn_sz = len(trn_ds)
 
-model = my_net_classes.Classifier_1dconv(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
+model = my_net_classes.Classifier_1d_6_conv(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
+#model = my_net_classes.Classifier_1dconv(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
 #model = my_net_classes.Classifier_1dconv_BN(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
 #model = Classifier_1dconv(raw_feat, num_classes, raw_size/(2*4**3)).to(device)
 #model = Classifier_1dconv(raw_feat, num_classes, raw_size).to(device)
@@ -258,10 +294,18 @@ out = model(x_raw)
 preds = F.log_softmax(out, dim = 1).argmax(dim=1)
 total += y_batch.size(0)
 correct += (preds ==y_batch).sum().item()
-        
+
 acc = correct / total * 100
 
+TP = ((preds ==y_batch) & (1 ==y_batch)).sum().item()
+TP_rate = TP / (1 ==y_batch).sum().item() *100
+
+FP = ((preds !=y_batch) & (0 ==y_batch)).sum().item()
+FP_rate = FP / (0 ==y_batch).sum().item() *100
+        
 print('Accuracy on test data:  %2.2f' %(acc))
+print('True positives on test data:  %2.2f' %(TP_rate))
+print('False positives on test data:  %2.2f' %(FP_rate))
 
 
 assert 1==2
@@ -281,7 +325,8 @@ model_out.shape
 #%%===============  loading a learned model
 import my_net_classes
 
-save_name = "1dconv_b512_t4K"
+save_name = "1d_6con_b512_trim_2K_seed2"
+#save_name = "1dconv_b512_t4K"
 #save_name = "1dconv_b512_drop1B"
 #save_name = "1dconv_b512_drop1"
 #save_name = "batch_512_BN_B"
@@ -292,7 +337,8 @@ save_name = "1dconv_b512_t4K"
 #save_name = "batch_512_B"
 #t_stamp = "_batch_512_11_29_17_03"
 
-load_ECG =  torch.load ('raw_x_4k_5K.pt') 
+load_ECG =  torch.load ('raw_x_8K_sync.pt') 
+#load_ECG =  torch.load ('raw_x_4k_5K.pt') 
 #load_ECG =  torch.load ('raw_x_all.pt') 
 
 loaded_vars = pickle.load(open("train_"+save_name+"_variables.p","rb"))
@@ -303,9 +349,6 @@ loaded_vars = pickle.load(open("train_"+save_name+"_variables.p","rb"))
 #ecg_datasets = torch.load('train_'+save_name+'.pth', map_location=lambda storage, loc: storage.cuda('cuda:'+str(cuda_num)))
 #device = torch.device('cuda:'+str(cuda_num) if torch.cuda.is_available() else 'cpu')
 device = torch.device('cpu')
-
-load_ECG =  torch.load ('raw_x_4k_5k.pt') 
-#load_ECG =  torch.load ('raw_x_all.pt') 
 
 raw_x = load_ECG['raw_x'].to(device)
 target = torch.tensor(load_ECG['target']).to(device)
@@ -331,8 +374,9 @@ num_classes = 2
 #device = torch.device('cuda:4' if torch.cuda.is_available() else 'cpu')
 
 
+model = my_net_classes.Classifier_1d_6_conv(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
 #model = my_net_classes.Classifier_1dconv(raw_feat, num_classes, raw_size).to(device)
-model = my_net_classes.Classifier_1dconv(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
+#model = my_net_classes.Classifier_1dconv(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
 #model = my_net_classes.Classifier_1dconv_BN(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
 
 if torch.cuda.is_available()*0:
