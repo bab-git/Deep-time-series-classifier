@@ -82,63 +82,7 @@ class parameters():
         self.test_size = test_size
 
        
-#%% ==================   1dconv
-class Classifier_1dconv(nn.Module):
-    def __init__(self, raw_ni, no, raw_size, drop=.5, batch_norm = None):
-        super().__init__()
-        
-#        assert int(n_flt) == n_flt
-        flat_in = 256 * int (raw_size / (2*4*4*4))
-#        assert int (raw_size / (2*4**3)) == (raw_size / (2*4**3))
-#        flat_in = 256*int(n_flt)
-        
-        
-        if batch_norm:
-            self.raw = nn.Sequential(
-                SepConv1d(raw_ni,  32, 8, 2, 3, drop=drop, batch_norm = batch_norm),  #out: raw_size/str
-                SepConv1d(    32,  64, 8, 4, 2, drop=drop, batch_norm = batch_norm),
-                SepConv1d(    64, 128, 8, 4, 2, drop=drop, batch_norm = batch_norm),
-                SepConv1d(   128, 256, 8, 4, 2, batch_norm = batch_norm),
-                Flatten(),
-                nn.Dropout(drop), nn.Linear(flat_in, 64), nn.ReLU(inplace=True),
-                nn.BatchNorm1d(num_features = 64),
-                nn.Dropout(drop), nn.Linear( 64, 64), nn.ReLU(inplace=True),            
-                nn.BatchNorm1d(num_features = 64))
-        else:        
-            self.raw = nn.Sequential(
-                SepConv1d(raw_ni,  32, 8, 2, 3, drop=drop),
-                SepConv1d(    32,  64, 8, 4, 2, drop=drop),
-                SepConv1d(    64, 128, 8, 4, 2, drop=drop),
-                SepConv1d(   128, 256, 8, 4, 2),
-                Flatten(),
-                nn.Dropout(drop), nn.Linear(flat_in, 64), nn.ReLU(inplace=True),    
-                nn.Dropout(drop), nn.Linear( 64, 64), nn.ReLU(inplace=True))
-
-
-
-        
-            
-#        self.fft = nn.Sequential(
-#            SepConv1d(fft_ni,  32, 8, 2, 4, drop=drop),
-#            SepConv1d(    32,  64, 8, 2, 4, drop=drop),
-#            SepConv1d(    64, 128, 8, 4, 4, drop=drop),
-#            SepConv1d(   128, 128, 8, 4, 4, drop=drop),
-#            SepConv1d(   128, 256, 8, 2, 3),
-#            Flatten(),
-#            nn.Dropout(drop), nn.Linear(256, 64), nn.ReLU(inplace=True),
-#            nn.Dropout(drop), nn.Linear( 64, 64), nn.ReLU(inplace=True))
-        
-        self.out = nn.Sequential(
-#            nn.Linear(128, 64), nn.ReLU(inplace=True), 
-            nn.Linear(64, no))
-        
-    def forward(self, t_raw):
-        raw_out = self.raw(t_raw)
-#        fft_out = self.fft(t_fft)
-#        t_in = torch.cat([raw_out, fft_out], dim=1)
-        out = self.out(raw_out)
-        return out
-    
+   
 #%% ==================         
 #class Classifier(nn.Module):
 #    def __init__(self, raw_ni, no, drop=.5):
@@ -222,6 +166,123 @@ class Classifier_1dconv_BN(nn.Module):
         self.out = nn.Sequential(
 #            nn.Linear(128, 64), nn.ReLU(inplace=True), 
             nn.Linear(64, no))
+        
+    def forward(self, t_raw):
+        raw_out = self.raw(t_raw)
+#        fft_out = self.fft(t_fft)
+#        t_in = torch.cat([raw_out, fft_out], dim=1)
+        out = self.out(raw_out)
+        return out    
+    
+#%% ==================   1dconv - 4 conv
+class Classifier_1dconv(nn.Module):
+    def __init__(self, raw_ni, no, raw_size, drop=.5, batch_norm = None):
+        super().__init__()
+        
+#        assert int(n_flt) == n_flt
+        flat_in = 256 * int (raw_size / (2*4*4*4))
+#        assert int (raw_size / (2*4**3)) == (raw_size / (2*4**3))
+#        flat_in = 256*int(n_flt)
+        
+        
+        if batch_norm:
+            self.raw = nn.Sequential(
+                SepConv1d(raw_ni,  32, 8, 2, 3, drop=drop, batch_norm = batch_norm),  #out: raw_size/str
+                SepConv1d(    32,  64, 8, 4, 2, drop=drop, batch_norm = batch_norm),
+                SepConv1d(    64, 128, 8, 4, 2, drop=drop, batch_norm = batch_norm),
+                SepConv1d(   128, 256, 8, 4, 2, batch_norm = batch_norm),
+                Flatten(),
+                nn.Dropout(drop), nn.Linear(flat_in, 64), nn.ReLU(inplace=True),
+                nn.BatchNorm1d(num_features = 64),
+                nn.Dropout(drop), nn.Linear( 64, 64), nn.ReLU(inplace=True),            
+                nn.BatchNorm1d(num_features = 64))
+        else:        
+            self.raw = nn.Sequential(
+                SepConv1d(raw_ni,  32, 8, 2, 3, drop=drop),
+                SepConv1d(    32,  64, 8, 4, 2, drop=drop),
+                SepConv1d(    64, 128, 8, 4, 2, drop=drop),
+                SepConv1d(   128, 256, 8, 4, 2),
+                Flatten(),
+                nn.Dropout(drop), nn.Linear(flat_in, 64), nn.ReLU(inplace=True),    
+                nn.Dropout(drop), nn.Linear( 64, 64), nn.ReLU(inplace=True))
+
+
+
+        
+            
+#        self.fft = nn.Sequential(
+#            SepConv1d(fft_ni,  32, 8, 2, 4, drop=drop),
+#            SepConv1d(    32,  64, 8, 2, 4, drop=drop),
+#            SepConv1d(    64, 128, 8, 4, 4, drop=drop),
+#            SepConv1d(   128, 128, 8, 4, 4, drop=drop),
+#            SepConv1d(   128, 256, 8, 2, 3),
+#            Flatten(),
+#            nn.Dropout(drop), nn.Linear(256, 64), nn.ReLU(inplace=True),
+#            nn.Dropout(drop), nn.Linear( 64, 64), nn.ReLU(inplace=True))
+        
+        self.out = nn.Sequential(
+#            nn.Linear(128, 64), nn.ReLU(inplace=True), 
+            nn.Linear(64, no))
+        
+    def forward(self, t_raw):
+        raw_out = self.raw(t_raw)
+#        fft_out = self.fft(t_fft)
+#        t_in = torch.cat([raw_out, fft_out], dim=1)
+        out = self.out(raw_out)
+        return out    
+    
+    
+#%% ==================   1dconv - 6 conv - 3 FC
+class Classifier_1d_6_conv(nn.Module):
+    def __init__(self, raw_ni, no, raw_size, drop=.5, batch_norm = None):
+        super().__init__()
+        
+#        assert int(n_flt) == n_flt
+        flat_in = 1024 * int (raw_size / (2*4*4*4*4*4))
+#        assert int (raw_size / (2*4**3)) == (raw_size / (2*4**3))
+#        flat_in = 256*int(n_flt)
+        
+        
+        if batch_norm:
+            self.raw = nn.Sequential(
+                SepConv1d(raw_ni,  32, 8, 2, 3, drop=drop, batch_norm = batch_norm),  #out: raw_size/str
+                SepConv1d(    32,  64, 8, 4, 2, drop=drop, batch_norm = batch_norm),
+                SepConv1d(    64, 128, 8, 4, 2, drop=drop, batch_norm = batch_norm),
+                SepConv1d(   128, 256, 8, 4, 2, drop=drop, batch_norm = batch_norm),
+                SepConv1d(   256, 512, 8, 4, 2, drop=drop, batch_norm = batch_norm),
+                SepConv1d(   512,1024, 8, 4, 2, batch_norm = batch_norm),
+                Flatten(),
+                nn.Dropout(drop), nn.Linear(flat_in, 128), nn.ReLU(inplace=True),
+                nn.BatchNorm1d(num_features = 128),
+                nn.Dropout(drop), nn.Linear( 128, 128), nn.ReLU(inplace=True),            
+                nn.BatchNorm1d(num_features = 128))
+        else:        
+            self.raw = nn.Sequential(
+                SepConv1d(raw_ni,  32, 8, 2, 3, drop=drop),
+                SepConv1d(    32,  64, 8, 4, 2, drop=drop),
+                SepConv1d(    64, 128, 8, 4, 2, drop=drop),
+                SepConv1d(   128, 256, 8, 4, 2),
+                Flatten(),
+                nn.Dropout(drop), nn.Linear(flat_in, 64), nn.ReLU(inplace=True),    
+                nn.Dropout(drop), nn.Linear( 64, 64), nn.ReLU(inplace=True))
+
+
+
+        
+            
+#        self.fft = nn.Sequential(
+#            SepConv1d(fft_ni,  32, 8, 2, 4, drop=drop),
+#            SepConv1d(    32,  64, 8, 2, 4, drop=drop),
+#            SepConv1d(    64, 128, 8, 4, 4, drop=drop),
+#            SepConv1d(   128, 128, 8, 4, 4, drop=drop),
+#            SepConv1d(   128, 256, 8, 2, 3),
+#            Flatten(),
+#            nn.Dropout(drop), nn.Linear(256, 64), nn.ReLU(inplace=True),
+#            nn.Dropout(drop), nn.Linear( 64, 64), nn.ReLU(inplace=True))
+        
+        self.out = nn.Sequential(
+#            nn.Linear(128, 64), nn.ReLU(inplace=True), 
+            nn.Linear(128, no))
         
     def forward(self, t_raw):
         raw_out = self.raw(t_raw)
