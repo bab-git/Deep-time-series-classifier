@@ -52,7 +52,18 @@ np.random.seed(seed)
 #target[0:8000]=0
 
 #t_range = range(1000,1512)
-t_range = range(2**11)
+
+t_win = 2**11
+#t_shift = 400
+t_shift = None
+
+t_range = range(t_win)
+#load_ECG =  torch.load ('raw_x_all.pt') 
+#load_ECG =  torch.load ('raw_x_40k_50K.pt') 
+#load_ECG =  torch.load ('raw_x_6K.pt') 
+#load_ECG =  torch.load ('raw_x_8K_sync.pt')
+load_ECG =  torch.load ('raw_x_8K_sync_win2K.pt')
+            
 
 #%%==================== test and train splits
 "creating dataset"     
@@ -64,14 +75,35 @@ device = torch.device('cuda:'+cuda_num if torch.cuda.is_available() else 'cpu')
 #device = torch.device('cuda:4' if torch.cuda.is_available() else 'cpu')
 #device = torch.device('cpu')
 
-#load_ECG =  torch.load ('raw_x_40k_50K.pt') 
-#load_ECG =  torch.load ('raw_x_6K.pt') 
-load_ECG =  torch.load ('raw_x_8K_sync.pt') 
+if t_shift:
+    raw_x = load_ECG['raw_x']    
+    length = raw_x.shape[2]
+    n_win = np.floor(length / t_shift) - np.floor(t_win / t_shift)    
+    raw_x_extend = torch.empty([raw_x.shape[0]*n_win.astype(int),raw_x.shape[1],t_win])
+    target_extend = torch.empty(raw_x.shape[0]*n_win.astype(int))    
+    target = load_ECG['target']
 
-#load_ECG =  torch.load ('raw_x_all.pt') 
-raw_x = load_ECG['raw_x'].to(device)
-#raw_x.pin_memory = True
-target = torch.tensor(load_ECG['target']).to(device)
+    print("Extracting temporal windows from ECG files..." )
+                                      
+    for i_data in range(raw_x.shape[0]):    
+#        if i_data % 500 ==0:
+#            print("data number: "+str(i_data))
+        for i_win in range(int(n_win)):
+                    
+            i_ext = i_data*n_win+i_win
+            
+            raw_x_extend[int(i_ext),:,:] = raw_x[i_data,:,i_win*t_shift:i_win*t_shift+t_win] 
+            target_extend[int(i_ext)] = target[i_data]                
+    
+    del raw_x, target
+    raw_x = raw_x_extend.to(device)
+    target = target_extend.to(device)
+    
+else:
+
+    raw_x = load_ECG['raw_x'].to(device)
+    #raw_x.pin_memory = True
+    target = torch.tensor(load_ECG['target']).to(device)
 
 
 ecg_datasets = create_datasets_file(raw_x, target, test_size, seed=seed, t_range = t_range)
@@ -87,7 +119,7 @@ trn_ds, val_ds, tst_ds = ecg_datasets
 
 
 
-print ('device is:',device)
+print ('device is loaded to device:',device)
 
 
 #%% ==================   Initialization              
