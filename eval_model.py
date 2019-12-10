@@ -12,30 +12,32 @@ import numpy as np
 #from sklearn.model_selection import train_test_split
 #from sklearn.preprocessing import LabelEncoder, StandardScaler
 
-import torch
-from torch import nn
-from torch import optim
+#import torch
+#from torch import nn
+#from torch import optim
 from torch.nn import functional as F
 #from torch.optim.lr_scheduler import _LRScheduler
 #from torch.utils.data import TensorDataset, DataLoader
 #import datetime
-import pickle
+#import pickle
 #from git import Repo
 
-import os
+#import os
 #abspath = os.path.abspath('test_classifier_GPU_load.py')
 #dname = os.path.dirname(abspath)
 #os.chdir(dname)
 
-#os.chdir('/home/bhossein/BMBF project/code_repo')
+os.chdir('/home/bhossein/BMBF project/code_repo')
 #os.chdir('C:\Hinkelstien\code_repo')
 
 from my_data_classes import create_datasets, create_loaders, read_data, create_datasets_file, smooth
 import my_net_classes
-from my_net_classes import SepConv1d, _SepConv1d, Flatten, parameters
+#from my_net_classes import SepConv1d, _SepConv1d, Flatten, parameters
 
 #%%===============  loading a learned model
 import my_net_classes
+import torch
+import pickle
 
 save_name = input("input save name:")
 #save_name = "1d_6con_b512_trim_2K_win_s1"
@@ -127,17 +129,17 @@ print('True positives on test data:  %2.2f' %(TP_rate))
 print('False positives on test data:  %2.2f' %(FP_rate))
 
 #-----------------------  visualize training curve
-f, ax = plt.subplots(1,2, figsize=(12,4))    
-ax[0].plot(loss_history, label = 'loss')
-ax[0].set_title('Validation Loss History: '+save_name)
-ax[0].set_xlabel('Epoch no.')
-ax[0].set_ylabel('Loss')
-
-ax[1].plot(smooth(acc_history, 5)[:-2], label='acc')
-#ax[1].plot(acc_history, label='acc')
-ax[1].set_title('Validation Accuracy History: '+save_name)
-ax[1].set_xlabel('Epoch no.')
-ax[1].set_ylabel('Accuracy');
+#f, ax = plt.subplots(1,2, figsize=(12,4))    
+#ax[0].plot(loss_history, label = 'loss')
+#ax[0].set_title('Validation Loss History: '+save_name)
+#ax[0].set_xlabel('Epoch no.')
+#ax[0].set_ylabel('Loss')
+#
+#ax[1].plot(smooth(acc_history, 5)[:-2], label='acc')
+##ax[1].plot(acc_history, label='acc')
+#ax[1].set_title('Validation Accuracy History: '+save_name)
+#ax[1].set_xlabel('Epoch no.')
+#ax[1].set_ylabel('Accuracy');
 
 
 
