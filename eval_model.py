@@ -28,7 +28,7 @@ import os
 #os.chdir(dname)
 
 #os.chdir('/home/bhossein/BMBF project/code_repo')
-os.chdir('C:\Hinkelstien\code_repo')
+#os.chdir('C:\Hinkelstien\code_repo')
 
 from my_data_classes import create_datasets, create_loaders, read_data, create_datasets_file, smooth
 import my_net_classes
