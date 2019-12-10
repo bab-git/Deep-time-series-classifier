@@ -27,8 +27,8 @@ import os
 #dname = os.path.dirname(abspath)
 #os.chdir(dname)
 
-os.chdir('/home/bhossein/BMBF project/code_repo')
-#os.chdir('C:\Hinkelstien\code_repo')
+#os.chdir('/home/bhossein/BMBF project/code_repo')
+os.chdir('C:\Hinkelstien\code_repo')
 
 from my_data_classes import create_datasets, create_loaders, read_data, create_datasets_file, smooth
 import my_net_classes
@@ -325,7 +325,8 @@ model_out.shape
 #%%===============  loading a learned model
 import my_net_classes
 
-save_name = "1d_6con_b512_trim_2K_seed2"
+save_name = "1d_6con_b512_trim_2K_win_s1"
+#save_name = "1d_6con_b512_trim_2K_seed2"
 #save_name = "1dconv_b512_t4K"
 #save_name = "1dconv_b512_drop1B"
 #save_name = "1dconv_b512_drop1"
