@@ -38,8 +38,8 @@ import pickle
 
 #save_name = "1d_6con_b512_trim_2K_win_s3"
 #save_name = "1d_6con_b512_trim_2K_win_s11"
-#save_name = "1d_6con_b512_trim_2K_win_s1"
-save_name = "1d_6con_b512_trim_2K_seed2"
+save_name = "1d_6con_b512_trim_2K_win_s1"
+#save_name = "1d_6con_b512_trim_2K_seed2"
 #save_name = "1dconv_b512_t4K"
 #save_name = "1dconv_b512_drop1B"
 #save_name = "1dconv_b512_drop1"
@@ -51,9 +51,9 @@ save_name = "1d_6con_b512_trim_2K_seed2"
 #save_name = "batch_512_B"
 #t_stamp = "_batch_512_11_29_17_03"
 
-#save_name2 = input("Input model to load (currently "+save_name+" is selected) :")
-#if save_name2 != '':
-#    save_name = save_name2
+save_name2 = input("Input model to load (currently "+save_name+" is selected) :")
+if save_name2 != '':
+    save_name = save_name2
 
 print(save_name + " is loaded.")
 
