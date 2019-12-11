@@ -34,6 +34,8 @@ from my_data_classes import create_datasets, create_loaders, read_data, create_d
 import my_net_classes
 from my_net_classes import SepConv1d, _SepConv1d, Flatten, parameters
 
+import skorch
+
 #%% =======================
 #seed = 11
 seed = int(input ('Enter seed value for randomizing the splits (default = 11):'))

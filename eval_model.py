@@ -1,4 +1,4 @@
-import time
+#import time
 #from collections import defaultdict
 #from functools import partial
 #from multiprocessing import cpu_count
@@ -13,8 +13,8 @@ import numpy as np
 #from sklearn.preprocessing import LabelEncoder, StandardScaler
 
 import torch
-from torch import nn
-from torch import optim
+#from torch import nn
+#from torch import optim
 from torch.nn import functional as F
 #from torch.optim.lr_scheduler import _LRScheduler
 #from torch.utils.data import TensorDataset, DataLoader
@@ -27,19 +27,21 @@ import os
 #dname = os.path.dirname(abspath)
 #os.chdir(dname)
 
-#os.chdir('/home/bhossein/BMBF project/code_repo')
+os.chdir('/home/bhossein/BMBF project/code_repo')
 #os.chdir('C:\Hinkelstien\code_repo')
 
-from my_data_classes import create_datasets, create_loaders, read_data, create_datasets_file, smooth
-import my_net_classes
+#from my_data_classes import create_datasets, create_loaders, read_data, create_datasets_file, smooth
+#import my_net_classes
 from my_net_classes import SepConv1d, _SepConv1d, Flatten, parameters
 
 #%%===============  loading a learned model
 import my_net_classes
+from my_data_classes import create_datasets, create_loaders, read_data, create_datasets_file, smooth
 
-save_name = input("input save name:")
+#save_name = "1d_6con_b512_trim_2K_win_s3"
+#save_name = "1d_6con_b512_trim_2K_win_s11"
 #save_name = "1d_6con_b512_trim_2K_win_s1"
-#save_name = "1d_6con_b512_trim_2K_seed2"
+save_name = "1d_6con_b512_trim_2K_seed2"
 #save_name = "1dconv_b512_t4K"
 #save_name = "1dconv_b512_drop1B"
 #save_name = "1dconv_b512_drop1"
@@ -51,7 +53,14 @@ save_name = input("input save name:")
 #save_name = "batch_512_B"
 #t_stamp = "_batch_512_11_29_17_03"
 
-load_ECG =  torch.load ('raw_x_8K_sync.pt') 
+#save_name2 = input("Input model to load (currently "+save_name+" is selected) :")
+#if save_name2 != '':
+#    save_name = save_name2
+
+print(save_name + " is loaded.")
+
+load_ECG =  torch.load ('raw_x_8K_sync_win2K.pt')
+#load_ECG =  torch.load ('raw_x_8K_sync.pt') 
 #load_ECG =  torch.load ('raw_x_4k_5K.pt') 
 #load_ECG =  torch.load ('raw_x_all.pt') 
 
@@ -59,25 +68,28 @@ loaded_vars = pickle.load(open("train_"+save_name+"_variables.p","rb"))
 #loaded_file = pickle.load(open("variables"+t_stamp+".p","rb"))
 #loaded_file = pickle.load(open("variables_ended"+t_stamp+".p","rb"))
 
-#loaded_split = pickle.load(open("train_"+save_name+"_split.p","rb"))
-#ecg_datasets = torch.load('train_'+save_name+'.pth', map_location=lambda storage, loc: storage.cuda('cuda:'+str(cuda_num)))
-#device = torch.device('cuda:'+str(cuda_num) if torch.cuda.is_available() else 'cpu')
-device = torch.device('cpu')
+#cuda_num = input("cuda number:")
+cuda_num = 0
+device = torch.device('cuda:'+str(cuda_num) if torch.cuda.is_available() else 'cpu')
+#device = torch.device('cpu')
 
-raw_x = load_ECG['raw_x'].to(device)
-target = torch.tensor(load_ECG['target']).to(device)
+raw_x = load_ECG['raw_x']
+#raw_x = load_ECG['raw_x'].to(device)
+target = load_ECG['target']
+#target = torch.tensor(load_ECG['target']).to(device)
 params = loaded_vars['params']
 seed = params.seed
 test_size = params.test_size
 np.random.seed(seed)
 t_range = params.t_range
-ecg_datasets = create_datasets_file(raw_x, target, test_size, seed=seed, t_range = t_range)
+ecg_datasets = create_datasets_file(raw_x, target, test_size, seed=seed, t_range = t_range, device = device)
 
 
 acc_history = loaded_vars['acc_history']
 loss_history = loaded_vars['loss_history']
 #ecg_datasets = loaded_split['ecg_datasets']
 trn_ds, val_ds, tst_ds = ecg_datasets
+
 batch_size = loaded_vars['params'].batch_size
 trn_dl, val_dl, tst_dl = create_loaders(ecg_datasets, bs=batch_size, jobs = 0)
 raw_feat = ecg_datasets[0][0][0].shape[0]
@@ -108,13 +120,16 @@ model.eval()
 correct, total = 0, 0
 
 batch = []
-x_raw, y_batch = [t.to(device) for t in tst_ds.tensors]
-#x_raw, y_batch = [t.to(device) for t in val_ds.tensors]
-out = model(x_raw)
-preds = F.log_softmax(out, dim = 1).argmax(dim=1)
-total += y_batch.size(0)
-correct += (preds ==y_batch).sum().item()
-acc = correct / total * 100
+for batch in tst_dl:
+    x_raw, y_batch = batch
+#    x_raw, y_batch = [t.to(device) for t in batch]
+    #x_raw, y_batch = tst_ds.tensors
+    #x_raw, y_batch = [t.to(device) for t in val_ds.tensors]
+    out = model(x_raw)
+    preds = F.log_softmax(out, dim = 1).argmax(dim=1)
+    total += y_batch.size(0)
+    correct += (preds ==y_batch).sum().item()
+    acc = correct / total * 100
 
 TP = ((preds ==y_batch) & (1 ==y_batch)).sum().item()
 TP_rate = TP / (1 ==y_batch).sum().item() *100

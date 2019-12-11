@@ -304,7 +304,7 @@ def read_data(save_file = 'temp_save' , t_length = 8000 , t_base = 3000, t_range
 #plt.subplot(212)
 #plt.plot(data_trim[1,:])
 #%% ================== test/train using all read data
-def create_datasets_file(raw_x, target, test_size, valid_pct=0.1, seed=None, t_range=None):
+def create_datasets_file(raw_x, target, test_size, valid_pct=0.1, seed=None, t_range=None, device = torch.device('cpu')):
     """
     Creating train/test/validation splits
     
@@ -323,12 +323,12 @@ def create_datasets_file(raw_x, target, test_size, valid_pct=0.1, seed=None, t_r
     val_idx, tst_idx= train_test_split(tst_idx, test_size=0.5, random_state=seed)
     
     
-    trn_ds = TensorDataset(raw_x[trn_idx,:,t_range.start:t_range.stop].float(),
-                           target[trn_idx].long())
-    tst_ds = TensorDataset(raw_x[tst_idx,:,t_range.start:t_range.stop].float(),
-                           target[tst_idx].long())
-    val_ds = TensorDataset(raw_x[val_idx,:,t_range.start:t_range.stop].float(),
-                           target[val_idx].long())
+    trn_ds = TensorDataset(raw_x[trn_idx,:,t_range.start:t_range.stop].float().to(device),
+                           target[trn_idx].long().to(device))
+    tst_ds = TensorDataset(raw_x[tst_idx,:,t_range.start:t_range.stop].float().to(device),
+                           target[tst_idx].long().to(device))
+    val_ds = TensorDataset(raw_x[val_idx,:,t_range.start:t_range.stop].float().to(device),
+                           target[val_idx].long().to(device))
     
     return trn_ds, val_ds, tst_ds
 
