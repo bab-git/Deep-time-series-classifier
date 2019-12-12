@@ -67,7 +67,8 @@ load_ECG =  torch.load ('raw_x_8K_sync_win2K.pt')
 
 #%%==================== test and train splits
 "creating dataset"     
-test_size = 0.25
+#test_size = 0.25
+test_size = 0.3
 
 cuda_num = input("enter cuda number to use: ")
 
@@ -165,7 +166,7 @@ criterion = nn.CrossEntropyLoss (reduction = 'sum')
 opt = optim.Adam(model.parameters(), lr=lr)
 
 #print('Enter a save-file name for this trainig:')
-print("chosen batch size: %d" % (batch_size))
+print("chosen batch size: %d, test size: %2.2f" % (batch_size, test_size))
 save_name = input("Enter a save-file name for this trainig: ")
 
 print('Start model training')
