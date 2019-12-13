@@ -120,9 +120,9 @@ def create_datasets(IDs, target, test_size, valid_pct=0.1, seed=None, t_range=No
     return trn_ds, val_ds, tst_ds
 
 #%% ================== 
-def create_loaders(data, bs=128, jobs=0):
+def create_loaders(data, bs=128, jobs=0, bs_val = None):
     """Wraps the datasets returned by create_datasets function with data loaders."""
-    
+        
     trn_ds, val_ds, tst_ds = data
     
     if bs == "full":
@@ -130,18 +130,23 @@ def create_loaders(data, bs=128, jobs=0):
         bs_tst = len(tst_ds)
         bs_val = len(val_ds)
     else:
-        bs_trn = bs_tst = bs_val = bs
+        bs_trn = bs_tst = bs
+        if bs_val == None:
+            bs_val = bs
         
     trn_dl = DataLoader(trn_ds, batch_size=bs_trn, shuffle=True, num_workers=jobs)
-    val_dl = DataLoader(val_ds, batch_size=bs_tst, shuffle=False, num_workers=jobs)
-    tst_dl = DataLoader(tst_ds, batch_size=bs_val, shuffle=False, num_workers=jobs)
+    val_dl = DataLoader(val_ds, batch_size=bs_val, shuffle=False, num_workers=jobs)
+    tst_dl = DataLoader(tst_ds, batch_size=bs_tst, shuffle=False, num_workers=jobs)
     return trn_dl, val_dl, tst_dl             
 
 #%% ================== read all data 
 def read_data(save_file = 'temp_save' , t_length = 8000 , t_base = 3000, t_range = None):
     IDs = []
-    path_data = 'C:\Hinkelstien\data/FILTERED/atrial_fibrillation_8k/'
-    path_data = np.append(path_data,'C:\Hinkelstien\data/FILTERED/atrial_fibrillation_8k/')
+#    path_data = 'C:\Hinkelstien\data/FILTERED/sinus_rhythm_8k/'
+    path_data = '/vol/hinkelstn/data/FILTERED/sinus_rhythm_8k/'    
+    
+#    path_data = np.append(path_data,'C:\Hinkelstien\data/FILTERED/atrial_fibrillation_8k/')
+    path_data = np.append(path_data,'/vol/hinkelstn/data/FILTERED/atrial_fibrillation_8k/')
 #    main_path = '/vol/hinkelstn/data/FILTERED/atrial_fibrillation_8k/'
     main_path = path_data[0]
     IDs.extend(os.listdir(main_path))
@@ -151,7 +156,7 @@ def read_data(save_file = 'temp_save' , t_length = 8000 , t_base = 3000, t_range
     IDs.extend(os.listdir(main_path))
 
     target = np.ones(16000)
-    target[0:8000]=0
+    target[0:8000]=0      # 0 : normal 1:AF
 #    t_range = range(0,6000)
 #    t_range = range(40000,50000)
 #    t_range = range(0,60000)
@@ -163,11 +168,12 @@ def read_data(save_file = 'temp_save' , t_length = 8000 , t_base = 3000, t_range
     list_reject = []    
     millis = (time.time())
     millis2 = (time.time())
-    t_start = 0;  T = 0
+    t_start = 0;  
+#    T = 0
     while i_ID< len(IDs):        
-        del t_start, T        
+        del t_start
         ID = IDs[i_ID]
-        print('sample: %d , time: %5.2f (s)' % (i_ID, millis2-millis))
+#        print('sample: %d , time: %5.2f (s)' % (i_ID, millis2-millis))
         
         millis = (time.time())
 #        pickle.dump({'i_ID':i_ID},open("read_data_i_ID.p","wb"))
@@ -287,9 +293,8 @@ def read_data(save_file = 'temp_save' , t_length = 8000 , t_base = 3000, t_range
         #        X = torch.tensor(w.data.transpose(1,0)).view(1,2,X.shape[1])     
     
     pickle.dump(list_reject,open("read_data_i_ID.p","wb"))        
-    torch.save({'raw_x':raw_x, 'target':target}, save_file+'.pt')
-    return target, raw_x
-
+    torch.save({'IDs':IDs, 'raw_x':raw_x, 'target':target}, save_file+'.pt')
+    return target, raw_x, IDs
 
 #plt.figure()
 #plt.subplot(211)
@@ -326,19 +331,24 @@ def create_datasets_win(raw_x, target, data_tag, test_size, seed=None, t_range=N
     trn_idx, tst_idx = train_test_split(idx, test_size=test_size, random_state=seed)
     val_idx, tst_idx= train_test_split(tst_idx, test_size=0.5, random_state=seed)
               
-    tst_idx = extend_idx(tst_idx)
     trn_idx = extend_idx(trn_idx)
     val_idx = extend_idx(val_idx)
+    tst_idx = extend_idx(tst_idx)
+    
+#    b = data_tag[trn_idx]
+#    a = list(filter(lambda i: data_tag[i] in b, tst_idx))
+#    c = list(filter(lambda i: data_tag[i] in b, val_idx))
     
     
     trn_ds = TensorDataset(raw_x[trn_idx,:,t_range.start:t_range.stop].float().to(device),
-                           target[trn_idx].long().to(device))
-    tst_ds = TensorDataset(raw_x[tst_idx,:,t_range.start:t_range.stop].float().to(device),
-                           target[tst_idx].long().to(device))
+                           target[trn_idx].long().to(device))    
     val_ds = TensorDataset(raw_x[val_idx,:,t_range.start:t_range.stop].float().to(device),
                            target[val_idx].long().to(device))
     
-    return trn_ds, val_ds, tst_ds    
+    tst_ds = TensorDataset(raw_x[tst_idx,:,t_range.start:t_range.stop].float().to(device),
+                           target[tst_idx].long().to(device))
+    
+    return trn_ds, val_ds, tst_ds, trn_idx, val_idx, tst_idx
 
 
 #%% ================== test/train using all read data

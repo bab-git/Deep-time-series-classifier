@@ -35,8 +35,11 @@ import my_net_classes
 from my_net_classes import SepConv1d, _SepConv1d, Flatten, parameters
 
 #%% =======================
-#seed = 11
-seed = int(input ('Enter seed value for randomizing the splits (default = 11):'))
+seed = 1
+seed2 = input ('Enter seed value for randomizing the splits (default = 1):')
+if seed2 != '':
+    seed = int(seed2)
+
 np.random.seed(seed)
 
 #==================== data IDs
@@ -67,8 +70,8 @@ load_ECG =  torch.load ('raw_x_8K_sync_win2K.pt')
 
 #%%==================== test and train splits
 "creating dataset"     
-#test_size = 0.25
-test_size = 0.3
+test_size = 0.25
+#test_size = 0.3
 
 cuda_num = input("enter cuda number to use: ")
 
@@ -105,8 +108,8 @@ else:
     raw_x = load_ECG['raw_x']
 #    raw_x = load_ECG['raw_x'].to(device)
     #raw_x.pin_memory = True
-    target = load_ECG['target']
-#    target = torch.tensor(load_ECG['target']).to(device)
+#    target = load_ECG['target']
+    target = torch.tensor(load_ECG['target'])
     
     data_tag = load_ECG['data_tag']
 
@@ -131,6 +134,8 @@ print ('device is loaded to device:',device)
 
 
 batch_size = (2**3)*64   #default
+val_batch_size = batch_size  #default
+#val_batch_size = 4 * batch_size 
 #batch_size = 64
 #batch_size = (2**5)*64
 #batch_size = "full"
@@ -146,7 +151,7 @@ step = 2
 loss_history = []
 acc_history = []
 
-trn_dl, val_dl, tst_dl = create_loaders(ecg_datasets, bs=batch_size, jobs = 0)
+trn_dl, val_dl, tst_dl = create_loaders(ecg_datasets, bs=batch_size, jobs = 0, bs_val = val_batch_size)
 
 raw_feat = trn_ds[0][0].shape[0]
 raw_size = trn_ds[0][0].shape[1]
@@ -317,15 +322,20 @@ print('False positives on test data:  %2.2f' %(FP_rate))
 
 
 assert 1==2
-#%%===============  Learning loop
+#%%===============  checking internal values
+drop=.5
+batch_norm = True
 model1 = nn.Sequential(
-            SepConv1d(     2,  32, 8, 2, 3, drop=drop),
-            SepConv1d(    32,  64, 8, 4, 2, drop=drop),
-            SepConv1d(    64, 128, 8, 4, 2, drop=drop),
-            SepConv1d(   128, 256, 8, 4, 2),
-            Flatten(),
+            SepConv1d(2,  32, 8, 2, 3, drop=drop, batch_norm = batch_norm),  #out: raw_size/str
+            SepConv1d(    32,  64, 8, 4, 2, drop=drop, batch_norm = batch_norm),
+            SepConv1d(    64, 128, 8, 4, 2, drop=drop, batch_norm = batch_norm),
+            SepConv1d(   128, 256, 8, 4, 2, drop=drop, batch_norm = batch_norm),
+            SepConv1d(   256, 512, 8, 4, 2, drop=drop, batch_norm = batch_norm),
+            SepConv1d(   512,1024, 8, 4, 2, batch_norm = batch_norm),
+#            Flatten(),
 #            nn.Linear(256, 64), nn.ReLU(inplace=True),
 #            nn.Linear( 64, 64), nn.ReLU(inplace=True)
             ).to(device)
 model_out = model1(x_raw)
+#model_out = model1(x_raw[0,:,:])
 model_out.shape

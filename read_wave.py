@@ -130,15 +130,15 @@ assert 1== 61090
 # %%================= individual files  
     
            
-#i_file = 4123
-i_file = np.random.randint(8000, size = 1).item()
+i_file = 1000
+#i_file = np.random.randint(8000, size = 1).item()
 #i_file = 7850
 
 i_class = 0 #0:normal  1:atrial
 #i_class = np.random.randint(2, size = 1)+1    
     
 #path = '/data/BMBF/sample/filtered atrial waves/8aae6985-c0b9-41d4-ac89-9f721b8019d2.wav'
-if i_class==1:
+if i_class==0:
 #    main_path = 'C:\Hinkelstien/data/FILTERED/sinus_rhythm_8k/'
     main_path = '/vol/hinkelstn/data/FILTERED/sinus_rhythm_8k/'    
     plt_color = 'b'
@@ -168,7 +168,7 @@ channel = w.data[:,0]
 
 axes[i_ax].plot(channel,color = plt_color)
 #plt.plot(w.data[:,0],color = plt_color)
-plt.title(plt_title+', sample_id:'+str(i_file))
+axes[i_ax].set_title(plt_title+', sample_id:'+str(i_file))
 
 trimm_out = wave_harsh_peaks(channel, ax  = 'silent', t_base = 3000)
 mean_max, trimmed_t = (trimm_out[1],trimm_out[4])
