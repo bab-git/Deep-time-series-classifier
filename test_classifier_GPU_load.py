@@ -30,7 +30,7 @@ import os
 os.chdir('/home/bhossein/BMBF project/code_repo')
 #os.chdir('C:\Hinkelstien\code_repo')
 
-from my_data_classes import create_datasets, create_loaders, read_data, create_datasets_file, smooth
+from my_data_classes import create_datasets, create_loaders, read_data, create_datasets_file, create_datasets_win, smooth
 import my_net_classes
 from my_net_classes import SepConv1d, _SepConv1d, Flatten, parameters
 
@@ -107,9 +107,13 @@ else:
     #raw_x.pin_memory = True
     target = load_ECG['target']
 #    target = torch.tensor(load_ECG['target']).to(device)
+    
+    data_tag = load_ECG['data_tag']
 
 
-ecg_datasets = create_datasets_file(raw_x, target, test_size, seed=seed, t_range = t_range, device = device)
+ecg_datasets = create_datasets_win(raw_x, target, data_tag, test_size, seed=seed, t_range = t_range, device = device)
+
+#ecg_datasets = create_datasets_file(raw_x, target, test_size, seed=seed, t_range = t_range, device = device)
 #trn_ds, val_ds, tst_ds = create_datasets_file(raw_x, target, test_size, seed=seed, t_range = t_range)
 trn_ds, val_ds, tst_ds = ecg_datasets
 

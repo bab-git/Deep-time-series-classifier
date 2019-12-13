@@ -66,7 +66,7 @@ load_ECG =  torch.load ('raw_x_8K_sync.pt')
 
 #%%==================== test and train splits
 "creating dataset"     
-test_size = 0.25
+#test_size = 0.25
 
 #cuda_num = input("enter cuda number to use: ")
 
@@ -76,11 +76,14 @@ test_size = 0.25
 
 
 raw_x = load_ECG['raw_x']    
+target = load_ECG['target']
+
 length = raw_x.shape[2]
 n_win = np.floor(length / t_shift) - np.floor(t_win / t_shift)    
 raw_x_extend = torch.empty([raw_x.shape[0]*n_win.astype(int),raw_x.shape[1],t_win])
-target_extend = torch.empty(raw_x.shape[0]*n_win.astype(int))    
-target = load_ECG['target']
+target_extend = np.zeros(raw_x.shape[0]*n_win.astype(int))    
+data_tag = np.zeros(raw_x.shape[0]*n_win.astype(int))
+
 
 print("Extracting temporal windows from ECG files..." )
                                   
@@ -92,11 +95,13 @@ for i_data in range(raw_x.shape[0]):
         i_ext = i_data*n_win+i_win
         
         raw_x_extend[int(i_ext),:,:] = raw_x[i_data,:,i_win*t_shift:i_win*t_shift+t_win] 
-        target_extend[int(i_ext)] = target[i_data]                
+        target_extend[int(i_ext)] = target[i_data]
+        data_tag[int(i_ext)] = i_data
 
 del raw_x, target
 raw_x = raw_x_extend
 target = target_extend
 
 #%%
-torch.save({'raw_x':raw_x,'target':target}, "raw_x_8K_sync_win2K.pt")
+torch.save({'raw_x':raw_x,'target':target,'data_tag':data_tag}, "raw_x_8K_sync_win2K.pt")
+#torch.save({'raw_x':raw_x,'target':target,'target_extend':target_extend,'data_tag':data_tag}, "raw_x_8K_sync_win2K.pt")

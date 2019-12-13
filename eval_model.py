@@ -37,7 +37,8 @@ import my_net_classes
 import torch
 import pickle
 
-save_name = "1d_6con_b512_trim_2K_win_s3"
+save_name = "1d_6con_2K_win_tr70_s11"
+#save_name = "1d_6con_b512_trim_2K_win_s3"
 #save_name = "1d_6con_b512_trim_2K_win_s11"
 #save_name = "1d_6con_b512_trim_2K_win_s1"
 #save_name = "1d_6con_b512_trim_2K_seed2"
