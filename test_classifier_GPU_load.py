@@ -114,7 +114,10 @@ else:
     data_tag = load_ECG['data_tag']
 
 
-ecg_datasets = create_datasets_win(raw_x, target, data_tag, test_size, seed=seed, t_range = t_range, device = device)
+dataset_splits = create_datasets_win(raw_x, target, data_tag, test_size, seed=seed, t_range = t_range, device = device)
+ecg_datasets = dataset_splits[0:3]
+trn_idx, val_idx, tst_idx = dataset_splits[3:6]
+
 
 #ecg_datasets = create_datasets_file(raw_x, target, test_size, seed=seed, t_range = t_range, device = device)
 #trn_ds, val_ds, tst_ds = create_datasets_file(raw_x, target, test_size, seed=seed, t_range = t_range)
