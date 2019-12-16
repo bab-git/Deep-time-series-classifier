@@ -13,7 +13,7 @@ os.chdir('/home/bhossein/BMBF project/code_repo')
 import matplotlib.pyplot as plt
 import scipy
 
-from my_data_classes import create_datasets, create_loaders, read_data, create_datasets_file, smooth, wave_harsh_peaks
+from my_data_classes import create_datasets, create_loaders, read_data, create_datasets_file, smooth, wave_harsh_peaks, wave_harsh_peaks_all
 import my_data_classes
 
 
@@ -130,8 +130,8 @@ assert 1== 61090
 # %%================= individual files  
     
            
-i_file = 1000
-#i_file = np.random.randint(8000, size = 1).item()
+#i_file = 1000
+i_file = np.random.randint(8000, size = 1).item()
 #i_file = 7850
 
 i_class = 0 #0:normal  1:atrial
@@ -157,26 +157,32 @@ path = main_path+file
 w = wavio.read(path)
 #w.data = w.data[30000:50000,:]
 
-fig, axes = plt.subplots(3, 1, sharex=True)
+#fig, axes = plt.subplots(3, 1, sharex=True)
+fig, axes = plt.subplots(2, 1, sharex=True)
 
 #plt.figure(figsize=(8,6))
 #plt.subplots(2,1,1)
 #plt.subplot(311)
 #plt.figure(figsize=(8,6))
+
+trimm_out = wave_harsh_peaks_all(w.data, t_base = 3000, thresh_rate = 1)
+
 i_ax = 0
 channel = w.data[:,0]
 
 axes[i_ax].plot(channel,color = plt_color)
 #plt.plot(w.data[:,0],color = plt_color)
 axes[i_ax].set_title(plt_title+', sample_id:'+str(i_file))
+#trimm_out = wave_harsh_peaks(channel, ax  = 'silent', t_base = 3000)
 
-trimm_out = wave_harsh_peaks(channel, ax  = 'silent', t_base = 3000)
-mean_max, trimmed_t = (trimm_out[1],trimm_out[4])
-list_p = np.where(channel>mean_max)    
-axes[i_ax].scatter(list_p, channel[list_p], color = 'g')    
+
+mean_max, list_t, trimmed_t = trimm_out
+list_p = np.where(channel>mean_max[i_ax])    
+#axes[i_ax].scatter(list_p, channel[list_p], color = 'g')    
 data_masked = channel[trimmed_t]
 #data_masked = scipy.stats.mstats.winsorize(channel, limits=[0, 0.001])
-axes[i_ax].plot(trimmed_t, data_masked,color = 'y')
+axes[i_ax].plot(trimmed_t, data_masked,color = 'g')
+#axes[i_ax].scatter(trimmed_t, data_masked,color = 'g')
 axes[i_ax].grid()
 
 #plt.subplot(312)
@@ -184,28 +190,31 @@ i_ax = 1
 channel = w.data[:,1]
 
 axes[i_ax].plot(channel,color = plt_color)
-plt.title(plt_title+', sample_id:'+str(i_file))
-trimm_out = wave_harsh_peaks(channel, ax  = 'silent', t_base = 3000)
-mean_max, trimmed_t = (trimm_out[1],trimm_out[4])
-list_p = np.where(channel>mean_max)    
-axes[i_ax].scatter(list_p, channel[list_p], color = 'g')    
+#plt.title(plt_title+', sample_id:'+str(i_file))
+#trimm_out = wave_harsh_peaks(channel, ax  = 'silent', t_base = 3000)
+#mean_max, trimmed_t = (trimm_out[1],trimm_out[4])
+#list_p = np.where(channel>mean_max)    
+list_p = np.where(channel>mean_max[i_ax])
+#axes[i_ax].scatter(list_p, channel[list_p], color = 'g')    
 data_masked = channel[trimmed_t]
-axes[i_ax].plot(trimmed_t, data_masked,color = 'y')
+axes[i_ax].plot(trimmed_t, data_masked,color = 'g')
 axes[i_ax].grid()
 
-i_ax = 2
-channel = w.data[:,1]-w.data[:,0]
+#i_ax = 2
+#channel = w.data[:,1]-w.data[:,0]
+#
+#axes[i_ax].plot(channel,color = plt_color)
+##plt.title(plt_title+', sample_id:'+str(i_file))
+#trimm_out = wave_harsh_peaks(channel, ax  = 'silent', t_base = 3000)
+#mean_max, trimmed_t = (trimm_out[1],trimm_out[4])
+#list_p = np.where(channel>mean_max)    
+#axes[i_ax].scatter(list_p, channel[list_p], color = 'g')    
+#data_masked = channel[trimmed_t]
+#axes[i_ax].plot(trimmed_t, data_masked,color = 'y')
+##plt.xlabel('samples')
+#axes[i_ax].grid()
 
-axes[i_ax].plot(channel,color = plt_color)
-plt.title(plt_title+', sample_id:'+str(i_file))
-trimm_out = wave_harsh_peaks(channel, ax  = 'silent', t_base = 3000)
-mean_max, trimmed_t = (trimm_out[1],trimm_out[4])
-list_p = np.where(channel>mean_max)    
-axes[i_ax].scatter(list_p, channel[list_p], color = 'g')    
-data_masked = channel[trimmed_t]
-axes[i_ax].plot(trimmed_t, data_masked,color = 'y')
-#plt.xlabel('samples')
-axes[i_ax].grid()
+axes[i_ax].set_xlabel('Time steps')
 
 my_data_classes.wave_harsh_peaks(w.data[:,0])
 

@@ -38,9 +38,10 @@ import torch
 import pickle
 #%%===============  loading a learned model
 
+save_name = "1d_6con_2K_win_test_30"
 #save_name = "1d_6con_b512_trim_2K_win"
 #save_name = "1d_6con_b512_trim_2K_win_s11"
-save_name = "1d_6con_b512_trim_2K_win_s3"
+#save_name = "1d_6con_b512_trim_2K_win_s3"
 
 #save_name = "1d_6con_b512_trim_2K_seed2"
 #save_name = "1dconv_b512_t4K"
