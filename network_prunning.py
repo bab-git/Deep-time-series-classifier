@@ -7,3 +7,6 @@ Created on Tue Dec 17 11:05:00 2019
 Network pruning
 """
 
+import torchvision.models as models
+
+vgg16 = models.vgg16(pretrained = True)

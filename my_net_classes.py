@@ -42,13 +42,19 @@ class SepConv1d(nn.Module):
 #        if drop is not None:
 #            layers.append(nn.Dropout(drop))      
         
-        if activ:
-            layers.append(activ())        
-        
         if batch_norm:
             layers.append(nn.BatchNorm1d(num_features = no))
+
         if drop is not None:
             layers.append(nn.Dropout(drop))
+            
+        if activ:
+            layers.append(activ())        
+                
+#        if drop is not None:
+#            layers.append(nn.Dropout(drop))
+            
+            
         self.layers = nn.Sequential(*layers)
         
     def forward(self, x): 
@@ -252,23 +258,24 @@ class Classifier_1d_6_conv(nn.Module):
                 SepConv1d(   256, 512, 8, 4, 2, drop=drop, batch_norm = batch_norm),
                 SepConv1d(   512,1024, 8, 4, 2, batch_norm = batch_norm),
                 Flatten(),
-                nn.Dropout(drop), nn.Linear(flat_in, 128), nn.ReLU(inplace=True),
-                nn.BatchNorm1d(num_features = 128),
-                nn.Dropout(drop), nn.Linear( 128, 128), nn.ReLU(inplace=True),            
-                nn.BatchNorm1d(num_features = 128))
+                nn.Linear(flat_in, 128), nn.BatchNorm1d(num_features = 128), nn.Dropout(drop), nn.ReLU(inplace=True),       
+                nn.Linear( 128, 128),    nn.BatchNorm1d(num_features = 128), nn.Dropout(drop), nn.ReLU(inplace=True))
+            
+#                nn.Dropout(drop), nn.Linear(flat_in, 128), nn.ReLU(inplace=True),
+#                nn.BatchNorm1d(num_features = 128),
+#                nn.Dropout(drop), nn.Linear( 128, 128), nn.ReLU(inplace=True),            
+#                nn.BatchNorm1d(num_features = 128))
         else:        
             self.raw = nn.Sequential(
-                SepConv1d(raw_ni,  32, 8, 2, 3, drop=drop),
+                SepConv1d(raw_ni,  32, 8, 2, 3, drop=drop),  #out: raw_size/str
                 SepConv1d(    32,  64, 8, 4, 2, drop=drop),
                 SepConv1d(    64, 128, 8, 4, 2, drop=drop),
-                SepConv1d(   128, 256, 8, 4, 2),
+                SepConv1d(   128, 256, 8, 4, 2, drop=drop),
+                SepConv1d(   256, 512, 8, 4, 2, drop=drop),
+                SepConv1d(   512,1024, 8, 4, 2),
                 Flatten(),
-                nn.Dropout(drop), nn.Linear(flat_in, 64), nn.ReLU(inplace=True),    
-                nn.Dropout(drop), nn.Linear( 64, 64), nn.ReLU(inplace=True))
-
-
-
-        
+                nn.Dropout(drop), nn.Linear(flat_in, 128), nn.ReLU(inplace=True),                
+                nn.Dropout(drop), nn.Linear( 128, 128), nn.ReLU(inplace=True))
             
 #        self.fft = nn.Sequential(
 #            SepConv1d(fft_ni,  32, 8, 2, 4, drop=drop),
