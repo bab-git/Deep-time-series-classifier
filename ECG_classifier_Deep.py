@@ -70,8 +70,8 @@ load_ECG =  torch.load ('raw_x_8K_sync_win2K.pt')
 
 #%%==================== test and train splits
 "creating dataset"     
-test_size = 0.25   #default
-#test_size = 0.3
+#test_size = 0.25   #default
+test_size = 0.3
 
 cuda_num = input("enter cuda number to use: ")
 
@@ -366,16 +366,18 @@ assert 1==2
 drop=.5
 batch_norm = True
 model1 = nn.Sequential(
-            SepConv1d(2,  32, 8, 2, 3, drop=drop, batch_norm = batch_norm),  #out: raw_size/str
-            SepConv1d(    32,  64, 8, 4, 2, drop=drop, batch_norm = batch_norm),
-            SepConv1d(    64, 128, 8, 4, 2, drop=drop, batch_norm = batch_norm),
-            SepConv1d(   128, 256, 8, 4, 2, drop=drop, batch_norm = batch_norm),
-            SepConv1d(   256, 512, 8, 4, 2, drop=drop, batch_norm = batch_norm),
-            SepConv1d(   512,1024, 8, 4, 2, batch_norm = batch_norm),
+             _SepConv1d(2,  32, 8, 2, 3 )  #out: raw_size/str
+#            SepConv1d(2,  32, 8, 2, 3, drop=drop, batch_norm = batch_norm),  #out: raw_size/str
+#            SepConv1d(    32,  64, 8, 4, 2, drop=drop, batch_norm = batch_norm),
+#            SepConv1d(    64, 128, 8, 4, 2, drop=drop, batch_norm = batch_norm),
+#            SepConv1d(   128, 256, 8, 4, 2, drop=drop, batch_norm = batch_norm),
+#            SepConv1d(   256, 512, 8, 4, 2, drop=drop, batch_norm = batch_norm),
+#            SepConv1d(   512,1024, 8, 4, 2, batch_norm = batch_norm),
 #            Flatten(),
 #            nn.Linear(256, 64), nn.ReLU(inplace=True),
 #            nn.Linear( 64, 64), nn.ReLU(inplace=True)
             ).to(device)
 model_out = model1(x_raw)
 #model_out = model1(x_raw[0,:,:])
+x_raw.shape
 model_out.shape
