@@ -22,6 +22,8 @@ from torch.nn import functional as F
 import pickle
 #from git import Repo
 
+from torchsummary import summary
+
 import os
 #abspath = os.path.abspath('test_classifier_GPU_load.py')
 #dname = os.path.dirname(abspath)
@@ -33,6 +35,7 @@ os.chdir('/home/bhossein/BMBF project/code_repo')
 from my_data_classes import create_datasets, create_loaders, read_data, create_datasets_file, create_datasets_win, smooth
 import my_net_classes
 from my_net_classes import SepConv1d, _SepConv1d, Flatten, parameters
+
 
 #%% =======================
 seed = 1
@@ -166,6 +169,8 @@ model = my_net_classes.Classifier_1d_6_conv(raw_feat, num_classes, raw_size, bat
 #model = Classifier_1dconv(raw_feat, num_classes, raw_size/(2*4**3)).to(device)
 #model = Classifier_1dconv(raw_feat, num_classes, raw_size).to(device)
 
+#model2 = model.to('cpu')
+#summary(model2, input_size=(raw_feat, raw_size), batch_size = batch_size, device = 'cpu')
 
 #if torch.cuda.device_count() > 1:
 #    print("Let's use", torch.cuda.device_count(), "GPUs!")    
@@ -214,7 +219,7 @@ while epoch < n_epochs:
     epoch_loss /= trn_sz
     loss_history.append(epoch_loss)
 
-
+#    with torch.no_grad():
     model.eval()
     correct, total = 0, 0
     
@@ -252,6 +257,8 @@ while epoch < n_epochs:
         trials += 1
         if trials >= patience:
             print('Early stopping on epoch %d' % (epoch))
+            model.load_state_dict(torch.load("train_"+save_name+'_best.pth'))
+            model.opt = opt
             break
     epoch += 1
 
@@ -381,3 +388,7 @@ model_out = model1(x_raw)
 #model_out = model1(x_raw[0,:,:])
 x_raw.shape
 model_out.shape
+
+
+model2 = model.to('cpu')
+summary(model2, input_size=(raw_feat, raw_size), batch_size = batch_size, device = 'cpu')
