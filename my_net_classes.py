@@ -25,6 +25,37 @@ class _SepConv1d(nn.Module):
     def forward(self, x):
         return self.pointwise(self.depthwise(x))
 
+#%% ==================   Version 1      
+class SepConv1d_ver1(nn.Module):
+    """Implementes a 1-d convolution with 'batteries included'.
+    
+    The module adds (optionally) activation function and dropout layers right after
+    a separable convolution layer.
+    """
+    def __init__(self, ni, no, kernel, stride, pad, drop=None, batch_norm = None,
+                 activ=lambda: nn.ReLU(inplace=True)):
+    
+        super().__init__()
+        assert drop is None or (0.0 < drop < 1.0)
+        layers = [_SepConv1d(ni, no, kernel, stride, pad)]
+        
+#        if drop is not None:
+#            layers.append(nn.Dropout(drop))      
+        
+        if activ:
+            layers.append(activ())        
+        
+        if batch_norm:
+            layers.append(nn.BatchNorm1d(num_features = no))
+        if drop is not None:
+            layers.append(nn.Dropout(drop))
+            
+            
+        self.layers = nn.Sequential(*layers)
+        
+    def forward(self, x): 
+        return self.layers(x)
+    
 #%% ==================         
 class SepConv1d(nn.Module):
     """Implementes a 1-d convolution with 'batteries included'.
@@ -58,7 +89,7 @@ class SepConv1d(nn.Module):
         self.layers = nn.Sequential(*layers)
         
     def forward(self, x): 
-        return self.layers(x)
+        return self.layers(x)    
         
 #%% ==================         
 class Flatten(nn.Module):
@@ -237,6 +268,63 @@ class Classifier_1dconv(nn.Module):
         out = self.out(raw_out)
         return out    
     
+
+#%% ==================   1dconv - 6 conv - 3 FC  : VER 1
+class Classifier_1d_6_conv_ver1(nn.Module):
+    def __init__(self, raw_ni, no, raw_size, drop=.5, batch_norm = None):
+        super().__init__()
+        
+#        assert int(n_flt) == n_flt
+        flat_in = 1024 * int (raw_size / (2*4*4*4*4*4))
+#        assert int (raw_size / (2*4**3)) == (raw_size / (2*4**3))
+#        flat_in = 256*int(n_flt)
+        
+        
+        if batch_norm:
+            self.raw = nn.Sequential(
+                SepConv1d_ver1(raw_ni,  32, 8, 2, 3, drop=drop, batch_norm = batch_norm),  #out: raw_size/str
+                SepConv1d_ver1(    32,  64, 8, 4, 2, drop=drop, batch_norm = batch_norm),
+                SepConv1d_ver1(    64, 128, 8, 4, 2, drop=drop, batch_norm = batch_norm),
+                SepConv1d_ver1(   128, 256, 8, 4, 2, drop=drop, batch_norm = batch_norm),
+                SepConv1d_ver1(   256, 512, 8, 4, 2, drop=drop, batch_norm = batch_norm),
+                SepConv1d_ver1(   512,1024, 8, 4, 2, batch_norm = batch_norm),
+                Flatten(),
+                nn.Dropout(drop), nn.Linear(flat_in, 128), nn.ReLU(inplace=True),
+                nn.BatchNorm1d(num_features = 128),
+                nn.Dropout(drop), nn.Linear( 128, 128), nn.ReLU(inplace=True),            
+                nn.BatchNorm1d(num_features = 128))
+        else:        
+            self.raw = nn.Sequential(
+                SepConv1d_ver1(raw_ni,  32, 8, 2, 3, drop=drop),  #out: raw_size/str
+                SepConv1d_ver1(    32,  64, 8, 4, 2, drop=drop),
+                SepConv1d_ver1(    64, 128, 8, 4, 2, drop=drop),
+                SepConv1d_ver1(   128, 256, 8, 4, 2, drop=drop),
+                SepConv1d_ver1(   256, 512, 8, 4, 2, drop=drop),
+                SepConv1d_ver1(   512,1024, 8, 4, 2),
+                Flatten(),
+                nn.Dropout(drop), nn.Linear(flat_in, 128), nn.ReLU(inplace=True),                
+                nn.Dropout(drop), nn.Linear( 128, 128), nn.ReLU(inplace=True))
+            
+#        self.fft = nn.Sequential(
+#            SepConv1d(fft_ni,  32, 8, 2, 4, drop=drop),
+#            SepConv1d(    32,  64, 8, 2, 4, drop=drop),
+#            SepConv1d(    64, 128, 8, 4, 4, drop=drop),
+#            SepConv1d(   128, 128, 8, 4, 4, drop=drop),
+#            SepConv1d(   128, 256, 8, 2, 3),
+#            Flatten(),
+#            nn.Dropout(drop), nn.Linear(256, 64), nn.ReLU(inplace=True),
+#            nn.Dropout(drop), nn.Linear( 64, 64), nn.ReLU(inplace=True))
+        
+        self.out = nn.Sequential(
+#            nn.Linear(128, 64), nn.ReLU(inplace=True), 
+            nn.Linear(128, no))
+        
+    def forward(self, t_raw):
+        raw_out = self.raw(t_raw)
+#        fft_out = self.fft(t_fft)
+#        t_in = torch.cat([raw_out, fft_out], dim=1)
+        out = self.out(raw_out)
+        return out    
     
 #%% ==================   1dconv - 6 conv - 3 FC
 class Classifier_1d_6_conv(nn.Module):

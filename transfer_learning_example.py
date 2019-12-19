@@ -267,6 +267,24 @@ print(str(total_trainable_params)+': training parameters.')
 
 # %% to GPU
 model = model.to(device)
-
+model2 = model.to('cpu')
 #from torchsummary import summary
-summary(model, input_size=(3, 224, 224), batch_size=batch_size, device = device)
+summary(model2, input_size=(3, 224, 224), batch_size=batch_size, device = 'cpu')
+
+#Mapping of Classes to Indexes¶
+
+model.class_to_idx = data['train'].class_to_idx
+
+model.idx_to_class = {
+        idx: class_ for class_, idx in model.class_to_idx.items()
+        }
+
+criterion = nn.NLLLoss()
+optimizer = optim.Adam(model.parameters())
+
+for p in optimizer.param_groups[0]['params']:
+    if p.requires_grad:
+        print(p.shape)
+
+# %%Training
+        

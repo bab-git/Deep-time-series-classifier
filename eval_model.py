@@ -38,8 +38,8 @@ import torch
 import pickle
 #%%===============  loading a learned model
 
-save_name = "1d_6con_2K_win_test_30"
-#save_name = "1d_6con_b512_trim_2K_win"
+#save_name = "1d_6con_2K_win_test_30"
+save_name = "1d_6con_b512_trim_2K_win"
 #save_name = "1d_6con_b512_trim_2K_win_s11"
 #save_name = "1d_6con_b512_trim_2K_win_s3"
 
@@ -70,6 +70,14 @@ loaded_vars = pickle.load(open("train_"+save_name+"_variables.p","rb"))
 #loaded_file = pickle.load(open("variables"+t_stamp+".p","rb"))
 #loaded_file = pickle.load(open("variables_ended"+t_stamp+".p","rb"))
 
+params = loaded_vars['params']
+epoch = params.epoch
+print('epoch: %d ' % (epoch))
+seed = params.seed
+test_size = params.test_size
+np.random.seed(seed)
+t_range = params.t_range
+
 #cuda_num = input("cuda number:")
 #cuda_num = 0
 #device = torch.device('cuda:'+str(cuda_num) if torch.cuda.is_available() else 'cpu')
@@ -81,13 +89,6 @@ target = load_ECG['target']
 data_tag = load_ECG['data_tag']
 if type(target) != 'torch.Tensor':
     target = torch.tensor(load_ECG['target']).to(device)
-params = loaded_vars['params']
-epoch = params.epoch
-print('epoch: %d ' % (epoch))
-seed = params.seed
-test_size = params.test_size
-np.random.seed(seed)
-t_range = params.t_range
 
 
 dataset_splits = create_datasets_win(raw_x, target, data_tag, test_size, seed=seed, t_range = t_range, device = device)
@@ -111,7 +112,8 @@ num_classes = 2
 #device = torch.device('cuda:4' if torch.cuda.is_available() else 'cpu')
 
 
-model = my_net_classes.Classifier_1d_6_conv(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
+model = my_net_classes.Classifier_1d_6_conv_ver1(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
+#model = my_net_classes.Classifier_1d_6_conv(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
 #model = my_net_classes.Classifier_1dconv(raw_feat, num_classes, raw_size).to(device)
 #model = my_net_classes.Classifier_1dconv(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
 #model = my_net_classes.Classifier_1dconv_BN(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
