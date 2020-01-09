@@ -43,7 +43,7 @@ class SepConv1d_ver1(nn.Module):
 #            layers.append(nn.Dropout(drop))      
         
         if activ:
-            layers.append(activ())        
+            layers.append(activ())
         
         if batch_norm:
             layers.append(nn.BatchNorm1d(num_features = no))

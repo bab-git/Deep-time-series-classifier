@@ -14,7 +14,7 @@ import numpy as np
 
 #import torch
 
-#from torch import nn
+from torch import nn
 #from torch import optim
 from torch.nn import functional as F
 #from torch.optim.lr_scheduler import _LRScheduler
@@ -78,10 +78,11 @@ test_size = params.test_size
 np.random.seed(seed)
 t_range = params.t_range
 
-#cuda_num = input("cuda number:")
+cuda_num = input("cuda number:")
 #cuda_num = 0
-#device = torch.device('cuda:'+str(cuda_num) if torch.cuda.is_available() else 'cpu')
-device = torch.device('cpu')
+
+device = torch.device('cuda:'+str(cuda_num) if torch.cuda.is_available() and cuda_num != 'cpu' else 'cpu')
+#device = torch.device('cpu')
 
 raw_x = load_ECG['raw_x']
 #raw_x = load_ECG['raw_x'].to(device)
@@ -143,11 +144,13 @@ for i_batch, batch in enumerate(tst_dl):
     #x_raw, y_batch = [t.to(device) for t in val_ds.tensors]
     out = model(x_raw)
     preds = F.log_softmax(out, dim = 1).argmax(dim=1)
-    list_pred = np.append(list_pred,preds)
+#    preds = F.log_softmax(out, dim = 1).argmax(dim=1).to('cpu')
+    list_pred = np.append(list_pred,preds.tolist())
+#    list_pred = np.append(list_pred,preds.tolist())
     total += y_batch.size(0)
     correct += (preds ==y_batch).sum().item()    
 #    i_error = np.append(i_error,np.where(preds !=y_batch))
-    i_error = np.append(i_error,[list_x[i] for i in np.where(preds !=y_batch)[0]])    
+    i_error = np.append(i_error,[list_x[i] for i in np.where((preds !=y_batch).to('cpu'))[0]])
 #    TP += ((preds ==y_batch) & (1 ==y_batch)).sum().item()
 #    total_P += (1 ==y_batch).sum().item()
 #    FP += ((preds !=y_batch) & (0 ==y_batch)).sum().item()
@@ -306,3 +309,8 @@ FN_ECG_rate = FN_ECG / total_N *100
 print("Threshold for detecting AF: %d" % (thresh_AF))
 print("TP rate: %2.3f" % (TP_ECG_rate))
 print("FN rate: %2.3f" % (FN_ECG_rate))
+
+# %%================= Quantization
+model_qn = torch.quantization.quantize_dynamic(
+        model, {nn.Linear, nn.Conv1d, nn.BatchNorm1d} , dtype= torch.qint8
+        )

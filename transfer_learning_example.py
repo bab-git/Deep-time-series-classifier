@@ -70,7 +70,6 @@ testdir = datadir + 'test/'
 #    val_class_path = validdir+class_dr
 #    for idx in val_idx:
 #        copyfile(class_pth+list_iamges[idx], val_class_path+list_iamges[idx])
-                
     
 save_file_name = 'vgg16-transfer-4.pt'
 checkpoint_path = 'vgg16-transfer-4.pth'
@@ -84,8 +83,10 @@ batch_size = 128
 train_on_gpu = cuda.is_available()
 print('Train on gpu: '+ str(train_on_gpu))
 
+if train_on_gpu:
+    cuda_num = input("please specify the GPU number: ")
 # Number of gpus
-device = torch.device('cuda:1' if torch.cuda.is_available() else 'cpu')
+device = torch.device('cuda:'+str(cuda_num) if torch.cuda.is_available() else 'cpu')
 
 # %%
 # Empty lists
@@ -323,7 +324,7 @@ valid_loader = dataloaders['val']
 #save_file_name,
 max_epochs_stop=3
 n_epochs=20
-print_every=2
+print_every=1
 """Train a PyTorch Model
 
     Params
@@ -373,6 +374,7 @@ for epoch in range(n_epochs):
 
     # Training loop
     for ii, (data, target) in enumerate(train_loader):
+        print("loader iteration: "+str(ii))
         # Tensors to gpu
         if train_on_gpu:
             data, target = [t.to(device) for t in (data, target)]
@@ -585,7 +587,7 @@ def save_checkpoint(model, path):
 save_checkpoint(model, path = checkpoint_path)
 
 # ==================== check point loading
-def load_checkpoint(path,device):
+def load_checkpoint(device, path):
     """Load a PyTorch model checkpoint
 
     Params
@@ -647,7 +649,7 @@ def load_checkpoint(path,device):
 
     return model, optimizer
 
-model, optimizer = load_checkpoint(path = checkpoint_path, device)
+model, optimizer = load_checkpoint(device, path = checkpoint_path)
 
 summary(model, input_size=(3, 224, 224), batch_size=batch_size)
 
