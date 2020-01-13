@@ -1,4 +1,4 @@
-#import time
+import time
 #from collections import defaultdict
 #from functools import partial
 #from multiprocessing import cpu_count
@@ -22,6 +22,8 @@ from torch.nn import functional as F
 #import datetime
 #import pickle
 #from git import Repo
+
+from torchsummary import summary
 
 import os
 #abspath = os.path.abspath('test_classifier_GPU_load.py')
@@ -129,31 +131,36 @@ else:
 #model = Classifier_1dconv(raw_feat, num_classes, raw_size/(2*4**3)).to(device)
 #model.load_state_dict(torch.load("train_"+save_name+'_best.pth'))
 
-model.eval()
 
+s = time.time()
+model.eval()
 correct, total , total_P, TP , FP = 0, 0, 0, 0, 0
 
 batch = []
 i_error = []
 list_pred = []
-for i_batch, batch in enumerate(tst_dl):
-    x_raw, y_batch = batch
-    list_x = list(range(i_batch*tst_dl.batch_size,min((i_batch+1)*tst_dl.batch_size,len(tst_ds))))
-#    x_raw, y_batch = [t.to(device) for t in batch]
-#    x_raw, y_batch = tst_ds.tensors
-    #x_raw, y_batch = [t.to(device) for t in val_ds.tensors]
-    out = model(x_raw)
-    preds = F.log_softmax(out, dim = 1).argmax(dim=1)
-#    preds = F.log_softmax(out, dim = 1).argmax(dim=1).to('cpu')
-    list_pred = np.append(list_pred,preds.tolist())
-#    list_pred = np.append(list_pred,preds.tolist())
-    total += y_batch.size(0)
-    correct += (preds ==y_batch).sum().item()    
-#    i_error = np.append(i_error,np.where(preds !=y_batch))
-    i_error = np.append(i_error,[list_x[i] for i in np.where((preds !=y_batch).to('cpu'))[0]])
-#    TP += ((preds ==y_batch) & (1 ==y_batch)).sum().item()
-#    total_P += (1 ==y_batch).sum().item()
-#    FP += ((preds !=y_batch) & (0 ==y_batch)).sum().item()
+with torch.no_grad():
+    for i_batch, batch in enumerate(tst_dl):
+        x_raw, y_batch = [t.to('cpu') for t in batch]
+        list_x = list(range(i_batch*tst_dl.batch_size,min((i_batch+1)*tst_dl.batch_size,len(tst_ds))))
+    #    x_raw, y_batch = [t.to(device) for t in batch]
+    #    x_raw, y_batch = tst_ds.tensors
+        #x_raw, y_batch = [t.to(device) for t in val_ds.tensors]
+        out = model(x_raw)
+        preds = F.log_softmax(out, dim = 1).argmax(dim=1)
+    #    preds = F.log_softmax(out, dim = 1).argmax(dim=1).to('cpu')
+        list_pred = np.append(list_pred,preds.tolist())
+    #    list_pred = np.append(list_pred,preds.tolist())
+        total += y_batch.size(0)
+        correct += (preds ==y_batch).sum().item()    
+    #    i_error = np.append(i_error,np.where(preds !=y_batch))
+        i_error = np.append(i_error,[list_x[i] for i in np.where((preds !=y_batch).to('cpu'))[0]])
+    #    TP += ((preds ==y_batch) & (1 ==y_batch)).sum().item()
+    #    total_P += (1 ==y_batch).sum().item()
+    #    FP += ((preds !=y_batch) & (0 ==y_batch)).sum().item()
+
+elapsed = time.time() - s
+print('''nelapsed time (seconds): {0:.2f}'''.format(elapsed))
     
 acc = correct / total * 100
 #TP_rate = TP / total_P *100
@@ -227,6 +234,9 @@ ax[1].grid()
 #loss = checkpoint['loss']
 
 assert 1==2
+
+model2 = model.to('cpu')
+summary(model2, input_size=(raw_feat, raw_size), batch_size = batch_size, device = 'cpu')
 #%%===============  checking internal values
 drop=.5
 batch_norm = True
@@ -272,8 +282,49 @@ for i_row, i_ecg in enumerate(list_error_ECG):
 
 #[i for i in list_win if i in trn_idx ]
     
-# %%================= ECG test files
-label = 1      
+# %%================= Quantization
+model.to('cpu')
+
+model_qn = torch.quantization.quantize_dynamic(
+        model, {nn.Linear, nn.Conv1d, nn.BatchNorm1d} , dtype= torch.qint8
+        )
+
+summary(model, input_size=(raw_feat, raw_size), batch_size = batch_size, device = 'cpu')
+summary(model_qn, input_size=(raw_feat, raw_size), batch_size = batch_size, device = 'cpu')
+
+def print_size_of_model(model):
+    torch.save(model.state_dict(), "temp.p")
+    print('Size (MB):', os.path.getsize("temp.p")/1e6)
+    os.remove('temp.p')
+
+
+#model_qn.to(device)
+model_qn.to('cpu');
+
+s = time.time()
+model_qn.eval()
+
+correct, total , total_P, TP , FP = 0, 0, 0, 0, 0
+
+i_error = []
+list_pred = []
+with torch.no_grad():
+    for i_batch, batch in enumerate(tst_dl):
+        x_raw, y_batch = [t.to('cpu') for t in batch]
+        list_x = list(range(i_batch*tst_dl.batch_size,min((i_batch+1)*tst_dl.batch_size,len(tst_ds))))
+        out = model_qn(x_raw)
+        preds = F.log_softmax(out, dim = 1).argmax(dim=1)
+        list_pred = np.append(list_pred,preds.tolist())
+        total += y_batch.size(0)
+        correct += (preds ==y_batch).sum().item()    
+        i_error = np.append(i_error,[list_x[i] for i in np.where((preds !=y_batch).to('cpu'))[0]])
+
+elapsed = time.time() - s
+print('''nelapsed time (seconds): {0:.3f}'''.format(elapsed))
+    
+acc_q = correct / total * 100
+
+print('Accuracy on all windows of test data:  %2.2f' %(acc_q))
 
 win_size = (data_tag==0).sum()
 #thresh_AF = win_size /2
@@ -302,15 +353,18 @@ for i_row, i_ecg in enumerate(list_ECG):
             
     
 #TP_ECG_rate = TP_ECG / len(list_ECG) *100
-TP_ECG_rate = TP_ECG / total_P *100
-FN_ECG_rate = FN_ECG / total_N *100
+TP_ECG_rate_q = TP_ECG / total_P *100
+FN_ECG_rate_q = FN_ECG / total_N *100
 
 
 print("Threshold for detecting AF: %d" % (thresh_AF))
-print("TP rate: %2.3f" % (TP_ECG_rate))
-print("FN rate: %2.3f" % (FN_ECG_rate))
+print("TP rate: %2.3f" % (TP_ECG_rate_q))
+print("FN rate: %2.3f" % (FN_ECG_rate_q))
 
-# %%================= Quantization
-model_qn = torch.quantization.quantize_dynamic(
-        model, {nn.Linear, nn.Conv1d, nn.BatchNorm1d} , dtype= torch.qint8
-        )
+
+
+
+
+for name, param in model.named_parameters():
+    if param.requires_grad:
+        print(name, param.data)
