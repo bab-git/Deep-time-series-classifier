@@ -82,8 +82,8 @@ test_size = params.test_size
 np.random.seed(seed)
 t_range = params.t_range
 
-cuda_num = input("cuda number:")
-#cuda_num = 0
+#cuda_num = input("cuda number:")
+cuda_num = 0   # export CUDA_VISIBLE_DEVICES=0
 
 device = torch.device('cuda:'+str(cuda_num) if torch.cuda.is_available() and cuda_num != 'cpu' else 'cpu')
 #device = torch.device('cpu')
@@ -135,7 +135,9 @@ else:
 
 thresh_AF = 3
 
+#---------------------  Evaluation function
 def evaluate(model, tst_dl, thresh_AF = 3, device = 'cpu'):
+    model.to(device)
     s = time.time()
     model.eval()
     correct, total , total_P, = 0, 0, 0
