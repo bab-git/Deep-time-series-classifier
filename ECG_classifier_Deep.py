@@ -59,7 +59,7 @@ np.random.seed(seed)
 
 #t_range = range(1000,1512)
 
-t_win = 2**11
+t_win = 2**11  #2048
 #t_shift = 400
 t_shift = None
 
@@ -73,12 +73,13 @@ load_ECG =  torch.load ('raw_x_8K_sync_win2K.pt')
 
 #%%==================== test and train splits
 "creating dataset"     
-#test_size = 0.25   #default
-test_size = 0.3
+#test_size = 0.25   
+test_size = 0.3    #default
 
-cuda_num = input("enter cuda number to use: ")
+#cuda_num = input("enter cuda number to use: ")
+cuda_num = 0   # export CUDA_VISIBLE_DEVICES=0
 
-device = torch.device('cuda:'+cuda_num if torch.cuda.is_available() else 'cpu')
+device = torch.device('cuda:'+str(cuda_num) if torch.cuda.is_available() else 'cpu')
 #device = torch.device('cuda:4' if torch.cuda.is_available() else 'cpu')
 #device = torch.device('cpu')
 
@@ -139,7 +140,7 @@ print ('device is loaded to device:',device)
 #%% ==================   Initialization              
 
 
-batch_size = (2**3)*64   #default
+batch_size = (2**3)*64   #default = 512
 val_batch_size = batch_size  #default
 #val_batch_size = 4 * batch_size 
 #batch_size = 64
@@ -163,7 +164,9 @@ raw_feat = trn_ds[0][0].shape[0]
 raw_size = trn_ds[0][0].shape[1]
 trn_sz = len(trn_ds)
 
-model = my_net_classes.Classifier_1d_6_conv(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
+model = my_net_classes.Classifier_1d_6_conv(raw_feat, num_classes, raw_size, 
+                                            batch_norm = True, conv_type = '2d').to(device)
+#model = my_net_classes.Classifier_1d_6_conv(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
 #model = my_net_classes.Classifier_1dconv(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
 #model = my_net_classes.Classifier_1dconv_BN(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
 #model = Classifier_1dconv(raw_feat, num_classes, raw_size/(2*4**3)).to(device)

@@ -25,6 +25,22 @@ class _SepConv1d(nn.Module):
     def forward(self, x):
         return self.pointwise(self.depthwise(x))
 
+#%% ==================             
+class _SepConv1d_2d(nn.Module):
+    """  simple separable convolution implementation based on Conv2d module.
+    
+    The separable convlution is a method to reduce number of the parameters 
+    in the deep learning network for slight decrease in predictions quality.
+    """
+    
+    def __init__(self, ni, no, kernel, stride, pad):
+        super().__init__()
+        self.depthwise = nn.Conv2d(ni, ni, kernel_size = (1,kernel), stride = (1,stride), padding = (0,pad), groups = ni)
+        self.pointwise = nn.Conv2d(ni, no, kernel_size=(1,1))
+        
+    def forward(self, x):
+        return self.pointwise(self.depthwise(x.unsqueeze(2))).squeeze()
+
 #%% ==================   Version 1      
 class SepConv1d_ver1(nn.Module):
     """Implementes a 1-d convolution with 'batteries included'.
@@ -64,11 +80,15 @@ class SepConv1d(nn.Module):
     a separable convolution layer.
     """
     def __init__(self, ni, no, kernel, stride, pad, drop=None, batch_norm = None,
-                 activ=lambda: nn.ReLU(inplace=True)):
+                 conv_type = '1d', activ=lambda: nn.ReLU(inplace=True)):
     
         super().__init__()
         assert drop is None or (0.0 < drop < 1.0)
-        layers = [_SepConv1d(ni, no, kernel, stride, pad)]
+        
+        if conv_type =='1d':
+            layers = [_SepConv1d(ni, no, kernel, stride, pad)]
+        elif conv_type =='2d':
+            layers = [_SepConv1d_2d(ni, no, kernel, stride, pad)]
         
 #        if drop is not None:
 #            layers.append(nn.Dropout(drop))      
@@ -328,7 +348,7 @@ class Classifier_1d_6_conv_ver1(nn.Module):
     
 #%% ==================   1dconv - 6 conv - 3 FC
 class Classifier_1d_6_conv(nn.Module):
-    def __init__(self, raw_ni, no, raw_size, drop=.5, batch_norm = None):
+    def __init__(self, raw_ni, no, raw_size, drop=.5, batch_norm = None, conv_type = '1d'):
         super().__init__()
         
 #        assert int(n_flt) == n_flt
@@ -339,12 +359,12 @@ class Classifier_1d_6_conv(nn.Module):
         
         if batch_norm:
             self.raw = nn.Sequential(
-                SepConv1d(raw_ni,  32, 8, 2, 3, drop=drop, batch_norm = batch_norm),  #out: raw_size/str
-                SepConv1d(    32,  64, 8, 4, 2, drop=drop, batch_norm = batch_norm),
-                SepConv1d(    64, 128, 8, 4, 2, drop=drop, batch_norm = batch_norm),
-                SepConv1d(   128, 256, 8, 4, 2, drop=drop, batch_norm = batch_norm),
-                SepConv1d(   256, 512, 8, 4, 2, drop=drop, batch_norm = batch_norm),
-                SepConv1d(   512,1024, 8, 4, 2, batch_norm = batch_norm),
+                SepConv1d(raw_ni,  32, 8, 2, 3, drop, batch_norm, conv_type),  #out: raw_size/str
+                SepConv1d(    32,  64, 8, 4, 2, drop, batch_norm, conv_type),
+                SepConv1d(    64, 128, 8, 4, 2, drop, batch_norm, conv_type),
+                SepConv1d(   128, 256, 8, 4, 2, drop, batch_norm, conv_type),
+                SepConv1d(   256, 512, 8, 4, 2, drop, batch_norm, conv_type),
+                SepConv1d(   512,1024, 8, 4, 2, batch_norm = batch_norm, conv_type = conv_type),
                 Flatten(),
                 nn.Linear(flat_in, 128), nn.BatchNorm1d(num_features = 128), nn.Dropout(drop), nn.ReLU(inplace=True),       
                 nn.Linear( 128, 128),    nn.BatchNorm1d(num_features = 128), nn.Dropout(drop), nn.ReLU(inplace=True))
@@ -385,3 +405,5 @@ class Classifier_1d_6_conv(nn.Module):
 #        t_in = torch.cat([raw_out, fft_out], dim=1)
         out = self.out(raw_out)
         return out    
+
+#%% ==================   1dconv - 6 conv - 3 FC  - Quantization compatible

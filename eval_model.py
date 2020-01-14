@@ -42,8 +42,9 @@ import torch
 import pickle
 #%%===============  loading a learned model
 
+save_name = "1d_6con_2K_win_2d"
 #save_name = "1d_6con_2K_win_test_30"
-save_name = "1d_6con_b512_trim_2K_win"
+#save_name = "1d_6con_b512_trim_2K_win"
 #save_name = "1d_6con_b512_trim_2K_win_s11"
 #save_name = "1d_6con_b512_trim_2K_win_s3"
 
@@ -83,7 +84,7 @@ np.random.seed(seed)
 t_range = params.t_range
 
 #cuda_num = input("cuda number:")
-cuda_num = 0   # export CUDA_VISIBLE_DEVICES=0
+cuda_num = 0   # export CUDA_VISIBLE_DEVICES=x
 
 device = torch.device('cuda:'+str(cuda_num) if torch.cuda.is_available() and cuda_num != 'cpu' else 'cpu')
 #device = torch.device('cpu')
@@ -117,17 +118,18 @@ num_classes = 2
 #device = torch.device('cuda:4' if torch.cuda.is_available() else 'cpu')
 
 
-model = my_net_classes.Classifier_1d_6_conv_ver1(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
+model = my_net_classes.Classifier_1d_6_conv(raw_feat, num_classes, raw_size, 
+                                            batch_norm = True, conv_type = '2d').to(device)
+#model = my_net_classes.Classifier_1d_6_conv_ver1(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
 #model = my_net_classes.Classifier_1d_6_conv(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
 #model = my_net_classes.Classifier_1dconv(raw_feat, num_classes, raw_size).to(device)
 #model = my_net_classes.Classifier_1dconv(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
 #model = my_net_classes.Classifier_1dconv_BN(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
 
-if torch.cuda.is_available()*0:
-#    model.load_state_dict(torch.load("train_"+save_name+'_best.pth'))
-    model.load_state_dict(torch.load("train_"+save_name+'_best.pth', map_location=lambda storage, loc: storage.cuda('cuda:'+str(cuda_num))))
-else:
-    model.load_state_dict(torch.load("train_"+save_name+'_best.pth', map_location=lambda storage, loc: storage))
+#if torch.cuda.is_available()*0:
+#    model.load_state_dict(torch.load("train_"+save_name+'_best.pth', map_location=lambda storage, loc: storage.cuda('cuda:'+str(cuda_num))))
+#else:
+model.load_state_dict(torch.load("train_"+save_name+'_best.pth', map_location=lambda storage, loc: storage))
 
 
 #model = Classifier_1dconv(raw_feat, num_classes, raw_size/(2*4**3)).to(device)
@@ -217,6 +219,8 @@ def evaluate(model, tst_dl, thresh_AF = 3, device = 'cpu'):
     return TP_ECG_rate, FN_ECG_rate, list_pred_win, elapsed
 #print('True positives on test data:  %2.2f' %(TP_rate))
 #print('False positives on test data:  %2.2f' %(FP_rate))
+#------------------------------------------  
+
 
 TP_ECG_rate, FN_ECG_rate, list_pred_win, elapsed = evaluate(model, tst_dl)
 
@@ -298,6 +302,9 @@ for i_row, i_ecg in enumerate(list_error_ECG):
 # ====================================================================     
 model.to('cpu')
 
+
+# ----------------- Dynamic Quantization
+
 model_qn = torch.quantization.quantize_dynamic(
         model, {nn.Linear, nn.Conv1d, nn.BatchNorm1d} , dtype= torch.qint8
         )
@@ -305,10 +312,10 @@ model_qn = torch.quantization.quantize_dynamic(
 summary(model, input_size=(raw_feat, raw_size), batch_size = batch_size, device = 'cpu')
 summary(model_qn, input_size=(raw_feat, raw_size), batch_size = batch_size, device = 'cpu')
 
-def print_size_of_model(model):
-    torch.save(model.state_dict(), "temp.p")
-    print('Size (MB):', os.path.getsize("temp.p")/1e6)
-    os.remove('temp.p')
+#def print_size_of_model(model):
+#    torch.save(model.state_dict(), "temp.p")
+#    print('Size (MB):', os.path.getsize("temp.p")/1e6)
+#    os.remove('temp.p')
 
 
 #model_qn.to(device)
@@ -318,9 +325,17 @@ TP_ECG_rate_q, FN_ECG_rate_q, list_pred_win, elapsed = evaluate(model_qn, tst_dl
 
 
 flops1, params = get_model_complexity_info(model, (raw_feat, raw_size), as_strings=False, print_per_layer_stat=True);
-flops_q, params = get_model_complexity_info(model_qn, (raw_feat, raw_size), as_strings=False, print_per_layer_stat=True);
+flops_q, params_q = get_model_complexity_info(model_qn, (raw_feat, raw_size), as_strings=False, print_per_layer_stat=True);
 print('{:<30}  {:<8}'.format('Computational complexity: ', flops_q))
 print('{:<30}  {:<8}'.format('Number of parameters: ', params))
 
 #input = torch.randn(1, raw_feat, raw_size)
 #flops, params = profile(model, inputs=(torch.randn(1, raw_feat, raw_size), ))
+
+#%%===========  static quantization
+num_calibration_batches = 10
+model.to('cpu')
+model.eval()
+
+
+
