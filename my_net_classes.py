@@ -406,4 +406,28 @@ class Classifier_1d_6_conv(nn.Module):
         out = self.out(raw_out)
         return out    
 
-#%% ==================   1dconv - 6 conv - 3 FC  - Quantization compatible
+#%% ==================   dummy net        
+class dumy_CNN(nn.Module):
+    def __init__(self, raw_ni, no, raw_size, drop=.5, batch_norm = None, conv_type = '1d'):
+        super().__init__()
+        
+        flat_in = int ((raw_size / 2)*10)
+        
+        self.layers = nn.Sequential(
+                nn.Conv2d(raw_ni,  10, 8, 2, 3),
+                nn.ReLU(inplace=True),
+                Flatten(),
+                nn.Linear(flat_in, 128),
+                nn.ReLU(inplace=True))
+        
+        self.out = nn.Sequential(
+#            nn.Linear(128, 64), nn.ReLU(inplace=True), 
+            nn.Linear(128, no))
+        
+    def forward(self, x):
+        x_out = self.layers(x)
+#        fft_out = self.fft(t_fft)
+#        t_in = torch.cat([raw_out, fft_out], dim=1)
+        out = self.out(x_out)
+        return out    
+

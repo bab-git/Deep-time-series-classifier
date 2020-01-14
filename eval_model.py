@@ -13,6 +13,7 @@ import numpy as np
 #from sklearn.preprocessing import LabelEncoder, StandardScaler
 
 from ptflops import get_model_complexity_info
+from thop import profile
 
 #import torch
 
@@ -306,7 +307,7 @@ model.to('cpu')
 # ----------------- Dynamic Quantization
 
 model_qn = torch.quantization.quantize_dynamic(
-        model, {nn.Linear, nn.Conv1d, nn.BatchNorm1d} , dtype= torch.qint8
+        model, {nn.Linear, nn.Conv2d} , dtype= torch.qint8
         )
 
 summary(model, input_size=(raw_feat, raw_size), batch_size = batch_size, device = 'cpu')
