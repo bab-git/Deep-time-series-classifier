@@ -43,7 +43,9 @@ import torch
 import pickle
 #%%===============  loading a learned model
 
-save_name = "1d_6con_2K_win_2d"
+#save_name = "1d_1_conv_1FC"
+save_name = "1d_3con_2FC_2K_win"
+#save_name = "1d_6con_2K_win_2d"
 #save_name = "1d_6con_2K_win_test_30"
 #save_name = "1d_6con_b512_trim_2K_win"
 #save_name = "1d_6con_b512_trim_2K_win_s11"
@@ -117,26 +119,6 @@ num_classes = 2
 
 #device = ecg_datasets[0].tensors[0].device
 #device = torch.device('cuda:4' if torch.cuda.is_available() else 'cpu')
-
-
-model = my_net_classes.Classifier_1d_6_conv(raw_feat, num_classes, raw_size, 
-                                            batch_norm = True, conv_type = '2d').to(device)
-#model = my_net_classes.Classifier_1d_6_conv_ver1(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
-#model = my_net_classes.Classifier_1d_6_conv(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
-#model = my_net_classes.Classifier_1dconv(raw_feat, num_classes, raw_size).to(device)
-#model = my_net_classes.Classifier_1dconv(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
-#model = my_net_classes.Classifier_1dconv_BN(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
-
-#if torch.cuda.is_available()*0:
-#    model.load_state_dict(torch.load("train_"+save_name+'_best.pth', map_location=lambda storage, loc: storage.cuda('cuda:'+str(cuda_num))))
-#else:
-model.load_state_dict(torch.load("train_"+save_name+'_best.pth', map_location=lambda storage, loc: storage))
-
-
-#model = Classifier_1dconv(raw_feat, num_classes, raw_size/(2*4**3)).to(device)
-#model.load_state_dict(torch.load("train_"+save_name+'_best.pth'))
-
-thresh_AF = 3
 
 #---------------------  Evaluation function
 def evaluate(model, tst_dl, thresh_AF = 3, device = 'cpu'):
@@ -222,8 +204,29 @@ def evaluate(model, tst_dl, thresh_AF = 3, device = 'cpu'):
 #print('False positives on test data:  %2.2f' %(FP_rate))
 #------------------------------------------  
 
+# %%
 
-TP_ECG_rate, FN_ECG_rate, list_pred_win, elapsed = evaluate(model, tst_dl)
+#model = my_net_classes.Classifier_1d_1_conv_1FC(raw_feat, num_classes, raw_size).to(device)
+model = my_net_classes.Classifier_1d_3_conv_2FC(raw_feat, num_classes, raw_size, batch_norm = True, conv_type = '1d').to(device)
+#model = my_net_classes.Classifier_1d_6_conv(raw_feat, num_classes, raw_size, batch_norm = True, conv_type = '2d').to(device)
+#model = my_net_classes.Classifier_1d_6_conv_ver1(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
+#model = my_net_classes.Classifier_1d_6_conv(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
+#model = my_net_classes.Classifier_1dconv(raw_feat, num_classes, raw_size).to(device)
+#model = my_net_classes.Classifier_1dconv(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
+#model = my_net_classes.Classifier_1dconv_BN(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
+
+#if torch.cuda.is_available()*0:
+#    model.load_state_dict(torch.load("train_"+save_name+'_best.pth', map_location=lambda storage, loc: storage.cuda('cuda:'+str(cuda_num))))
+#else:
+model.load_state_dict(torch.load("train_"+save_name+'_best.pth', map_location=lambda storage, loc: storage))
+
+
+#model = Classifier_1dconv(raw_feat, num_classes, raw_size/(2*4**3)).to(device)
+#model.load_state_dict(torch.load("train_"+save_name+'_best.pth'))
+
+thresh_AF = 5
+
+TP_ECG_rate, FN_ECG_rate, list_pred_win, elapsed = evaluate(model, tst_dl, thresh_AF = thresh_AF)
 
 
 #-----------------------  visualize training curve
@@ -332,6 +335,84 @@ print('{:<30}  {:<8}'.format('Number of parameters: ', params))
 
 #input = torch.randn(1, raw_feat, raw_size)
 #flops, params = profile(model, inputs=(torch.randn(1, raw_feat, raw_size), ))
+
+#%%===========  Conv2d quantization
+class ConvBNReLU(nn.Sequential):
+    def __init__(self, in_planes, out_planes, kernel_size=3, stride=(1,1), groups=1):
+        super().__init__()
+        padding = (0,(kernel_size[1] -1) // 2)
+        super(ConvBNReLU, self).__init__(
+            nn.Conv2d(in_planes, out_planes, kernel_size, stride, padding, groups=groups, bias=False),
+            nn.BatchNorm2d(out_planes, momentum=0.1),            
+            nn.ReLU(inplace=False)
+        )
+
+class dumy_CNN(nn.Module):
+    def __init__(self, ni, no, raw_size):
+        super().__init__()        
+        
+        self.layers = nn.Sequential(       
+#        self.conv = nn.Conv2d(ni, no, (1,8),bias = False)
+#        self.convB = ConvBNReLU(ni,no,(1,9))
+        ConvBNReLU(ni,no,(1,9)),
+        my_net_classes.Flatten(),
+        nn.Linear(raw_size*no, 2)
+        )
+        self.quant = QuantStub()
+        self.dequant = DeQuantStub()
+        
+    def fuse_model(self):
+        for m in self.modules():
+            if type(m) == ConvBNReLU:
+                torch.quantization.fuse_modules(m, ['0', '1', '2'], inplace=True)        
+       
+    def forward(self, x):
+        out = self.quant(x)
+        out  =  out.unsqueeze(2)
+        out  = self.layers(out)
+        out  = self.dequant(out)
+        return out    
+
+def evaluation1(model_test,tst_dl):
+    correct, total , total_P, = 0, 0, 0
+    with torch.no_grad():
+        for i_batch, batch in enumerate(tst_dl):
+            x_raw, y_batch = [t.to('cpu') for t in batch]
+            out = model_test(x_raw)
+            preds = F.log_softmax(out, dim = 1).argmax(dim=1)    
+            total += y_batch.size(0)
+            correct += (preds ==y_batch).sum().item()    
+            
+    acc = correct / total * 100
+    print(acc)    
+    return(acc)
+    
+model_test = dumy_CNN(2,10, 2048)
+model_test.eval()
+
+model_test.fuse_model()
+
+model_test.qconfig = torch.quantization.default_qconfig
+
+print(model_test.qconfig)
+torch.quantization.prepare(model_test, inplace=True)
+
+# Calibrate with the training set
+evaluation1(model_test,tst_dl)
+print('Post Training Quantization: Calibration done')
+
+# Convert to quantized model
+model_qn = torch.quantization.convert(model_test)
+print('Post Training Quantization: Convert done')
+
+
+evaluation1(model_qn,tst_dl)
+
+#model_qn = torch.quantization.quantize_dynamic(
+#        model_test, {nn.Linear, nn.Conv2d} , dtype= torch.qint8
+#        )
+#print(model_qn)
+model_qn.conv.weight.data[0,0,0,0].item()
 
 #%%===========  static quantization
 num_calibration_batches = 10

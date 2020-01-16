@@ -134,7 +134,7 @@ assert 1== 61090
 i_file = np.random.randint(8000, size = 1).item()
 #i_file = 7850
 
-i_class = 1 #0:normal  1:atrial
+i_class = 0 #0:normal  1:atrial
 #i_class = np.random.randint(2, size = 1)+1    
     
 #path = '/data/BMBF/sample/filtered atrial waves/8aae6985-c0b9-41d4-ac89-9f721b8019d2.wav'
