@@ -13,7 +13,7 @@ import numpy as np
 #from sklearn.preprocessing import LabelEncoder, StandardScaler
 
 from ptflops import get_model_complexity_info
-from thop import profile
+#from thop import profile
 
 #import torch
 
@@ -28,13 +28,15 @@ from torch.nn import functional as F
 
 from torchsummary import summary
 
+import pickle
+
 import os
 #abspath = os.path.abspath('test_classifier_GPU_load.py')
 #dname = os.path.dirname(abspath)
 #os.chdir(dname)
 
-os.chdir('/home/bhossein/BMBF project/code_repo')
-#os.chdir('C:\Hinkelstien\code_repo')
+#os.chdir('/home/bhossein/BMBF project/code_repo')
+os.chdir('C:\Hinkelstien\code_repo')
 
 from my_data_classes import create_datasets_file, create_loaders, smooth, create_datasets_win
 import my_net_classes
@@ -44,8 +46,8 @@ import pickle
 #%%===============  loading a learned model
 
 #save_name = "1d_1_conv_1FC"
-save_name = "1d_3con_2FC_2K_win"
-#save_name = "1d_6con_2K_win_2d"
+#save_name = "1d_3con_2FC_2K_win"
+save_name = "1d_6con_2K_win_2d"
 #save_name = "1d_6con_2K_win_test_30"
 #save_name = "1d_6con_b512_trim_2K_win"
 #save_name = "1d_6con_b512_trim_2K_win_s11"
@@ -96,6 +98,7 @@ raw_x = load_ECG['raw_x']
 #raw_x = load_ECG['raw_x'].to(device)
 target = load_ECG['target']
 data_tag = load_ECG['data_tag']
+#data_tag = load_ECG['IDs']
 if type(target) != 'torch.Tensor':
     target = torch.tensor(load_ECG['target']).to(device)
 
@@ -207,8 +210,8 @@ def evaluate(model, tst_dl, thresh_AF = 3, device = 'cpu'):
 # %%
 
 #model = my_net_classes.Classifier_1d_1_conv_1FC(raw_feat, num_classes, raw_size).to(device)
-model = my_net_classes.Classifier_1d_3_conv_2FC(raw_feat, num_classes, raw_size, batch_norm = True, conv_type = '1d').to(device)
-#model = my_net_classes.Classifier_1d_6_conv(raw_feat, num_classes, raw_size, batch_norm = True, conv_type = '2d').to(device)
+#model = my_net_classes.Classifier_1d_3_conv_2FC(raw_feat, num_classes, raw_size, batch_norm = True, conv_type = '1d').to(device)
+model = my_net_classes.Classifier_1d_6_conv(raw_feat, num_classes, raw_size, batch_norm = True, conv_type = '2d').to(device)
 #model = my_net_classes.Classifier_1d_6_conv_ver1(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
 #model = my_net_classes.Classifier_1d_6_conv(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
 #model = my_net_classes.Classifier_1dconv(raw_feat, num_classes, raw_size).to(device)
@@ -224,9 +227,11 @@ model.load_state_dict(torch.load("train_"+save_name+'_best.pth', map_location=la
 #model = Classifier_1dconv(raw_feat, num_classes, raw_size/(2*4**3)).to(device)
 #model.load_state_dict(torch.load("train_"+save_name+'_best.pth'))
 
-thresh_AF = 5
+thresh_AF = 3
 
 TP_ECG_rate, FN_ECG_rate, list_pred_win, elapsed = evaluate(model, tst_dl, thresh_AF = thresh_AF)
+
+pickle.dump((TP_ECG_rate, FN_ECG_rate, list_pred_win, elapsed),open(save_name+"result.p","wb"))
 
 
 #-----------------------  visualize training curve
