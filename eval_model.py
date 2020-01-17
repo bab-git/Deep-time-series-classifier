@@ -26,6 +26,9 @@ from torch.nn import functional as F
 #import pickle
 #from git import Repo
 
+import torch.quantization
+from torch.quantization import QuantStub, DeQuantStub
+
 from torchsummary import summary
 
 import os
@@ -44,7 +47,9 @@ import pickle
 #%%===============  loading a learned model
 
 #save_name = "1d_1_conv_1FC"
-save_name = "1d_3con_2FC_2K_win"
+
+save_name = "1d_3conv_2FC_v2_2K_win"
+#save_name = "1d_3con_2FC_2K_win"
 #save_name = "1d_6con_2K_win_2d"
 #save_name = "1d_6con_2K_win_test_30"
 #save_name = "1d_6con_b512_trim_2K_win"
@@ -337,6 +342,12 @@ print('{:<30}  {:<8}'.format('Number of parameters: ', params))
 #flops, params = profile(model, inputs=(torch.randn(1, raw_feat, raw_size), ))
 
 #%%===========  Conv2d quantization
+
+def print_size_of_model(model):
+    torch.save(model.state_dict(), "temp.p")
+    print('Size (MB):', os.path.getsize("temp.p")/1e6)
+    os.remove('temp.p')
+    
 class ConvBNReLU(nn.Sequential):
     def __init__(self, in_planes, out_planes, kernel_size=3, stride=(1,1), groups=1):
         super().__init__()
@@ -344,8 +355,21 @@ class ConvBNReLU(nn.Sequential):
         super(ConvBNReLU, self).__init__(
             nn.Conv2d(in_planes, out_planes, kernel_size, stride, padding, groups=groups, bias=False),
             nn.BatchNorm2d(out_planes, momentum=0.1),            
-            nn.ReLU(inplace=False)
+            nn.ReLU(inplace=False),
+            nn.Dropout(0.5)
         )
+
+class Flatten2(nn.Module):
+    """Converts N-dimensional tensor into 'flat' one."""
+
+    def __init__(self, keep_batch_dim=True):
+        super().__init__()
+        self.keep_batch_dim = keep_batch_dim
+
+    def forward(self, x):
+        if self.keep_batch_dim:
+            return x.reshape(x.size(0), -1)
+        return x.reshape(-1)        
 
 class dumy_CNN(nn.Module):
     def __init__(self, ni, no, raw_size):
@@ -355,7 +379,8 @@ class dumy_CNN(nn.Module):
 #        self.conv = nn.Conv2d(ni, no, (1,8),bias = False)
 #        self.convB = ConvBNReLU(ni,no,(1,9))
         ConvBNReLU(ni,no,(1,9)),
-        my_net_classes.Flatten(),
+        Flatten2(),
+#        my_net_classes.Flatten(),
         nn.Linear(raw_size*no, 2)
         )
         self.quant = QuantStub()
@@ -374,7 +399,7 @@ class dumy_CNN(nn.Module):
         return out    
 
 def evaluation1(model_test,tst_dl):
-    correct, total , total_P, = 0, 0, 0
+    correct, total = 0, 0
     with torch.no_grad():
         for i_batch, batch in enumerate(tst_dl):
             x_raw, y_batch = [t.to('cpu') for t in batch]
@@ -413,6 +438,16 @@ evaluation1(model_qn,tst_dl)
 #        )
 #print(model_qn)
 model_qn.conv.weight.data[0,0,0,0].item()
+
+
+summary(model_test, input_size=(raw_feat, raw_size), batch_size = batch_size, device = 'cpu')
+summary(model_qn, input_size=(raw_feat, raw_size), batch_size = batch_size, device = 'cpu')
+
+flops, params = get_model_complexity_info(model_test, (raw_feat, raw_size), as_strings=False, print_per_layer_stat=True);
+flops_q, params_q = get_model_complexity_info(model_qn, (raw_feat, raw_size), as_strings=False, print_per_layer_stat=True);
+
+#input = torch.randn(1, raw_feat, raw_size)
+#flops, params = profile(model_test, inputs=(torch.randn(1, raw_feat, raw_size), ))
 
 #%%===========  static quantization
 num_calibration_batches = 10

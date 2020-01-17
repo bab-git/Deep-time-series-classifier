@@ -165,7 +165,8 @@ raw_size = trn_ds[0][0].shape[1]
 trn_sz = len(trn_ds)
 
 
-model = my_net_classes.Classifier_1d_1_conv_1FC(raw_feat, num_classes, raw_size).to(device)
+#model = my_net_classes.Classifier_1d_1_conv_1FC(raw_feat, num_classes, raw_size).to(device)
+model = my_net_classes.Classifier_1d_3_conv_2FC_v2(raw_feat, num_classes, raw_size).to(device)
 #model = my_net_classes.Classifier_1d_3_conv_2FC(raw_feat, num_classes, raw_size).to(device)
 #model = my_net_classes.Classifier_1d_6_conv(raw_feat, num_classes, raw_size, 
 #                                            batch_norm = True, conv_type = '2d').to(device)
