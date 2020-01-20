@@ -111,7 +111,7 @@ class SepConv1d(nn.Module):
     def forward(self, x): 
         return self.layers(x)    
     
-#%% ==================          SepConv1d
+#%% ==================          SepConv1d  -  change: dropouts after activation
 class SepConv1d_v2(nn.Module):
     """Implementes a 1-d convolution with 'batteries included'.
     
@@ -437,7 +437,7 @@ class Classifier_1d_3_conv_2FC(nn.Module):
         out = self.out(raw_out)
         return out    
 
-#%% ==================   1dconv - 3 conv - 2 FC
+#%% ==================   1dconv - 3 conv - 2 FC   -  change: dropouts after activation
 class Classifier_1d_3_conv_2FC_v2(nn.Module):
     def __init__(self, raw_ni, no, raw_size, drop=.5, batch_norm = True, conv_type = '2d'):
         super().__init__()

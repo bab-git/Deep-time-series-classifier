@@ -13,7 +13,7 @@ import numpy as np
 #from sklearn.preprocessing import LabelEncoder, StandardScaler
 
 from ptflops import get_model_complexity_info
-from thop import profile
+#from thop import profile
 
 #import torch
 
@@ -31,6 +31,8 @@ from torch.quantization import QuantStub, DeQuantStub
 
 from torchsummary import summary
 
+import pickle
+
 import os
 #abspath = os.path.abspath('test_classifier_GPU_load.py')
 #dname = os.path.dirname(abspath)
@@ -46,9 +48,8 @@ import torch
 import pickle
 #%%===============  loading a learned model
 
-#save_name = "1d_1_conv_1FC"
-
 save_name = "1d_3conv_2FC_v2_2K_win"
+#save_name = "1d_1_conv_1FC"
 #save_name = "1d_3con_2FC_2K_win"
 #save_name = "1d_6con_2K_win_2d"
 #save_name = "1d_6con_2K_win_test_30"
@@ -101,6 +102,7 @@ raw_x = load_ECG['raw_x']
 #raw_x = load_ECG['raw_x'].to(device)
 target = load_ECG['target']
 data_tag = load_ECG['data_tag']
+#data_tag = load_ECG['IDs']
 if type(target) != 'torch.Tensor':
     target = torch.tensor(load_ECG['target']).to(device)
 
@@ -177,7 +179,7 @@ def evaluate(model, tst_dl, thresh_AF = 3, device = 'cpu'):
     #list_ECG = np.unique([data_tag[i] for i in tst_idx if target[i] == label])
     #len(list_error_ECG)/8000*100
     
-    TP_ECG, FN_ECG , total_P, total_N = np.zeros(4)
+    TP_ECG, FP_ECG , total_P, total_N = np.zeros(4)
     list_pred_win = 100*np.ones([len(list_ECG), win_size])
     for i_row, i_ecg in enumerate(list_ECG):
         list_win = np.where(data_tag==i_ecg)[0]
@@ -192,27 +194,28 @@ def evaluate(model, tst_dl, thresh_AF = 3, device = 'cpu'):
         else:         # normal
             total_N +=1
             if (np.array(pred_win)==1).sum() >= thresh_AF:
-                FN_ECG += 1
+                FP_ECG += 1
                 
         
     #TP_ECG_rate = TP_ECG / len(list_ECG) *100
     TP_ECG_rate = TP_ECG / total_P *100
-    FN_ECG_rate = FN_ECG / total_N *100
+    FP_ECG_rate = FP_ECG / total_N *100
     
     
     print("Threshold for detecting AF: %d" % (thresh_AF))
     print("TP rate: %2.3f" % (TP_ECG_rate))
-    print("FN rate: %2.3f" % (FN_ECG_rate))
+    print("FP rate: %2.3f" % (FP_ECG_rate))
     
-    return TP_ECG_rate, FN_ECG_rate, list_pred_win, elapsed
+    return TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed
 #print('True positives on test data:  %2.2f' %(TP_rate))
 #print('False positives on test data:  %2.2f' %(FP_rate))
 #------------------------------------------  
 
 # %%
 
+model = my_net_classes.Classifier_1d_3_conv_2FC_v2(raw_feat, num_classes, raw_size).to(device)
 #model = my_net_classes.Classifier_1d_1_conv_1FC(raw_feat, num_classes, raw_size).to(device)
-model = my_net_classes.Classifier_1d_3_conv_2FC(raw_feat, num_classes, raw_size, batch_norm = True, conv_type = '1d').to(device)
+#model = my_net_classes.Classifier_1d_3_conv_2FC(raw_feat, num_classes, raw_size, batch_norm = True, conv_type = '1d').to(device)
 #model = my_net_classes.Classifier_1d_6_conv(raw_feat, num_classes, raw_size, batch_norm = True, conv_type = '2d').to(device)
 #model = my_net_classes.Classifier_1d_6_conv_ver1(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
 #model = my_net_classes.Classifier_1d_6_conv(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
@@ -231,80 +234,19 @@ model.load_state_dict(torch.load("train_"+save_name+'_best.pth', map_location=la
 
 thresh_AF = 5
 
-TP_ECG_rate, FN_ECG_rate, list_pred_win, elapsed = evaluate(model, tst_dl, thresh_AF = thresh_AF)
+TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = evaluate(model, tst_dl, thresh_AF = thresh_AF)
+
+#pickle.dump((TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed),open(save_name+"result.p","wb"))
 
 
 #-----------------------  visualize training curve
-f, ax = plt.subplots(1,2, figsize=(12,4))    
-ax[0].plot(loss_history, label = 'loss')
-ax[0].set_title('Validation Loss History: '+save_name)
-ax[0].set_xlabel('Epoch no.')
-ax[0].set_ylabel('Loss')
-ax[0].grid()
-
-ax[1].plot(smooth(acc_history, 5)[:-2], label='acc')
-#ax[1].plot(acc_history, label='acc')
-ax[1].set_title('Validation Accuracy History: '+save_name)
-ax[1].set_xlabel('Epoch no.')
-ax[1].set_ylabel('Accuracy');
-ax[1].grid()
 
 
-
-#checkpoint = torch.load('best_ended_11_27_17_13.pth')
-#model.load_state_dict(checkpoint['model_state_dict'])
-#optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
-#epoch = checkpoint['epoch']
-#loss = checkpoint['loss']
-
-assert 1==2
 
 model2 = model.to('cpu')
 summary(model2, input_size=(raw_feat, raw_size), batch_size = batch_size, device = 'cpu')
+flops1, params = get_model_complexity_info(model2, (raw_feat, raw_size), as_strings=False, print_per_layer_stat=True);
 #%%===============  checking internal values
-drop=.5
-batch_norm = True
-model1 = nn.Sequential(
-            SepConv1d(2,  32, 8, 2, 3, drop=drop, batch_norm = batch_norm),  #out: raw_size/str
-            SepConv1d(    32,  64, 8, 4, 2, drop=drop, batch_norm = batch_norm),
-            SepConv1d(    64, 128, 8, 4, 2, drop=drop, batch_norm = batch_norm),
-            SepConv1d(   128, 256, 8, 4, 2, drop=drop, batch_norm = batch_norm),
-            SepConv1d(   256, 512, 8, 4, 2, drop=drop, batch_norm = batch_norm),
-            SepConv1d(   512,1024, 8, 4, 2, batch_norm = batch_norm),
-#            Flatten(),
-#            nn.Linear(256, 64), nn.ReLU(inplace=True),
-#            nn.Linear( 64, 64), nn.ReLU(inplace=True)
-            ).to(device)
-model_out = model1(x_raw)
-#model_out = model1(x_raw[0,:,:])
-model_out.shape
-
-#%%===============  plot data
-i_data = 9000
-print('target: '+str(target[i_data]))
-plt.figure()
-plt.subplot(2,1,1)
-plt.plot(raw_x[i_data,0,:])
-plt.subplot(2,1,2)
-plt.plot(raw_x[i_data,1,:])
-
-
-# %%================= analyzing i_error
-#for i_AF in range(8000):
-    
-    
-
-list_error_ECG = np.unique([data_tag[tst_idx[i]] for i in i_error.astype(int) if target[tst_idx[i]] == 1])
-len(list_error_ECG)/8000*100
-
-list_pred_win = np.zeros([len(list_error_ECG), (data_tag==0).sum()])
-for i_row, i_ecg in enumerate(list_error_ECG):
-    list_win = np.where(data_tag==i_ecg)[0]
-    pred_win = [list_pred[tst_idx.index(i)] for i in list_win]
-    print(pred_win)
-    list_pred_win[i_row,:] = pred_win
-
-#[i for i in list_win if i in trn_idx ]
     
 # %%==================================================================== 
 # ================================== Quantization
@@ -330,7 +272,7 @@ summary(model_qn, input_size=(raw_feat, raw_size), batch_size = batch_size, devi
 #model_qn.to(device)
 model_qn.to('cpu');
 
-TP_ECG_rate_q, FN_ECG_rate_q, list_pred_win, elapsed = evaluate(model_qn, tst_dl)
+TP_ECG_rate_q, FP_ECG_rate_q, list_pred_win, elapsed = evaluate(model_qn, tst_dl)
 
 
 flops1, params = get_model_complexity_info(model, (raw_feat, raw_size), as_strings=False, print_per_layer_stat=True);
@@ -355,8 +297,9 @@ class ConvBNReLU(nn.Sequential):
         super(ConvBNReLU, self).__init__(
             nn.Conv2d(in_planes, out_planes, kernel_size, stride, padding, groups=groups, bias=False),
             nn.BatchNorm2d(out_planes, momentum=0.1),            
-            nn.ReLU(inplace=False),
-            nn.Dropout(0.5)
+            nn.Dropout(0.5),
+            nn.ReLU(inplace=False)
+#            nn.Dropout(0.5)
         )
 
 class Flatten2(nn.Module):
