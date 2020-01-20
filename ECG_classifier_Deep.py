@@ -165,8 +165,9 @@ raw_size = trn_ds[0][0].shape[1]
 trn_sz = len(trn_ds)
 
 
-model = my_net_classes.Classifier_1d_1_conv_1FC(raw_feat, num_classes, raw_size).to(device)
-#model = my_net_classes.Classifier_1d_3_conv_2FC(raw_feat, num_classes, raw_size).to(device)
+#model = my_net_classes.Classifier_1d_1_conv_1FC(raw_feat, num_classes, raw_size).to(device)
+#model = my_net_classes.Classifier_1d_3_conv_2FC_v2(raw_feat, num_classes, raw_size).to(device)
+model = my_net_classes.Classifier_1d_3_conv_2FC(raw_feat, num_classes, raw_size).to(device)
 #model = my_net_classes.Classifier_1d_6_conv(raw_feat, num_classes, raw_size, 
 #                                            batch_norm = True, conv_type = '2d').to(device)
 #model = my_net_classes.Classifier_1d_6_conv(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
@@ -326,7 +327,7 @@ for i_batch, batch in enumerate(tst_dl):
     #x_raw, y_batch = [t.to(device) for t in val_ds.tensors]
     out = model(x_raw)
     preds = F.log_softmax(out, dim = 1).argmax(dim=1)
-    list_pred = np.append(list_pred,preds)
+    list_pred = np.append(list_pred,preds.tolist())
     total += y_batch.size(0)
     correct += (preds ==y_batch).sum().item()    
 #    i_error = np.append(i_error,np.where(preds !=y_batch))
@@ -346,7 +347,7 @@ list_ECG = np.unique([data_tag[i] for i in tst_idx])
 #list_ECG = np.unique([data_tag[i] for i in tst_idx if target[i] == label])
 #len(list_error_ECG)/8000*100
 
-TP_ECG, FN_ECG , total_P, total_N = np.zeros(4)
+TP_ECG, FP_ECG , total_P, total_N = np.zeros(4)
 list_pred_win = 100*np.ones([len(list_ECG), win_size])
 for i_row, i_ecg in enumerate(list_ECG):
     list_win = np.where(data_tag==i_ecg)[0]
@@ -361,17 +362,17 @@ for i_row, i_ecg in enumerate(list_ECG):
     else:         # normal
         total_N +=1
         if (np.array(pred_win)==1).sum() >= thresh_AF:
-            FN_ECG += 1
+            FP_ECG += 1
             
     
 #TP_ECG_rate = TP_ECG / len(list_ECG) *100
 TP_ECG_rate = TP_ECG / total_P *100
-FN_ECG_rate = FN_ECG / total_N *100
+FP_ECG_rate = FP_ECG / total_N *100
 
 
 print("Threshold for detecting AF: %d" % (thresh_AF))
 print("TP rate: %2.3f" % (TP_ECG_rate))
-print("FN rate: %2.3f" % (FN_ECG_rate))
+print("FP rate: %2.3f" % (FP_ECG_rate))
 
 
 assert 1==2
