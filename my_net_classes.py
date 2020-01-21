@@ -40,7 +40,7 @@ class _SepConv1d_2d(nn.Module):
     """
     
     def __init__(self, ni, no, kernel, stride, pad):
-        super().__init__()
+        super().__init__()        
         self.depthwise = nn.Conv2d(ni, ni, kernel_size = (1,kernel), stride = (1,stride), padding = (0,pad), groups = ni)
         self.pointwise = nn.Conv2d(ni, no, kernel_size=(1,1))
         
@@ -220,7 +220,45 @@ class SepConv1d_v3(nn.Module):
         self.layers = nn.Sequential(*layers)
         
     def forward(self, x): 
-        return self.layers(x).squeeze()                 
+        return self.layers(x).squeeze()
+
+#%% ==================        SepConv1d  -  sep conv and BN and drp together
+class SepConv1d_v4(nn.Module):
+    """Implementes a 1-d convolution with 'batteries included'.
+    
+    The module adds (optionally) activation function and dropout layers right after
+    a separable convolution layer.
+    """
+    def __init__(self, ni, no, kernel, stride, pad, drop=0.2, batch_norm = None,
+                 conv_type = '1d', activ=lambda: nn.ReLU(inplace=True)):
+    
+        super().__init__()
+        assert drop is None or (0.0 < drop < 1.0)
+        
+        layers = [nn.Conv2d(ni, ni, kernel_size = (1,kernel), stride = (1,stride), padding = (0,pad), groups = ni)]
+        layers.append(nn.Conv2d(ni, no, kernel_size=(1,1)))
+        
+#        if drop is not None:
+#            layers.append(nn.Dropout(drop))      
+        
+        if batch_norm:
+            layers.append(nn.BatchNorm2d(num_features = no))        
+            
+        if activ:
+            layers.append(activ())        
+            
+        if drop is not None:
+            layers.append(nn.Dropout(drop))            
+                
+            
+            
+        self.layers = nn.Sequential(*layers)
+        
+    def forward(self, x): 
+#        x = torch.unsqueeze(x,2)
+        x = self.layers(x)
+#        x = x.squeeze()
+        return x
         
 #%% ==================         
 class Flatten(nn.Module):
@@ -584,12 +622,15 @@ class Classifier_1d_6_conv_v2(nn.Module):
             SepConv1d_v3(    64, 128, 8, 4, 2, drop, batch_norm, conv_type),
             SepConv1d_v3(   128, 256, 8, 4, 2, drop, batch_norm, conv_type),
             SepConv1d_v3(   256, 512, 8, 4, 2, drop, batch_norm, conv_type),
-            SepConv1d_v3(   512,1024, 8, 4, 2, batch_norm = batch_norm, conv_type = conv_type),
-            Flatten2(),
-            nn.Linear(flat_in, 128), nn.BatchNorm1d(num_features = 128),  nn.ReLU(inplace=True), nn.Dropout(drop)
-#            nn.Linear(flat_in, 128), nn.BatchNorm2d(num_features = 128),  nn.ReLU(inplace=True), nn.Dropout(drop)
-#            nn.Linear( 128, 128),    nn.BatchNorm1d(num_features = 128), nn.Dropout(drop), nn.ReLU(inplace=True)
+            SepConv1d_v3(   512,1024, 8, 4, 2, batch_norm = batch_norm, conv_type = conv_type)            
             )
+
+        self.FC = nn.Sequential(
+            Flatten2(),
+#            nn.Linear(flat_in, 128), nn.BatchNorm1d(num_features = 128),  nn.ReLU(inplace=True), nn.Dropout(drop)
+            nn.Linear(flat_in, 128), nn.ReLU(inplace=True), nn.Dropout(drop)
+#            nn.Linear( 128, 128),    nn.BatchNorm1d(num_features = 128), nn.Dropout(drop), nn.ReLU(inplace=True)                
+                )
                             
         self.out = nn.Sequential(
 #            nn.Linear(128, 64), nn.ReLU(inplace=True), 
@@ -612,14 +653,18 @@ class Classifier_1d_6_conv_v2(nn.Module):
                 fuse_profile = ['layers.0.pointwise', 'layers.1', 'layers.2']
                 torch.quantization.fuse_modules(m, fuse_profile, inplace=True)
 #                torch.quantization.fuse_modules(m, ['0', '1', '2'], inplace=True)
+        torch.quantization.fuse_modules(self.FC, ['1','2'], inplace=True)
+                
                 
     def forward(self, t_raw):
         t_raw = self.quant(t_raw)        
 #        t_raw  =  t_raw.unsqueeze(2)
-        raw_out = self.raw(t_raw)        
+        raw_out = self.raw(t_raw)
 #        fft_out = self.fft(t_fft)
 #        t_in = torch.cat([raw_out, fft_out], dim=1)
-        out = self.out(raw_out)
+        FC_out = self.FC(raw_out)        
+        out = self.out(FC_out)
+        
         out  = self.dequant(out)
         return out    
 #%% ==================   1dconv - 3 conv - 2 FC
