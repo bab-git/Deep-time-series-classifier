@@ -13,7 +13,7 @@ import numpy as np
 #from sklearn.preprocessing import LabelEncoder, StandardScaler
 
 from ptflops import get_model_complexity_info
-#from thop import profile
+from thop import profile
 
 #import torch
 
@@ -46,9 +46,17 @@ import my_net_classes
 from my_net_classes import SepConv1d, _SepConv1d, Flatten, parameters
 import torch
 import pickle
+# %% ================ loading data
+load_ECG =  torch.load ('raw_x_8K_sync_win2K.pt')
+#load_ECG =  torch.load ('raw_x_8K_sync.pt') 
+#load_ECG =  torch.load ('raw_x_4k_5K.pt') 
+#load_ECG =  torch.load ('raw_x_all.pt') 
+
 #%%===============  loading a learned model
 
-save_name = "1d_3conv_2FC_v2_2K_win"
+#save_name = "1d_3conv_2FC_v2_seed2"
+save_name = "1d_3conv_2FC_seed2"
+#save_name = "1d_3conv_2FC_v2_2K_win"
 #save_name = "1d_1_conv_1FC"
 #save_name = "1d_3con_2FC_2K_win"
 #save_name = "1d_6con_2K_win_2d"
@@ -75,11 +83,6 @@ if save_name2 != '':
 
 print(save_name + " is loaded.")
 
-load_ECG =  torch.load ('raw_x_8K_sync_win2K.pt')
-#load_ECG =  torch.load ('raw_x_8K_sync.pt') 
-#load_ECG =  torch.load ('raw_x_4k_5K.pt') 
-#load_ECG =  torch.load ('raw_x_all.pt') 
-
 loaded_vars = pickle.load(open("train_"+save_name+"_variables.p","rb"))
 #loaded_file = pickle.load(open("variables"+t_stamp+".p","rb"))
 #loaded_file = pickle.load(open("variables_ended"+t_stamp+".p","rb"))
@@ -88,6 +91,7 @@ params = loaded_vars['params']
 epoch = params.epoch
 print('epoch: %d ' % (epoch))
 seed = params.seed
+print('seed: %d ' % (seed))
 test_size = params.test_size
 np.random.seed(seed)
 t_range = params.t_range
@@ -213,10 +217,10 @@ def evaluate(model, tst_dl, thresh_AF = 3, device = 'cpu'):
 
 # %%
 
-model = my_net_classes.Classifier_1d_3_conv_2FC_v2(raw_feat, num_classes, raw_size).to(device)
+#model = my_net_classes.Classifier_1d_3_conv_2FC_v2(raw_feat, num_classes, raw_size).to(device)
 #model = my_net_classes.Classifier_1d_1_conv_1FC(raw_feat, num_classes, raw_size).to(device)
-#model = my_net_classes.Classifier_1d_3_conv_2FC(raw_feat, num_classes, raw_size, batch_norm = True, conv_type = '1d').to(device)
-#model = my_net_classes.Classifier_1d_6_conv(raw_feat, num_classes, raw_size, batch_norm = True, conv_type = '2d').to(device)
+model = my_net_classes.Classifier_1d_3_conv_2FC(raw_feat, num_classes, raw_size, batch_norm = True, conv_type = '2d').to(device)
+#model = my_net_classes.Classifier_1d_6_conv(raw_feat, num_classes, raw_size, conv_type='2d').to(device)
 #model = my_net_classes.Classifier_1d_6_conv_ver1(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
 #model = my_net_classes.Classifier_1d_6_conv(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
 #model = my_net_classes.Classifier_1dconv(raw_feat, num_classes, raw_size).to(device)
@@ -228,7 +232,6 @@ model = my_net_classes.Classifier_1d_3_conv_2FC_v2(raw_feat, num_classes, raw_si
 #else:
 model.load_state_dict(torch.load("train_"+save_name+'_best.pth', map_location=lambda storage, loc: storage))
 
-
 #model = Classifier_1dconv(raw_feat, num_classes, raw_size/(2*4**3)).to(device)
 #model.load_state_dict(torch.load("train_"+save_name+'_best.pth'))
 
@@ -239,13 +242,10 @@ TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = evaluate(model, tst_dl, thres
 #pickle.dump((TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed),open(save_name+"result.p","wb"))
 
 
-#-----------------------  visualize training curve
 
-
-
-model2 = model.to('cpu')
-summary(model2, input_size=(raw_feat, raw_size), batch_size = batch_size, device = 'cpu')
-flops1, params = get_model_complexity_info(model2, (raw_feat, raw_size), as_strings=False, print_per_layer_stat=True);
+model = model.to('cpu')
+summary(model, input_size=(raw_feat, raw_size), batch_size = batch_size, device = 'cpu')
+flops1, params = get_model_complexity_info(model, (raw_feat, raw_size), as_strings=False, print_per_layer_stat=True);
 #%%===============  checking internal values
     
 # %%==================================================================== 
@@ -281,7 +281,11 @@ print('{:<30}  {:<8}'.format('Computational complexity: ', flops_q))
 print('{:<30}  {:<8}'.format('Number of parameters: ', params))
 
 #input = torch.randn(1, raw_feat, raw_size)
-#flops, params = profile(model, inputs=(torch.randn(1, raw_feat, raw_size), ))
+flops, params = profile(model.to('cpu'), inputs=(torch.randn(1, raw_feat, raw_size), ))
+
+
+
+
 
 #%%===========  Conv2d quantization
 
@@ -296,10 +300,11 @@ class ConvBNReLU(nn.Sequential):
         padding = (0,(kernel_size[1] -1) // 2)
         super(ConvBNReLU, self).__init__(
             nn.Conv2d(in_planes, out_planes, kernel_size, stride, padding, groups=groups, bias=False),
+            nn.Conv2d(out_planes, out_planes, kernel_size, stride, padding, groups=groups, bias=False),
             nn.BatchNorm2d(out_planes, momentum=0.1),            
-            nn.Dropout(0.5),
-            nn.ReLU(inplace=False)
-#            nn.Dropout(0.5)
+#            nn.Dropout(0.5),
+            nn.ReLU(inplace=False),
+            nn.Dropout(0.5)
         )
 
 class Flatten2(nn.Module):
@@ -332,7 +337,8 @@ class dumy_CNN(nn.Module):
     def fuse_model(self):
         for m in self.modules():
             if type(m) == ConvBNReLU:
-                torch.quantization.fuse_modules(m, ['0', '1', '2'], inplace=True)        
+                torch.quantization.fuse_modules(m, ['1', '2','3'], inplace=True)
+#                torch.quantization.fuse_modules(m, ['0', '1', '2'], inplace=True)
        
     def forward(self, x):
         out = self.quant(x)
@@ -380,7 +386,7 @@ evaluation1(model_qn,tst_dl)
 #        model_test, {nn.Linear, nn.Conv2d} , dtype= torch.qint8
 #        )
 #print(model_qn)
-model_qn.conv.weight.data[0,0,0,0].item()
+#model_qn.conv.weight.data[0,0,0,0].item()
 
 
 summary(model_test, input_size=(raw_feat, raw_size), batch_size = batch_size, device = 'cpu')
@@ -393,9 +399,31 @@ flops_q, params_q = get_model_complexity_info(model_qn, (raw_feat, raw_size), as
 #flops, params = profile(model_test, inputs=(torch.randn(1, raw_feat, raw_size), ))
 
 #%%===========  static quantization
+import my_net_classes
 num_calibration_batches = 10
+model = my_net_classes.Classifier_1d_6_conv_v2(raw_feat, num_classes, raw_size)
 model.to('cpu')
 model.eval()
+model(x_raw)
+
+model.fuse_model()
+#model.fuse_model2()
+model.qconfig = torch.quantization.default_qconfig
 
 
+print(model.qconfig)
+torch.quantization.prepare(model, inplace=True)
 
+model(x_raw)
+
+# Calibrate with the training set
+#evaluation1(model,tst_dl)
+print('Post Training Quantization: Calibration done')
+
+# Convert to quantized model
+model_qn = torch.quantization.convert(model)
+print('Post Training Quantization: Convert done')
+
+model_qn(x_raw).shape
+#evaluation1(model_qn,tst_dl)
+print('Post Training Quantization: Calibration done')

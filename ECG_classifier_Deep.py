@@ -166,8 +166,8 @@ trn_sz = len(trn_ds)
 
 
 #model = my_net_classes.Classifier_1d_1_conv_1FC(raw_feat, num_classes, raw_size).to(device)
-#model = my_net_classes.Classifier_1d_3_conv_2FC_v2(raw_feat, num_classes, raw_size).to(device)
-model = my_net_classes.Classifier_1d_3_conv_2FC(raw_feat, num_classes, raw_size).to(device)
+model = my_net_classes.Classifier_1d_3_conv_2FC_v2(raw_feat, num_classes, raw_size).to(device)
+#model = my_net_classes.Classifier_1d_3_conv_2FC(raw_feat, num_classes, raw_size).to(device)
 #model = my_net_classes.Classifier_1d_6_conv(raw_feat, num_classes, raw_size, 
 #                                            batch_norm = True, conv_type = '2d').to(device)
 #model = my_net_classes.Classifier_1d_6_conv(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
@@ -254,8 +254,9 @@ while epoch < n_epochs:
         print("model: "+save_name+" - Epoch %d best model being saved with accuracy: %2.2f" % (epoch,best_acc))
         trials = 0
         best_acc = acc
-#        torch.save(model.state_dict(), 'best.pth')        
-        torch.save(model.state_dict(), "train_"+save_name+'_best.pth')
+#        torch.save(model, "train_"+save_name+'_best.pth')
+#        torch.save(model.state_dict(), "train_"+save_name+'_best.pth')
+        pickle.dump(model,open("train_"+save_name+'_best.pth','wb'))
 #        pickle.dump({'epoch':epoch,'acc_history':acc_history},open("train_"+save_name+"variables.p","wb"))
         params = parameters(lr, epoch, patience, step, batch_size, t_range, seed, test_size)
         pickle.dump({'params':params,'acc_history':acc_history, 'loss_history':loss_history},open("train_"+save_name+"_variables.p","wb"))
