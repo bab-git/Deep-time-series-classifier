@@ -616,13 +616,13 @@ class Classifier_1d_6_conv_v2(nn.Module):
         
 
         self.raw = nn.Sequential(
-            SepConv1d_v3(raw_ni,  32, 8, 2, 3, drop, batch_norm, conv_type),  #out: raw_size/str
+            SepConv1d_v4(raw_ni,  32, 8, 2, 3, drop, batch_norm, conv_type),  #out: raw_size/str
 #            ConvBNReLU(raw_ni,32,(1,9)),
-            SepConv1d_v3(    32,  64, 8, 4, 2, drop, batch_norm, conv_type),
-            SepConv1d_v3(    64, 128, 8, 4, 2, drop, batch_norm, conv_type),
-            SepConv1d_v3(   128, 256, 8, 4, 2, drop, batch_norm, conv_type),
-            SepConv1d_v3(   256, 512, 8, 4, 2, drop, batch_norm, conv_type),
-            SepConv1d_v3(   512,1024, 8, 4, 2, batch_norm = batch_norm, conv_type = conv_type)            
+            SepConv1d_v4(    32,  64, 8, 4, 2, drop, batch_norm, conv_type),
+            SepConv1d_v4(    64, 128, 8, 4, 2, drop, batch_norm, conv_type),
+            SepConv1d_v4(   128, 256, 8, 4, 2, drop, batch_norm, conv_type),
+            SepConv1d_v4(   256, 512, 8, 4, 2, drop, batch_norm, conv_type),
+            SepConv1d_v4(   512,1024, 8, 4, 2, batch_norm = batch_norm, conv_type = conv_type)            
             )
 
         self.FC = nn.Sequential(
@@ -649,8 +649,9 @@ class Classifier_1d_6_conv_v2(nn.Module):
     
     def fuse_model(self):
         for m in self.modules():
-            if type(m) == SepConv1d_v3:
-                fuse_profile = ['layers.0.pointwise', 'layers.1', 'layers.2']
+            if type(m) == SepConv1d_v4:
+                fuse_profile = ['layers.1', 'layers.2', 'layers.3']
+#                fuse_profile = ['layers.0.pointwise', 'layers.1', 'layers.2']
                 torch.quantization.fuse_modules(m, fuse_profile, inplace=True)
 #                torch.quantization.fuse_modules(m, ['0', '1', '2'], inplace=True)
         torch.quantization.fuse_modules(self.FC, ['1','2'], inplace=True)
@@ -658,7 +659,7 @@ class Classifier_1d_6_conv_v2(nn.Module):
                 
     def forward(self, t_raw):
         t_raw = self.quant(t_raw)        
-#        t_raw  =  t_raw.unsqueeze(2)
+        t_raw  =  t_raw.unsqueeze(2)
         raw_out = self.raw(t_raw)
 #        fft_out = self.fft(t_fft)
 #        t_in = torch.cat([raw_out, fft_out], dim=1)

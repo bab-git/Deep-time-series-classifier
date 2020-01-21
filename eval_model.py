@@ -424,6 +424,6 @@ print('Post Training Quantization: Calibration done')
 model_qn = torch.quantization.convert(model)
 print('Post Training Quantization: Convert done')
 
-model_qn(x_raw).shape
+print(model_qn(x_raw).shape)
 #evaluation1(model_qn,tst_dl)
 print('Post Training Quantization: Calibration done')
