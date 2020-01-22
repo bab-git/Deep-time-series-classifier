@@ -609,6 +609,7 @@ class Classifier_1d_6_conv_v2(nn.Module):
         super().__init__()
         
 #        assert int(n_flt) == n_flt
+#        flat_in = 1024 * int (raw_size / (2*4*4*4*4*4))
         flat_in = 1024 * int (raw_size / (2*4*4*4*4*4))
 #        assert int (raw_size / (2*4**3)) == (raw_size / (2*4**3))
 #        flat_in = 256*int(n_flt)
@@ -623,6 +624,76 @@ class Classifier_1d_6_conv_v2(nn.Module):
             SepConv1d_v4(   128, 256, 8, 4, 2, drop, batch_norm, conv_type),
             SepConv1d_v4(   256, 512, 8, 4, 2, drop, batch_norm, conv_type),
             SepConv1d_v4(   512,1024, 8, 4, 2, batch_norm = batch_norm, conv_type = conv_type)            
+            )
+
+        self.FC = nn.Sequential(
+            Flatten(),
+#            Flatten2(),
+            nn.Linear(flat_in, 128), nn.ReLU(inplace=True), nn.Dropout(drop),
+#            nn.Linear(flat_in, 128), nn.BatchNorm1d(num_features = 128),  nn.ReLU(inplace=True), nn.Dropout(drop),            
+            nn.Linear( 128, 128),    nn.ReLU(inplace=True), nn.Dropout(drop)
+#            nn.Linear( 128, 128),    nn.BatchNorm1d(num_features = 128), nn.ReLU(inplace=True), nn.Dropout(drop)
+                )
+                            
+        self.out = nn.Sequential(
+#            nn.Linear(128, 64), nn.ReLU(inplace=True), 
+            nn.Linear(128, no))
+#            nn.Linear(1024, no))
+        
+        self.quant = QuantStub()
+        
+        self.dequant = DeQuantStub()
+        
+    def fuse_model2(self):
+        for m in self.modules():
+            if type(m) == ConvBNReLU:
+                torch.quantization.fuse_modules(m, ['1', '2','3'], inplace=True)
+#                torch.quantization.fuse_modules(m, ['0', '1', '2'], inplace=True)
+    
+    def fuse_model(self):
+        for m in self.modules():
+            if type(m) == SepConv1d_v4:
+                fuse_profile = ['layers.1', 'layers.2', 'layers.3']
+#                fuse_profile = ['layers.0.pointwise', 'layers.1', 'layers.2']
+                torch.quantization.fuse_modules(m, fuse_profile, inplace=True)
+#                torch.quantization.fuse_modules(m, ['0', '1', '2'], inplace=True)
+        torch.quantization.fuse_modules(self.FC, [['1','2'],['4','5']], inplace=True)
+                
+                
+    def forward(self, t_raw):
+        t_raw = self.quant(t_raw)        
+        t_raw  =  t_raw.unsqueeze(2)
+        raw_out = self.raw(t_raw)
+#        fft_out = self.fft(t_fft)
+#        t_in = torch.cat([raw_out, fft_out], dim=1)
+        FC_out = self.FC(raw_out)        
+        out = self.out(FC_out)
+        
+        out  = self.dequant(out)
+        return out    
+
+
+#%% ==================   1dconv - 5 conv - 2 FC   drop after relu + BN2d
+class Classifier_1d_5_conv_v2(nn.Module):
+    def __init__(self, raw_ni, no, raw_size, drop=.5, batch_norm = True, conv_type = '2d'):
+        super().__init__()
+        
+#        assert int(n_flt) == n_flt
+#        flat_in = 1024 * int (raw_size / (2*4*4*4*4*4))
+        flat_in = 512 * int (raw_size / (4*4*4*4*4))
+#        assert int (raw_size / (2*4**3)) == (raw_size / (2*4**3))
+#        flat_in = 256*int(n_flt)
+        
+        
+
+        self.raw = nn.Sequential(
+            SepConv1d_v4(raw_ni,  32, 8, 4, 3, drop, batch_norm, conv_type),  #out: raw_size/str
+#            ConvBNReLU(raw_ni,32,(1,9)),
+            SepConv1d_v4(    32,  64, 8, 4, 2, drop, batch_norm, conv_type),
+            SepConv1d_v4(    64, 128, 8, 4, 2, drop, batch_norm, conv_type),
+            SepConv1d_v4(   128, 256, 8, 4, 2, drop, batch_norm, conv_type),
+            SepConv1d_v4(   256, 512, 2, 4, 0, drop, batch_norm, conv_type),
+#            SepConv1d_v4(   512,1024, 2, 4, 2, batch_norm = batch_norm, conv_type = conv_type)            
             )
 
         self.FC = nn.Sequential(

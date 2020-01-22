@@ -1,3 +1,14 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Jan 22 11:18:34 2020
+
+Training aware quantization
+
+
+@author: bhossein
+"""
+
 import time
 #from collections import defaultdict
 #from functools import partial
@@ -245,223 +256,27 @@ model = pickle.load(open('train_'+save_name+'_best.pth', 'rb'))
 #model = Classifier_1dconv(raw_feat, num_classes, raw_size/(2*4**3)).to(device)
 #model.load_state_dict(torch.load("train_"+save_name+'_best.pth'))
 
+print("=========  original floating point accuracy ===============")
+
 thresh_AF = 3
 
-TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = evaluate(model, tst_dl, thresh_AF = thresh_AF)
+TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = evaluate(model, tst_dl, thresh_AF = thresh_AF, device = device)
 
 #pickle.dump((TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed),open(save_name+"result.p","wb"))
 
 
-#%% ------------------------- visualize training curve
-f, ax = plt.subplots(1,2, figsize=(12,4))    
-ax[0].plot(loss_history, label = 'loss')
-ax[0].set_title('Validation Loss History')
-ax[0].set_xlabel('Epoch no.')
-ax[0].set_ylabel('Loss')
-ax[0].grid()
-
-ax[1].plot(smooth(acc_history, 5)[:-2], label='acc')
-#ax[1].plot(acc_history, label='acc')
-ax[1].set_title('Validation Accuracy History')
-ax[1].set_xlabel('Epoch no.')
-ax[1].set_ylabel('Accuracy');
-ax[1].grid()
-#%%-------  FLOPs and params
-model = model.to('cpu')
-summary(model, input_size=(raw_feat, raw_size), batch_size = batch_size, device = 'cpu')
-flops1, params = get_model_complexity_info(model, (raw_feat, raw_size), as_strings=False, print_per_layer_stat=True);
-#%%===============  checking internal values
-    
+  
 # %%==================================================================== 
-# ================================== Quantization
+# ================================== Dynamic Quantization
 # ====================================================================     
-model.to('cpu')
-
-
-# ----------------- Dynamic Quantization
-
-model_qn = torch.quantization.quantize_dynamic(
-        model, {nn.Linear, nn.Conv2d} , dtype= torch.qint8
-        )
-
-summary(model, input_size=(raw_feat, raw_size), batch_size = batch_size, device = 'cpu')
-summary(model_qn, input_size=(raw_feat, raw_size), batch_size = batch_size, device = 'cpu')
-
-#def print_size_of_model(model):
-#    torch.save(model.state_dict(), "temp.p")
-#    print('Size (MB):', os.path.getsize("temp.p")/1e6)
-#    os.remove('temp.p')
-
-
-#model_qn.to(device)
-model_qn.to('cpu');
-
-TP_ECG_rate_q, FP_ECG_rate_q, list_pred_win, elapsed = evaluate(model_qn, tst_dl)
-
-
-flops1, params = get_model_complexity_info(model, (raw_feat, raw_size), as_strings=False, print_per_layer_stat=True);
-flops_q, params_q = get_model_complexity_info(model_qn, (raw_feat, raw_size), as_strings=False, print_per_layer_stat=True);
-print('{:<30}  {:<8}'.format('Computational complexity: ', flops_q))
-print('{:<30}  {:<8}'.format('Number of parameters: ', params))
-
-#input = torch.randn(1, raw_feat, raw_size)
-flops, params = profile(model.to('cpu'), inputs=(torch.randn(1, raw_feat, raw_size), ))
-
-
-
-
-
-#%%===========  Conv2d quantization
-
-def print_size_of_model(model):
-    torch.save(model.state_dict(), "temp.p")
-    print('Size (MB):', os.path.getsize("temp.p")/1e6)
-    os.remove('temp.p')
-    
-class ConvBNReLU(nn.Sequential):
-    def __init__(self, in_planes, out_planes, kernel_size=3, stride=(1,1), groups=1):
-        super().__init__()
-        padding = (0,(kernel_size[1] -1) // 2)
-        super(ConvBNReLU, self).__init__(
-            nn.Conv2d(in_planes, out_planes, kernel_size, stride, padding, groups=groups, bias=False),
-            nn.Conv2d(out_planes, out_planes, kernel_size, stride, padding, groups=groups, bias=False),
-            nn.BatchNorm2d(out_planes, momentum=0.1),            
-#            nn.Dropout(0.5),
-            nn.ReLU(inplace=False),
-            nn.Dropout(0.5)
-        )
-
-class Flatten2(nn.Module):
-    """Converts N-dimensional tensor into 'flat' one."""
-
-    def __init__(self, keep_batch_dim=True):
-        super().__init__()
-        self.keep_batch_dim = keep_batch_dim
-
-    def forward(self, x):
-        if self.keep_batch_dim:
-            return x.reshape(x.size(0), -1)
-        return x.reshape(-1)        
-
-class dumy_CNN(nn.Module):
-    def __init__(self, ni, no, raw_size):
-        super().__init__()        
-        
-        self.layers = nn.Sequential(       
-#        self.conv = nn.Conv2d(ni, no, (1,8),bias = False)
-#        self.convB = ConvBNReLU(ni,no,(1,9))
-        ConvBNReLU(ni,no,(1,9)),
-        Flatten2(),
-#        my_net_classes.Flatten(),
-        nn.Linear(raw_size*no, 2)
-        )
-        self.quant = QuantStub()
-        self.dequant = DeQuantStub()
-        
-    def fuse_model(self):
-        for m in self.modules():
-            if type(m) == ConvBNReLU:
-                torch.quantization.fuse_modules(m, ['1', '2','3'], inplace=True)
-#                torch.quantization.fuse_modules(m, ['0', '1', '2'], inplace=True)
-       
-    def forward(self, x):
-        out = self.quant(x)
-        out  =  out.unsqueeze(2)
-        out  = self.layers(out)
-        out  = self.dequant(out)
-        return out    
-
-def evaluation1(model_test,tst_dl):
-    correct, total = 0, 0
-    with torch.no_grad():
-        for i_batch, batch in enumerate(tst_dl):
-            x_raw, y_batch = [t.to('cpu') for t in batch]
-            out = model_test(x_raw)
-            preds = F.log_softmax(out, dim = 1).argmax(dim=1)    
-            total += y_batch.size(0)
-            correct += (preds ==y_batch).sum().item()    
-            
-    acc = correct / total * 100
-    print(acc)    
-    return(acc)
-    
-model_test = dumy_CNN(2,10, 2048)
-model_test.eval()
-
-model_test.fuse_model()
-
-model_test.qconfig = torch.quantization.default_qconfig
-
-print(model_test.qconfig)
-torch.quantization.prepare(model_test, inplace=True)
-
-# Calibrate with the training set
-evaluation1(model_test,tst_dl)
-print('Post Training Quantization: Calibration done')
-
-# Convert to quantized model
-model_qn = torch.quantization.convert(model_test)
-print('Post Training Quantization: Convert done')
-
-
-evaluation1(model_qn,tst_dl)
-
-#model_qn = torch.quantization.quantize_dynamic(
-#        model_test, {nn.Linear, nn.Conv2d} , dtype= torch.qint8
-#        )
-#print(model_qn)
-#model_qn.conv.weight.data[0,0,0,0].item()
-
-
-summary(model_test, input_size=(raw_feat, raw_size), batch_size = batch_size, device = 'cpu')
-summary(model_qn, input_size=(raw_feat, raw_size), batch_size = batch_size, device = 'cpu')
-
-flops, params = get_model_complexity_info(model_test, (raw_feat, raw_size), as_strings=False, print_per_layer_stat=True);
-flops_q, params_q = get_model_complexity_info(model_qn, (raw_feat, raw_size), as_strings=False, print_per_layer_stat=True);
-
-#input = torch.randn(1, raw_feat, raw_size)
-#flops, params = profile(model_test, inputs=(torch.randn(1, raw_feat, raw_size), ))
-
-#%%===========  static quantization
-
-#import my_net_classes
-#num_calibration_batches = 10
-#model = my_net_classes.Classifier_1d_6_conv_v2(raw_feat, num_classes, raw_size)
-model = pickle.load(open('train_'+save_name+'_best.pth', 'rb'))
-model.to('cpu')
-model.eval()
-#model(x_raw)
-
-
-def fuse_model(model):
-        for m in model.modules():
-            if type(m) == my_net_classes.SepConv1d_v4:
-                fuse_profile = ['layers.1', 'layers.2', 'layers.3']
-#                fuse_profile = ['layers.0.pointwise', 'layers.1', 'layers.2']
-                torch.quantization.fuse_modules(m, fuse_profile, inplace=True)
-#                torch.quantization.fuse_modules(m, ['0', '1', '2'], inplace=True)
-        torch.quantization.fuse_modules(model.FC, [['1','2'],['4','5']], inplace=True)
-        return model
-
-fuse_model(model)
-#model.fuse_model()
-#model.fuse_model2()
-model.qconfig = torch.quantization.default_qconfig
-
-
-print(model.qconfig)
-torch.quantization.prepare(model, inplace=True)
-
-#model(x_raw)
-
-# Calibrate with the training set
 
 def evaluation1(model_test,tst_dl, device = 'cpu', num_batch = len(tst_dl)):
+    model_test.to(device)
     correct, total = 0, 0
     with torch.no_grad():
         print("i_batch:", end =" ")
         for i_batch, batch in enumerate(tst_dl):
-            if i_batch%10==0:
+            if i_batch%10 == 0:
                 print(i_batch, end =" ")
             x_raw, y_batch = [t.to(device) for t in batch]
             out = model_test(x_raw)
@@ -473,40 +288,10 @@ def evaluation1(model_test,tst_dl, device = 'cpu', num_batch = len(tst_dl)):
                 return acc
             
     acc = correct / total * 100
-    print("")
-    print(acc)    
+#    print("")
+#    print(acc)    
     return acc
-    
-evaluation1(model,tst_dl)
-print('Post Training Quantization: Calibration done')
-
-# Convert to quantized model
-model_qn = torch.quantization.convert(model)
-print('Post Training Quantization: Convert done')
-
-#print(model_qn(x_raw).shape)
-
-#evaluation1(model_qn,tst_dl)
-a = evaluate(model_qn,tst_dl)
-print('Post Training Quantization: Calibration done')
-
-
-#%%===========  per channel static quantization
-model_ch = pickle.load(open('train_'+save_name+'_best.pth', 'rb'))
-model_ch.to('cpu')
-model_ch.eval()
-model_ch.fuse_model()
-model_ch.qconfig = torch.quantization.get_default_qconfig('fbgemm')
-print(model.qconfig)
-
-torch.quantization.prepare(model, inplace=True)
-evaluation1(model_ch,tst_dl)
-model_qn2 = torch.quantization.convert(model_ch)
-
-evaluation1(model_qn2,tst_dl)
-TP_ECG_rate_chq, FP_ECG_rate_chq = evaluate(model_qn2,tst_dl, thresh_AF = 3)
-
-# %%================================== Training aware quantization
+   
 model_qta = pickle.load(open('train_'+save_name+'_best.pth', 'rb'))
 device = torch.device('cuda:0')
 
@@ -527,12 +312,14 @@ model_qta.qconfig = torch.quantization.get_default_qat_qconfig('fbgemm')
 
 torch.quantization.prepare_qat(model_qta, inplace=True)
 
-ntrain_batches = 100
+ntrain_batches = 10000
 
 
 def train_one_epoch(model, criterion, opt, trn_dl, device, ntrain_batches):
-    i = []    
-    ls = random.sample(range(len(trn_dl)), ntrain_batches)
+    if ntrain_batches > len(trn_dl):
+        ls = range(len(trn_dl))
+    else:
+        ls = random.sample(range(len(trn_dl)), ntrain_batches)
     
     model=model.to(device)
     print(next(model.parameters()).is_cuda)
@@ -561,16 +348,23 @@ def train_one_epoch(model, criterion, opt, trn_dl, device, ntrain_batches):
             print('Loss %3.3f' %(epoch_loss / cnt))
             return
 
-    print('Full Loss', epoch_loss / cnt)
+    print('Full Loss %3.3f' %(epoch_loss / cnt))
     return
 
-evaluation1(model_qta,val_dl,device, 30)
-evaluation1(model,val_dl,device, 30)
+print("=========  original floating point validation accuracy ===============")
+acc = evaluation1(model,val_dl,device, 30)
+print('%2.2f' %(acc))
+
+print("")
+print("=========  q-prepared floating point validation accuracy ===============")
+acc = evaluation1(model_qta,val_dl,device, 30)
+print('%2.2f' %(acc))
+
 
 acc_0 = 0
-for nepoch in range(10):
+for nepoch in range(20):
     train_one_epoch(model_qta, criterion, opt, trn_dl, device, ntrain_batches)    
-    model_qta.to('cpu')
+    
     if nepoch > 3:
         # Freeze quantizer parameters
         model_qta.apply(torch.quantization.disable_observer)
@@ -579,14 +373,17 @@ for nepoch in range(10):
         model_qta.apply(torch.nn.intrinsic.qat.freeze_bn_stats)
 
     # Check the accuracy after each epoch
+    model_qta.to('cpu')
     quantized_model = torch.quantization.convert(model_qta.eval(), inplace=False)
     quantized_model.eval()
-#    TP_ECG_rate_taq, FP_ECG_rate_taq,x,y = evaluate(model_qn2,tst_dl)
-    acc = evaluation1(quantized_model,val_dl,'cpu', 30)
+
+#    acc = evaluation1(quantized_model,val_dl,'cpu', 30)
+    acc = evaluation1(model_qta,val_dl,device , 30)
+    
     print(', Epoch %d : accuracy = %2.2f'%(nepoch,acc))
-#    print('Epoch %d :TP rate = %2.2f , FP rate = %2.2f'%(nepoch, TP_ECG_rate_taq, FP_ECG_rate_taq))
+
     if acc > acc_0:
-#        pickle.dump(quantized_model,open("quantized_model.pth",'wb'))
+        pickle.dump(model_qta,open(save_name+"qta.p",'wb'))
 #        torch.jit.save(torch.jit.script(quantized_model), 'quantized_model.pth')
         quantized_model_best = quantized_model
         model_qta_best = model_qta
@@ -595,7 +392,20 @@ for nepoch in range(10):
         
 #quantized_model_best = model_best
 #quantized_model = pickle.load(open("quantized_model.pth",'rb'))
-acc = evaluation1(quantized_model_best,tst_dl,'cpu', 30)
+
+print("=========  Q-trained floating point validation accuracy ===============")        
+acc = evaluation1(model_qta_best,val_dl,'cpu', 30)
+print('%2.2f' %(acc))
+
+print("")
+print("=========  Quantized-model validation accuracy ===============")
+acc = evaluation1(quantized_model_best,val_dl,'cpu', 30)
+print('%2.2f' %(acc))
+
+print("")
+print("=========  Q-trained floating point test result ===============")        
+TP_ECG_rate_taq, FP_ECG_rate_taq,x,y = evaluate(model_qta,tst_dl, device = device)
+
+print("=========  Q-trained floating point test result ===============")        
 TP_ECG_rate_taq, FP_ECG_rate_taq,x,y = evaluate(quantized_model_best,tst_dl)
 
-TP_ECG_rate_taq, FP_ECG_rate_taq,x,y = evaluate(model_qta,tst_dl)
