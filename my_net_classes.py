@@ -617,13 +617,13 @@ class Classifier_1d_6_conv_v2(nn.Module):
         
 
         self.raw = nn.Sequential(
-            SepConv1d_v4(raw_ni,  32, 8, 2, 3, drop, batch_norm, conv_type),  #out: raw_size/str
+            SepConv1d_v4(raw_ni,  32, 8, 4, 3, drop, batch_norm, conv_type),  #out: raw_size/str
 #            ConvBNReLU(raw_ni,32,(1,9)),
             SepConv1d_v4(    32,  64, 8, 4, 2, drop, batch_norm, conv_type),
             SepConv1d_v4(    64, 128, 8, 4, 2, drop, batch_norm, conv_type),
             SepConv1d_v4(   128, 256, 8, 4, 2, drop, batch_norm, conv_type),
-            SepConv1d_v4(   256, 512, 8, 4, 2, drop, batch_norm, conv_type),
-            SepConv1d_v4(   512,1024, 8, 4, 2, batch_norm = batch_norm, conv_type = conv_type)            
+#            SepConv1d_v4(   256, 512, 8, 4, 2, drop, batch_norm, conv_type),
+#            SepConv1d_v4(   512,1024, 8, 4, 2, batch_norm = batch_norm, conv_type = conv_type)            
             )
 
         self.FC = nn.Sequential(

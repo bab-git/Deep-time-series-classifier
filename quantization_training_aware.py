@@ -267,7 +267,7 @@ TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = evaluate(model, tst_dl, thres
 
   
 # %%==================================================================== 
-# ================================== Dynamic Quantization
+# ================================== Trining aware  Quantization
 # ====================================================================     
 
 def evaluation1(model_test,tst_dl, device = 'cpu', num_batch = len(tst_dl)):
@@ -296,9 +296,7 @@ model_qta = pickle.load(open('train_'+save_name+'_best.pth', 'rb'))
 device = torch.device('cuda:0')
 
 #model_qta.to('cpu')
-model_qta = model_qta.to(device)
-model_qta.eval()
-model_qta.fuse_model()
+
 
 
 #device = torch.device('cpu')
@@ -308,11 +306,8 @@ opt = torch.optim.Adam(model_qta.parameters(), lr=0.001)
 
 criterion = nn.CrossEntropyLoss (reduction = 'sum')
 
-model_qta.qconfig = torch.quantization.get_default_qat_qconfig('fbgemm')
-
-torch.quantization.prepare_qat(model_qta, inplace=True)
-
-ntrain_batches = 10000
+ntrain_batches = 200000
+n_epochs = 200
 
 
 def train_one_epoch(model, criterion, opt, trn_dl, device, ntrain_batches):
@@ -346,10 +341,19 @@ def train_one_epoch(model, criterion, opt, trn_dl, device, ntrain_batches):
                 
         if cnt >= ntrain_batches:
             print('Loss %3.3f' %(epoch_loss / cnt))
-            return
+            return epoch_loss / cnt
 
     print('Full Loss %3.3f' %(epoch_loss / cnt))
-    return
+    return epoch_loss / cnt
+
+model_qta = model_qta.to(device)
+
+e_loss0 = train_one_epoch(model_qta, criterion, opt, trn_dl, device, ntrain_batches)
+
+model_qta.eval()
+model_qta.fuse_model()
+model_qta.qconfig = torch.quantization.get_default_qat_qconfig('fbgemm')
+torch.quantization.prepare_qat(model_qta, inplace=True)
 
 print("=========  original floating point validation accuracy ===============")
 acc = evaluation1(model,val_dl,device, 30)
@@ -357,13 +361,13 @@ print('%2.2f' %(acc))
 
 print("")
 print("=========  q-prepared floating point validation accuracy ===============")
-acc = evaluation1(model_qta,val_dl,device, 30)
-print('%2.2f' %(acc))
+acc_0 = evaluation1(model_qta,val_dl,device, 30)
+print('%2.2f' %(acc_0))
 
 
-acc_0 = 0
-for nepoch in range(20):
-    train_one_epoch(model_qta, criterion, opt, trn_dl, device, ntrain_batches)    
+#acc_0 = 0
+for nepoch in range(n_epochs):
+    e_loss = train_one_epoch(model_qta, criterion, opt, trn_dl, device, ntrain_batches)
     
     if nepoch > 3:
         # Freeze quantizer parameters
@@ -378,16 +382,27 @@ for nepoch in range(20):
     quantized_model.eval()
 
 #    acc = evaluation1(quantized_model,val_dl,'cpu', 30)
+#    model_qta.to(device)
     acc = evaluation1(model_qta,val_dl,device , 30)
     
     print(', Epoch %d : accuracy = %2.2f'%(nepoch,acc))
 
     if acc > acc_0:
-        pickle.dump(model_qta,open(save_name+"qta.p",'wb'))
+        save_file = save_name+"_qta_full_train.p"
+#        save_file = save_name+"_qta.p"
+#        pickle.dump(model_qta,open(save_name+"qta_full_train.p",'wb'))
+        pickle.dump(model_qta,open(save_file,'wb'))
+        print ("file saved to :"+save_file)
+
 #        torch.jit.save(torch.jit.script(quantized_model), 'quantized_model.pth')
         quantized_model_best = quantized_model
         model_qta_best = model_qta
         acc_0 = acc
+
+    if e_loss < e_loss0:
+        print("")
+        print("original loss is reached")
+        break
 #    elif:
         
 #quantized_model_best = model_best
@@ -404,8 +419,29 @@ print('%2.2f' %(acc))
 
 print("")
 print("=========  Q-trained floating point test result ===============")        
-TP_ECG_rate_taq, FP_ECG_rate_taq,x,y = evaluate(model_qta,tst_dl, device = device)
+TP_ECG_rate_taq, FP_ECG_rate_taq,x,y = evaluate(model_qta_best,tst_dl, device = device)
 
-print("=========  Q-trained floating point test result ===============")        
+print("=========  Qquantized-model test result ===============")        
 TP_ECG_rate_taq, FP_ECG_rate_taq,x,y = evaluate(quantized_model_best,tst_dl)
+
+assert 1==2
+# %%======================= loading trained model_qta
+
+model_qta_best = pickle.load(open(save_file, 'rb'))
+model_qta_best.to('cpu')
+quantized_model_best = torch.quantization.convert(model_qta_best.eval(), inplace=False)
+quantized_model_best.eval()
+
+
+# %%========================= saving to file
+F = open("model_summary","w")
+
+print("")
+print("=================== Covolutional Neural Network Structure =========")
+print("")
+print(model, file = F)
+print("")
+#print("=================== Covolutional Neural Network Structure =========")
+
+F.close()
 
