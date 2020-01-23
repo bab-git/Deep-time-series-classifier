@@ -1,5 +1,5 @@
 
-=================== Covolutional Neural Network Structure =========
+=================== Original Covolutional Neural Network Structure =========
 Classifier_1d_6_conv_v2(
   (raw): Sequential(
     (0): SepConv1d_v4(
@@ -72,3 +72,78 @@ Classifier_1d_6_conv_v2(
   (quant): QuantStub()
   (dequant): DeQuantStub()
 )
+
+=================== Quantized Covolutional Neural Network Structure =========
+Classifier_1d_6_conv_v2(
+  (raw): Sequential(
+    (0): SepConv1d_v4(
+      (layers): Sequential(
+        (0): QuantizedConv2d(2, 2, kernel_size=(1, 8), stride=(1, 2), scale=0.8010293841362, zero_point=64, padding=(0, 3), groups=2)
+        (1): QuantizedConvReLU2d(2, 32, kernel_size=(1, 1), stride=(1, 1), scale=0.21567408740520477, zero_point=0)
+        (2): Identity()
+        (3): Identity()
+        (4): Dropout(p=0.5, inplace=False)
+      )
+    )
+    (1): SepConv1d_v4(
+      (layers): Sequential(
+        (0): QuantizedConv2d(32, 32, kernel_size=(1, 8), stride=(1, 4), scale=2.858750820159912, zero_point=57, padding=(0, 2), groups=32)
+        (1): QuantizedConvReLU2d(32, 64, kernel_size=(1, 1), stride=(1, 1), scale=0.15704436600208282, zero_point=0)
+        (2): Identity()
+        (3): Identity()
+        (4): Dropout(p=0.5, inplace=False)
+      )
+    )
+    (2): SepConv1d_v4(
+      (layers): Sequential(
+        (0): QuantizedConv2d(64, 64, kernel_size=(1, 8), stride=(1, 4), scale=0.34301891922950745, zero_point=58, padding=(0, 2), groups=64)
+        (1): QuantizedConvReLU2d(64, 128, kernel_size=(1, 1), stride=(1, 1), scale=0.15671882033348083, zero_point=0)
+        (2): Identity()
+        (3): Identity()
+        (4): Dropout(p=0.5, inplace=False)
+      )
+    )
+    (3): SepConv1d_v4(
+      (layers): Sequential(
+        (0): QuantizedConv2d(128, 128, kernel_size=(1, 8), stride=(1, 4), scale=0.3464592695236206, zero_point=58, padding=(0, 2), groups=128)
+        (1): QuantizedConvReLU2d(128, 256, kernel_size=(1, 1), stride=(1, 1), scale=0.07105939835309982, zero_point=0)
+        (2): Identity()
+        (3): Identity()
+        (4): Dropout(p=0.5, inplace=False)
+      )
+    )
+    (4): SepConv1d_v4(
+      (layers): Sequential(
+        (0): QuantizedConv2d(256, 256, kernel_size=(1, 8), stride=(1, 4), scale=0.1970493495464325, zero_point=65, padding=(0, 2), groups=256)
+        (1): QuantizedConvReLU2d(256, 512, kernel_size=(1, 1), stride=(1, 1), scale=0.06744991987943649, zero_point=0)
+        (2): Identity()
+        (3): Identity()
+        (4): Dropout(p=0.5, inplace=False)
+      )
+    )
+    (5): SepConv1d_v4(
+      (layers): Sequential(
+        (0): QuantizedConv2d(512, 512, kernel_size=(1, 8), stride=(1, 4), scale=0.21425975859165192, zero_point=64, padding=(0, 2), groups=512)
+        (1): QuantizedConvReLU2d(512, 1024, kernel_size=(1, 1), stride=(1, 1), scale=0.04504029080271721, zero_point=0)
+        (2): Identity()
+        (3): Identity()
+        (4): Dropout(p=0.2, inplace=False)
+      )
+    )
+  )
+  (FC): Sequential(
+    (0): Flatten()
+    (1): QuantizedLinearReLU(in_features=1024, out_features=128, scale=0.532891035079956, zero_point=0)
+    (2): Identity()
+    (3): Dropout(p=0.5, inplace=False)
+    (4): QuantizedLinearReLU(in_features=128, out_features=128, scale=1.2077518701553345, zero_point=0)
+    (5): Identity()
+    (6): Dropout(p=0.5, inplace=False)
+  )
+  (out): Sequential(
+    (0): QuantizedLinear(in_features=128, out_features=2, scale=0.7471520900726318, zero_point=68)
+  )
+  (quant): Quantize(scale=tensor([0.1749]), zero_point=tensor([64]), dtype=torch.quint8)
+  (dequant): DeQuantize()
+)
+

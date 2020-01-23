@@ -436,12 +436,18 @@ quantized_model_best.eval()
 # %%========================= saving to file
 F = open("model_summary","w")
 
-print("")
-print("=================== Covolutional Neural Network Structure =========")
-print("")
+print("", file = F)
+print("=================== Original Covolutional Neural Network Structure =========", file = F)
+#print("", file = F)
 print(model, file = F)
-print("")
-#print("=================== Covolutional Neural Network Structure =========")
+#print(summary(model_qta_best, input_size=(raw_feat, raw_size), batch_size = batch_size, device = 'cpu'), file = F)
+print("", file = F)
+print("=================== Quantized Covolutional Neural Network Structure =========", file = F)
+#print("", file = F)
+print(quantized_model_best, file = F)
+print("", file = F)
+
+
 
 F.close()
 

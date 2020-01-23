@@ -280,12 +280,12 @@ model.to('cpu')
 
 # ----------------- Dynamic Quantization
 
-model_qn = torch.quantization.quantize_dynamic(
+model_dqn = torch.quantization.quantize_dynamic(
         model, {nn.Linear, nn.Conv2d} , dtype= torch.qint8
         )
 
 summary(model, input_size=(raw_feat, raw_size), batch_size = batch_size, device = 'cpu')
-summary(model_qn, input_size=(raw_feat, raw_size), batch_size = batch_size, device = 'cpu')
+summary(model_dqn, input_size=(raw_feat, raw_size), batch_size = batch_size, device = 'cpu')
 
 #def print_size_of_model(model):
 #    torch.save(model.state_dict(), "temp.p")
@@ -294,13 +294,13 @@ summary(model_qn, input_size=(raw_feat, raw_size), batch_size = batch_size, devi
 
 
 #model_qn.to(device)
-model_qn.to('cpu');
+model_dqn.to('cpu');
 
 TP_ECG_rate_q, FP_ECG_rate_q, list_pred_win, elapsed = evaluate(model_qn, tst_dl)
 
 
 flops1, params = get_model_complexity_info(model, (raw_feat, raw_size), as_strings=False, print_per_layer_stat=True);
-flops_q, params_q = get_model_complexity_info(model_qn, (raw_feat, raw_size), as_strings=False, print_per_layer_stat=True);
+flops_q, params_q = get_model_complexity_info(model_dqn, (raw_feat, raw_size), as_strings=False, print_per_layer_stat=True);
 print('{:<30}  {:<8}'.format('Computational complexity: ', flops_q))
 print('{:<30}  {:<8}'.format('Number of parameters: ', params))
 
@@ -481,30 +481,31 @@ evaluation1(model,tst_dl)
 print('Post Training Quantization: Calibration done')
 
 # Convert to quantized model
-model_qn = torch.quantization.convert(model)
+model_stq = torch.quantization.convert(model)
 print('Post Training Quantization: Convert done')
 
 #print(model_qn(x_raw).shape)
 
 #evaluation1(model_qn,tst_dl)
-a = evaluate(model_qn,tst_dl)
+a = evaluate(model_stq,tst_dl)
 print('Post Training Quantization: Calibration done')
 
 
 #%%===========  per channel static quantization
 model_ch = pickle.load(open('train_'+save_name+'_best.pth', 'rb'))
-model_ch.to('cpu')
+model_ch.to(device)
 model_ch.eval()
 model_ch.fuse_model()
 model_ch.qconfig = torch.quantization.get_default_qconfig('fbgemm')
-print(model.qconfig)
+print(model_ch.qconfig)
 
-torch.quantization.prepare(model, inplace=True)
-evaluation1(model_ch,tst_dl)
-model_qn2 = torch.quantization.convert(model_ch)
+torch.quantization.prepare(model_ch, inplace=True)
+evaluation1(model_ch,tst_dl,device)
 
-evaluation1(model_qn2,tst_dl)
-TP_ECG_rate_chq, FP_ECG_rate_chq = evaluate(model_qn2,tst_dl, thresh_AF = 3)
+model_stq_ch = torch.quantization.convert(model_ch.to('cpu'))
+
+evaluation1(model_stq_ch,tst_dl)
+TP_ECG_rate_chq, FP_ECG_rate_chq = evaluate(model_stq_ch,tst_dl, thresh_AF = 3)
 
 # %%================================== Training aware quantization
 model_qta = pickle.load(open('train_'+save_name+'_best.pth', 'rb'))
