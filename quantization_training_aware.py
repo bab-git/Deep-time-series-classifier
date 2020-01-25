@@ -388,7 +388,7 @@ for nepoch in range(n_epochs):
     print(', Epoch %d : accuracy = %2.2f'%(nepoch,acc))
 
     if acc > acc_0:
-        save_file = save_name+"_qta_full_train.p"
+#        save_file = save_name+"_qta_full_train.p"
 #        save_file = save_name+"_qta.p"
 #        pickle.dump(model_qta,open(save_name+"qta_full_train.p",'wb'))
         pickle.dump(model_qta,open(save_file,'wb'))
@@ -408,6 +408,8 @@ for nepoch in range(n_epochs):
 #quantized_model_best = model_best
 #quantized_model = pickle.load(open("quantized_model.pth",'rb'))
 
+thresh_AF = 7
+
 print("=========  Q-trained floating point validation accuracy ===============")        
 acc = evaluation1(model_qta_best,val_dl,'cpu', 30)
 print('%2.2f' %(acc))
@@ -419,13 +421,14 @@ print('%2.2f' %(acc))
 
 print("")
 print("=========  Q-trained floating point test result ===============")        
-TP_ECG_rate_taq, FP_ECG_rate_taq,x,y = evaluate(model_qta_best,tst_dl, device = device)
+TP_ECG_rate_taq, FP_ECG_rate_taq,x,y = evaluate(model_qta_best,tst_dl, device = device, thresh_AF = thresh_AF)
 
 print("=========  Qquantized-model test result ===============")        
-TP_ECG_rate_taq, FP_ECG_rate_taq,x,y = evaluate(quantized_model_best,tst_dl)
+TP_ECG_rate_taq, FP_ECG_rate_taq,x,y = evaluate(quantized_model_best,tst_dl, thresh_AF = thresh_AF)
 
 assert 1==2
 # %%======================= loading trained model_qta
+save_file = save_name+"_qta_full_train.p"
 
 model_qta_best = pickle.load(open(save_file, 'rb'))
 model_qta_best.to('cpu')
