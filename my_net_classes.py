@@ -672,6 +672,53 @@ class Classifier_1d_6_conv_v2(nn.Module):
         out  = self.dequant(out)
         return out    
 
+#%% ==================   1dconv - 4 conv - 2 FC - strides 4 - subsampled
+class Classifier_1d_4_conv_2_fc_str_4_sub(nn.Module):
+    def __init__(self, raw_ni, no, raw_size, drop=.5, batch_norm = None):
+        super().__init__()
+        
+        # assert int(n_flt) == n_flt
+        flat_in = 256 * int(raw_size / (2*4*4*4*4))
+        # assert int (raw_size / (2*4**3)) == (raw_size / (2*4**3))
+        # flat_in = 256*int(n_flt)
+        
+        
+        if batch_norm:
+            self.raw = nn.Sequential(
+                nn.MaxPool1d(1, 2), # Subsampling
+                SepConv1d(raw_ni,  32, 8, 4, 2, drop=drop, batch_norm = batch_norm),  #out: raw_size/str
+                SepConv1d(    32,  64, 8, 4, 2, drop=drop, batch_norm = batch_norm),
+                SepConv1d(    64, 128, 8, 4, 2, drop=drop, batch_norm = batch_norm),
+                SepConv1d(   128, 256, 8, 4, 2, drop=drop, batch_norm = batch_norm),
+                # SepConv1d(   256, 512, 8, 4, 2, drop=drop, batch_norm = batch_norm),
+                # SepConv1d(   512,1024, 8, 4, 2, batch_norm = batch_norm),
+                # nn.MaxPool1d(2, 2),
+                Flatten(),
+                nn.Linear(flat_in, 128), nn.BatchNorm1d(num_features = 128), nn.Dropout(drop), nn.ReLU(inplace=True))    
+                # nn.Linear( 128, 128),    nn.BatchNorm1d(num_features = 128), nn.Dropout(drop), nn.ReLU(inplace=True))
+
+        else:        
+            self.raw = nn.Sequential(
+                nn.MaxPool1d(1, 2), # Subsampling
+                SepConv1d(raw_ni,  32, 8, 4, 2, drop=drop),  #out: raw_size/str
+                SepConv1d(    32,  64, 8, 4, 2, drop=drop),
+                SepConv1d(    64, 128, 8, 4, 2, drop=drop),
+                SepConv1d(   128, 256, 8, 4, 2, drop=drop),
+                # SepConv1d(   256, 512, 8, 4, 2, drop=drop),
+                # SepConv1d(   512,1024, 8, 4, 2),
+                # nn.MaxPool1d(2, 2),
+                Flatten(),
+                nn.Dropout(drop), nn.Linear(flat_in, 128), nn.ReLU(inplace=True))              
+                # nn.Dropout(drop), nn.Linear( 128, 128), nn.ReLU(inplace=True))
+        
+        self.out = nn.Sequential(
+            nn.Linear(128, no))
+        
+    def forward(self, t_raw):
+        raw_out = self.raw(t_raw)
+        out = self.out(raw_out)
+        return out    
+    
 #%% ==================   1dconv - 4 conv - 2 FC   ready to quantize
 class Classifier_1d_4_conv_v1(nn.Module):
     def __init__(self, raw_ni, no, raw_size, drop=.5, batch_norm = True, conv_type = '2d'):
@@ -679,7 +726,7 @@ class Classifier_1d_4_conv_v1(nn.Module):
         
 #        assert int(n_flt) == n_flt
 #        flat_in = 1024 * int (raw_size / (2*4*4*4*4*4))
-        flat_in = 128 * int (raw_size / ((2*2)*4*4*4))
+        flat_in = 256 * int (raw_size / (8*4*4*4))
 #        flat_in = 256 * int (raw_size / ((2)*4*4*4))
 #        assert int (raw_size / (2*4**3)) == (raw_size / (2*4**3))
 #        flat_in = 256*int(n_flt)
@@ -687,13 +734,14 @@ class Classifier_1d_4_conv_v1(nn.Module):
         
 
         self.raw = nn.Sequential(
-            SepConv1d_v4(raw_ni,  16, 8, 4, 3, drop, batch_norm, conv_type),  #out: raw_size/str
-#            SepConv1d_v4(raw_ni,  32, 4, 2, 1, drop, batch_norm, conv_type),  #out: raw_size/str
+#            SepConv1d_v4(raw_ni,  16, 8, 4, 3, drop, batch_norm, conv_type),  #out: raw_size/str
+#            SepConv1d_v4(raw_ni,  32, 8, 4, 3, drop, batch_norm, conv_type),  #out: raw_size/str        
+            SepConv1d_v4(raw_ni,  32, 16, 8, 5, drop, batch_norm, conv_type),  #out: raw_size/str
 #            nn.MaxPool2d((1,2)),
-            SepConv1d_v4(    16,  32, 8, 4, 2, drop, batch_norm, conv_type),
+#            SepConv1d_v4(    16,  32, 8, 4, 2, drop, batch_norm, conv_type),
             SepConv1d_v4(    32,  64, 8, 4, 2, drop, batch_norm, conv_type),
             SepConv1d_v4(    64, 128, 8, 4, 2, drop, batch_norm, conv_type),
-#            SepConv1d_v4(   128, 256, 8, 4, 2, drop, batch_norm, conv_type),
+            SepConv1d_v4(   128, 256, 8, 4, 2, drop, batch_norm, conv_type),
 #            SepConv1d_v4(   256, 512, 8, 4, 2, drop, batch_norm, conv_type),
 #            SepConv1d_v4(   512,1024, 8, 4, 2, batch_norm = batch_norm, conv_type = conv_type)            
             )

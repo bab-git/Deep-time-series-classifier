@@ -179,9 +179,9 @@ def stat_analysis(params,title, weight = 'weights', color = 'g'):
     print ('Average value of '+weight+': %3.7f' %(params.mean()))
     print ('Variance of '+weight+': %3.7f' %(np.std(np.array(params))))
     
-    plt.figure(figsize = (15,5))
-    n, bins, patches = plt.hist(params, 20, facecolor = color , rwidth = 0.5)
-    if max(bins) <100 and min(bins) >-100:
+    plt.figure(figsize = (25,5))
+    n, bins, patches = plt.hist(params, 30, facecolor = color , rwidth = 0.75)
+    if max(bins) <1000 and min(bins) >-1000:
 #        xbins = np.floor(bins)
 #    else:
         xbins = np.floor(bins*10)/10
@@ -273,19 +273,29 @@ x_raw, y_target = [t.to(device) for t in batch]
 model = model.to(device)
 for i in range(6):
     params = []
-    for j in range(1,4):
-#        m = model.raw[i].layers[j]
+#    for j in range(1,4):
+    for j in range(0,4):        
+#        m = model.raw[i].layers[j]        
         model.raw[i].layers[j].register_forward_hook(get_activation('hook %d_%d'%(i,j)))
+        modelb = model.raw[i].layers[:j+1]
+        if i>0:
+            modela = model.raw[:i]
+            modelb = nn.Sequential(modela,modelb)
         
-        model(x_raw)
-        act = activation['hook %d_%d'%(i,j)]
-        features = act.view(-1).to('cpu')
-        if j==1:
-            module = 'Conv.'
+        y = modelb(x_raw.unsqueeze(2))
+#        model(x_raw)
+#        act = activation['hook %d_%d'%(i,j)]
+#        features = act.view(-1).to('cpu')
+        features = y.data.view(-1).to('cpu')
+        if j==0:
+            module = 'Conv. 1'
+        elif j==1:
+            module = 'Conv. 2'
         elif j==2:
-            module = 'batch normalization.'
+            module = 'batch normalization'
         else:
             module = 'ReLU'
+            features = np.delete(features,np.where(features == 0))
             
         print('''
               
@@ -295,19 +305,25 @@ for i in range(6):
         stat_analysis(features ,"Histogram of feature-values, layer %d , "%(i+1)+module+' output', 'feature-values', color = 'b')
 
 # %%
+y_raw = model.raw(x_raw.unsqueeze(2))
 for i in [1,4]:
     params = []
     for j in range(2):
 #        m = model.raw[i].layers[j]
-        model.FC[i+j].register_forward_hook(get_activation('hook_fc %d'%(i+j)))
         
-        model(x_raw)
-        act = activation['hook_fc %d'%(i+j)]
-        features = act.view(-1).to('cpu')
+#        model.FC[i+j].register_forward_hook(get_activation('hook_fc %d'%(i+j)))
+        modela = model.FC[:i+j+1]
+        y = modela(y_raw)
+        
+#        model(x_raw)
+#        act = activation['hook_fc %d'%(i+j)]
+#        features = act.view(-1).to('cpu')
+        features = y.data.view(-1).to('cpu')
         if j==0:
             module = 'Linear layer'                
         else:
             module = 'ReLU'
+            features = np.delete(features,np.where(features == 0))
             
         print('''
               
@@ -369,6 +385,15 @@ TP: 98.77    FP: 2.81    AF_threshold = 7
 # %%-------------- Sigmoid experiment
 
 print ('''
+       
+
+       
+
+       
+
+       
+
+       
 ==============================================================================
 Replacing ReLU activation functions with Sigmoid functions (floating point):
 ==============================================================================

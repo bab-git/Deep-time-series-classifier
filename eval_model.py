@@ -27,6 +27,8 @@ from torch.nn import functional as F
 #import pickle
 #from git import Repo
 
+import option_utils
+
 import torch.quantization
 from torch.quantization import QuantStub, DeQuantStub
 
@@ -47,49 +49,23 @@ import my_net_classes
 from my_net_classes import SepConv1d, _SepConv1d, Flatten, parameters
 import torch
 import pickle
+
+from evaluation import evaluate
+
+#%% ============== options
+model, model_name   = option_utils.show_model_chooser()
+dataset, data_name  = option_utils.show_data_chooser()
+save_name           = option_utils.find_save(model_name, data_name)
+#device              = option_utils.show_gpu_chooser(default=1)
+
 # %% ================ loading data
-load_ECG =  torch.load ('raw_x_8K_sync_win2K.pt')
-#load_ECG =  torch.load ('raw_x_8K_sync.pt') 
-#load_ECG =  torch.load ('raw_x_4k_5K.pt') 
-#load_ECG =  torch.load ('raw_x_all.pt') 
+print("{:>40}  {:<8s}".format("Loading dataset:", dataset))
+
+load_ECG = torch.load(dataset)
 
 #%%===============  loading a learned model
 
-save_name ="2d_6CN_3FC_no_BN_in_FC_long"
-#save_name ="2d_6CN_3FC_no_BN_in_FC"
-#save_name = "test_full_6conv_long"
-#save_name = "test_6conv_v2"
-#save_name = "test_full_6conv"
-#save_name = "1d_6_conv_qn"
-#save_name = "1d_5conv_2FC_qn"
-#save_name = "1d_3conv_2FC_v2_seed2"
-#save_name = "1d_3conv_2FC_seed2"
-#save_name = "1d_3conv_2FC_v2_2K_win"
-#save_name = "1d_1_conv_1FC"
-#save_name = "1d_3con_2FC_2K_win"
-#save_name = "1d_6con_2K_win_2d"
-#save_name = "1d_6con_2K_win_test_30"
-#save_name = "1d_6con_b512_trim_2K_win"
-#save_name = "1d_6con_b512_trim_2K_win_s11"
-#save_name = "1d_6con_b512_trim_2K_win_s3"
-
-#save_name = "1d_6con_b512_trim_2K_seed2"
-#save_name = "1dconv_b512_t4K"
-#save_name = "1dconv_b512_drop1B"
-#save_name = "1dconv_b512_drop1"
-#save_name = "batch_512_BN_B"
-#save_name = "1dconv_b512_BNM_B"
-#save_name = "1dconv_b512_BNA_B"
-#save_name = "batch_512_BNA"
-#save_name = "batch_512_BN"
-#save_name = "batch_512_B"
-#t_stamp = "_batch_512_11_29_17_03"
-
-#save_name2 = input("Input model to load (currently "+save_name+" is selected) :")
-#if save_name2 != '':
-#    save_name = save_name2
-
-print(save_name + " is loaded.")
+print("{:>40}  {:<8s}".format("Loading model:", model_name))
 
 loaded_vars = pickle.load(open("train_"+save_name+"_variables.p","rb"))
 #loaded_file = pickle.load(open("variables"+t_stamp+".p","rb"))
@@ -97,9 +73,9 @@ loaded_vars = pickle.load(open("train_"+save_name+"_variables.p","rb"))
 
 params = loaded_vars['params']
 epoch = params.epoch
-print('epoch: %d ' % (epoch))
+print("{:>40}  {:<8d}".format("Epoch:", epoch))
 seed = params.seed
-print('seed: %d ' % (seed))
+print("{:>40}  {:<8d}".format("Seed:", seed))
 test_size = params.test_size
 np.random.seed(seed)
 t_range = params.t_range
@@ -139,115 +115,20 @@ num_classes = 2
 #device = ecg_datasets[0].tensors[0].device
 #device = torch.device('cuda:4' if torch.cuda.is_available() else 'cpu')
 
-#---------------------  Evaluation function
-def evaluate(model, tst_dl, thresh_AF = 3, device = 'cpu'):
-    model.to(device)
-    s = time.time()
-    model.eval()
-    correct, total , total_P, = 0, 0, 0
-#    TP , FP = 0,0
-    
-    batch = []
-    i_error = []
-    list_pred = []
-    with torch.no_grad():
-        for i_batch, batch in enumerate(tst_dl):
-            x_raw, y_batch = [t.to(device) for t in batch]
-            list_x = list(range(i_batch*tst_dl.batch_size,min((i_batch+1)*tst_dl.batch_size,len(tst_ds))))
-        #    x_raw, y_batch = [t.to(device) for t in batch]
-        #    x_raw, y_batch = tst_ds.tensors
-            #x_raw, y_batch = [t.to(device) for t in val_ds.tensors]
-            out = model(x_raw)
-            preds = F.log_softmax(out, dim = 1).argmax(dim=1)
-        #    preds = F.log_softmax(out, dim = 1).argmax(dim=1).to('cpu')
-            list_pred = np.append(list_pred,preds.tolist())
-        #    list_pred = np.append(list_pred,preds.tolist())
-            total += y_batch.size(0)
-            correct += (preds ==y_batch).sum().item()    
-        #    i_error = np.append(i_error,np.where(preds !=y_batch))
-            i_error = np.append(i_error,[list_x[i] for i in np.where((preds !=y_batch).to('cpu'))[0]])
-        #    TP += ((preds ==y_batch) & (1 ==y_batch)).sum().item()
-        #    total_P += (1 ==y_batch).sum().item()
-        #    FP += ((preds !=y_batch) & (0 ==y_batch)).sum().item()
-
-    elapsed = time.time() - s
-    print('''elapsed time (seconds): {0:.2f}'''.format(elapsed))
-        
-    acc = correct / total * 100
-    #TP_rate = TP / total_P *100
-    #FP_rate = FP / (total-total_P) *100
-    
-    print('Accuracy on all windows of test data:  %2.2f' %(acc))
-    
-    #TP_rate = TP / (1 ==y_batch).sum().item() *100
-    #FP_rate = FP / (0 ==y_batch).sum().item() *100
-    
-    
-    win_size = (data_tag==0).sum()
-    # thresh_AF = win_size /2
-    # thresh_AF = 3
-    
-    list_ECG = np.unique([data_tag[i] for i in tst_idx])
-    #list_ECG = np.unique([data_tag[i] for i in tst_idx if target[i] == label])
-    #len(list_error_ECG)/8000*100
-    
-    TP_ECG, FP_ECG , total_P, total_N = np.zeros(4)
-    list_pred_win = 100*np.ones([len(list_ECG), win_size])
-    for i_row, i_ecg in enumerate(list_ECG):
-        list_win = np.where(data_tag==i_ecg)[0]
-        pred_win = [list_pred[tst_idx.index(i)] for i in list_win]
-    #    print(pred_win)
-        list_pred_win[i_row,:] = pred_win    
-                            
-        if i_ecg >8000:   #AF
-            total_P +=1
-            if (np.array(pred_win)==1).sum() >= thresh_AF:
-                TP_ECG += 1                    
-        else:         # normal
-            total_N +=1
-            if (np.array(pred_win)==1).sum() >= thresh_AF:
-                FP_ECG += 1
-                
-        
-    #TP_ECG_rate = TP_ECG / len(list_ECG) *100
-    TP_ECG_rate = TP_ECG / total_P *100
-    FP_ECG_rate = FP_ECG / total_N *100
-    
-    
-    print("Threshold for detecting AF: %d" % (thresh_AF))
-    print("TP rate: %2.3f" % (TP_ECG_rate))
-    print("FP rate: %2.3f" % (FP_ECG_rate))
-    
-    return TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed
-#print('True positives on test data:  %2.2f' %(TP_rate))
-#print('False positives on test data:  %2.2f' %(FP_rate))
-#------------------------------------------  
-
 # %%
 
-#model = my_net_classes.Classifier_1d_1_conv_1FC(raw_feat, num_classes, raw_size).to(device)
-#model = my_net_classes.Classifier_1d_3_conv_2FC_v2(raw_feat, num_classes, raw_size).to(device)
-#model = my_net_classes.Classifier_1d_3_conv_2FC(raw_feat, num_classes, raw_size, batch_norm = True, conv_type = '2d').to(device)
-#model = my_net_classes.Classifier_1d_5_conv_v2(raw_feat, num_classes, raw_size).to(device)
-#model = my_net_classes.Classifier_1d_6_conv_v2(raw_feat, num_classes, raw_size).to(device)
-#model = my_net_classes.Classifier_1d_6_conv(raw_feat, num_classes, raw_size).to(device)
-#model = my_net_classes.Classifier_1d_6_conv_ver1(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
-#model = my_net_classes.Classifier_1d_6_conv(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
-#model = my_net_classes.Classifier_1dconv(raw_feat, num_classes, raw_size).to(device)
-#model = my_net_classes.Classifier_1dconv(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
-#model = my_net_classes.Classifier_1dconv_BN(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
+model = model(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
 
-
-#model.load_state_dict(torch.load("train_"+save_name+'_best.pth', map_location=lambda storage, loc: storage))
+if torch.cuda.is_available():
+    model.load_state_dict(torch.load("train_"+save_name+'_best.pth', map_location=lambda storage, loc: storage.cuda(device)))
+else:
+    model.load_state_dict(torch.load("train_"+save_name+'_best.pth', map_location=lambda storage, loc: storage))
     
-model = pickle.load(open('train_'+save_name+'_best.pth', 'rb'))
-
-#model = Classifier_1dconv(raw_feat, num_classes, raw_size/(2*4**3)).to(device)
-#model.load_state_dict(torch.load("train_"+save_name+'_best.pth'))
+#model = pickle.load(open('train_'+save_name+'_best.pth', 'rb'))
 
 thresh_AF = 3
 
-TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = evaluate(model, tst_dl, thresh_AF = thresh_AF)
+TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, device = device)
 
 #pickle.dump((TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed),open(save_name+"result.p","wb"))
 
