@@ -56,14 +56,47 @@ from evaluation import evaluate
 model, model_name   = option_utils.show_model_chooser()
 dataset, data_name  = option_utils.show_data_chooser()
 save_name           = option_utils.find_save(model_name, data_name)
-#device              = option_utils.show_gpu_chooser(default=1)
+if save_name == 'NONE':
+    save_name ="2d_6CN_3FC_no_BN_in_FC_long"
+    #save_name ="2d_6CN_3FC_no_BN_in_FC"
+    #save_name = "test_full_6conv_long"
+    #save_name = "test_6conv_v2"
+    #save_name = "test_full_6conv"
+    #save_name = "1d_6_conv_qn"
+    #save_name = "1d_5conv_2FC_qn"
+    #save_name = "1d_3conv_2FC_v2_seed2"
+    #save_name = "1d_3conv_2FC_seed2"
+    #save_name = "1d_3conv_2FC_v2_2K_win"
+    #save_name = "1d_1_conv_1FC"
+    #save_name = "1d_3con_2FC_2K_win"
+    #save_name = "1d_6con_2K_win_2d"
+    #save_name = "1d_6con_2K_win_test_30"
+    #save_name = "1d_6con_b512_trim_2K_win"
+    #save_name = "1d_6con_b512_trim_2K_win_s11"
+    #save_name = "1d_6con_b512_trim_2K_win_s3"
+    #save_name = "1d_6con_b512_trim_2K_seed2"
+    #save_name = "1dconv_b512_t4K"
+    #save_name = "1dconv_b512_drop1B"
+    #save_name = "1dconv_b512_drop1"
+    #save_name = "batch_512_BN_B"
+    #save_name = "1dconv_b512_BNM_B"
+    #save_name = "1dconv_b512_BNA_B"
+    #save_name = "batch_512_BNA"
+    #save_name = "batch_512_BN"
+    #save_name = "batch_512_B"
+    #t_stamp = "_batch_512_11_29_17_03"
 
+print("{:>40}  {:<8s}".format("Selected experiment:", save_name))
+
+#device              = option_utils.show_gpu_chooser(default=1)
+cuda_num = 0   # export CUDA_VISIBLE_DEVICES=x
+device = torch.device('cuda:'+str(cuda_num) if torch.cuda.is_available() and cuda_num != 'cpu' else 'cpu')
 # %% ================ loading data
 print("{:>40}  {:<8s}".format("Loading dataset:", dataset))
 
 load_ECG = torch.load(dataset)
 
-#%%===============  loading a learned model
+#%%===============  loading experiment's parameters and batches
 
 print("{:>40}  {:<8s}".format("Loading model:", model_name))
 
@@ -81,9 +114,9 @@ np.random.seed(seed)
 t_range = params.t_range
 
 #cuda_num = input("cuda number:")
-cuda_num = 0   # export CUDA_VISIBLE_DEVICES=x
+#cuda_num = 0   # export CUDA_VISIBLE_DEVICES=x
 
-device = torch.device('cuda:'+str(cuda_num) if torch.cuda.is_available() and cuda_num != 'cpu' else 'cpu')
+#device = torch.device('cuda:'+str(cuda_num) if torch.cuda.is_available() and cuda_num != 'cpu' else 'cpu')
 #device = torch.device('cpu')
 
 raw_x = load_ECG['raw_x']
