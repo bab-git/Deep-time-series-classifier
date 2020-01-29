@@ -6,6 +6,7 @@ import my_net_classes as net
 
 models = [
     (net.Classifier_1d_6_conv_v2,                       "2d_6CN_3FC_no_BN_in_FC"), #"1dconv - 6 conv - 3 FC with dropout after relu + BN2d"
+    (net.Classifier_1d_4c_2fc_sub_qr,                    "1d_4c_2fc_sub2_qr"),  #sub-sample 2 -  1dconv - 4 conv - 2 FC   ready to quantize  - drop after relu + BN2d
 #    (net.Classifier_4c_2f_k1_16_s1_8_sub,               "4c_2f_k16888_s8444_sub"),
 #    (net.Classifier_4c_2f_s1_2_k1_4_p1_2_half_chan_sub, "4c_2f_k4888_s2444_p2000_halfchan_sub"),
 #    (net.Classifier_1d_4_conv_2_fc_str_4_half_chan_sub, "4con_2fc_str_4_halfchan_sub"),

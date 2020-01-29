@@ -68,7 +68,8 @@ model_cls, model_name   = option_utils.show_model_chooser()
 dataset, data_name  = option_utils.show_data_chooser()
 save_name           = option_utils.find_save(model_name, data_name)
 if save_name == 'NONE':
-    save_name ="2d_6CN_3FC_no_BN_in_FC_long"
+    save_name = "1d_4c_2fc_sub2_qr"
+#    save_name ="2d_6CN_3FC_no_BN_in_FC_long"
     #save_name ="2d_6CN_3FC_no_BN_in_FC"
     #save_name = "test_full_6conv_long"
     #save_name = "test_6conv_v2"
@@ -102,6 +103,7 @@ print("{:>40}  {:<8s}".format("Selected experiment:", save_name))
 #device              = option_utils.show_gpu_chooser(default=1)
 cuda_num = 0   # export CUDA_VISIBLE_DEVICES=x
 device = torch.device('cuda:'+str(cuda_num) if torch.cuda.is_available() and cuda_num != 'cpu' else 'cpu')
+torch.cuda.device(cuda_num)
 # %% ================ loading data
 print("{:>40}  {:<8s}".format("Loading dataset:", dataset))
 
@@ -170,14 +172,102 @@ thresh_AF = 5
 TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, device = device)
 
 # %% ================== Pruning
+from  prunning_class import PrunningFineTuner
+print('''class loaded 
+      
+''')
 
 fine_tuner = PrunningFineTuner(trn_dl, val_dl, model)
 
-fine_tuner.prune()
+prune_targets = fine_tuner.prune()
+
+#layers_prunned = {}
+#for layer_index, filter_index in prune_targets:
+#    print(layer_index, filter_index)
+#    
+#    if layer_index not in layers_prunned:
+#        layers_prunned[layer_index] = 0
+#    layers_prunned[layer_index] = layers_prunned[layer_index] + 1 
+
+
+
+# %%
+#assert 1==1
+
+i_batch, batch = next(enumerate(trn_dl))
+x_raw, y_target = batch
+x = x_raw
+#for layer, module in enumerate(model.modules()):
+
+
+#self = []
+activations = []
+gradients = []
+grad_index = 0
+activation_to_layer = {}
+
+model.train()
+layer = 1
+x = x_raw.cpu().unsqueeze(2)
+module = model.raw[0]
+x = module(x)
+for i_layer in range(1,5):  #4c2fc    
+    for (name,module) in model.raw[i_layer].layers._modules.items():
+        layer += 1
+        print (layer," ",module)
+        x = module(x)
+        if type(module) == nn.Conv1d or type(module) == nn.Conv2d:
+            assert 1==2
+            x.register_hook(self.compute_rank)
+#            print (i_layer," ",module)
+            print (" ")
+            
+            activation_index = len(activations) - grad_index - 1
+        	activation = activations[activation_index]
+        	values = \
+        		torch.sum((activation * grad), dim = 0).\
+        			sum(dim=2).sum(dim=3)[0, :, 0, 0].data
 
 
 
 
+
+
+
+
+
+
+
+
+
+
+x = torch.randn(1, 1)
+w = torch.randn(1, 1, requires_grad=True)
+w.register_hook(lambda x: print(x))
+y = torch.randn(1, 1)
+
+out = x * w
+loss = (out - y)**2
+loss.register_hook(lambda x: print(x))
+#loss.mean().backward(gradient=torch.tensor([0.1]))  # prints the gradient in w and loss
+loss.mean().backward()  # prints the gradient in w and loss
+print("")
+
+
+#model.eval()
+#y1 = model.raw(x_raw.cpu().unsqueeze(2))
+#y2 = x
+#torch.norm(y1.data-y2.data, p=2)
+
+
+#model.out    
+#    print ()
+#    x = module(x)
+#    if type(module) == nn.Conv1d or type(module) == nn.Conv2d:
+#        print (layer,"  ", name,"  ", module)
+#        print (" ")
+            
+ 
 #utput = self.model(Variable(batch))
 #            pred = output.data.max(1)[1]
 #            correct += pred.cpu().eq(label).sum()
