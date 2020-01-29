@@ -11,7 +11,7 @@ models = [
 #    (net.Classifier_1d_4_conv_2_fc_str_4_half_chan_sub, "4con_2fc_str_4_halfchan_sub"),
 #    (net.Classifier_1d_4_conv_2_fc_str_4_k_4_sub,       "4con_2fc_str_4_k_4_sub"),
     (net.Classifier_1d_4_conv_2_fc_str_4_sub,           "4con_2fc_str_4_sub"),
-#    (net.Classifier_1d_4_conv_1_pool_2_fc_str_4,        "4con_1pool_2fc_str_4"),
+    (net.Classifier_1d_4_conv_1_pool_2_fc_str_4,        "4con_1pool_2fc_str_4"),
 #    (net.Classifier_1d_5_conv_2_fc_str_4_1out,          "5con_2fc_str_4_1out"),
 #    (net.Classifier_1d_5_conv_2_fc_str_4_sigm_1out,     "5con_2fc_str_4_sigm_1out"),
 #    (net.Classifier_1d_5_conv_2_fc_str_4_sigm_2out,     "5con_2fc_str_4_sigm_2out"),

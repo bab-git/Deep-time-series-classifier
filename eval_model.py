@@ -27,8 +27,6 @@ from torch.nn import functional as F
 #import pickle
 #from git import Repo
 
-import option_utils
-
 import torch.quantization
 from torch.quantization import QuantStub, DeQuantStub
 
@@ -51,9 +49,11 @@ import torch
 import pickle
 
 from evaluation import evaluate
+import option_utils
+
 
 #%% ============== options
-model, model_name   = option_utils.show_model_chooser()
+model_cls, model_name   = option_utils.show_model_chooser()
 dataset, data_name  = option_utils.show_data_chooser()
 save_name           = option_utils.find_save(model_name, data_name)
 if save_name == 'NONE':
@@ -150,7 +150,7 @@ num_classes = 2
 
 # %%
 
-model = model(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
+model = model_cls(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
 
 if torch.cuda.is_available():
     model.load_state_dict(torch.load("train_"+save_name+'_best.pth', map_location=lambda storage, loc: storage.cuda(device)))
@@ -165,7 +165,7 @@ TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = evaluate(model, tst_dl, tst_i
 
 #pickle.dump((TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed),open(save_name+"result.p","wb"))
 
-
+assert 1==2
 #%% ------------------------- visualize training curve
 f, ax = plt.subplots(1,2, figsize=(12,4))    
 ax[0].plot(loss_history, label = 'loss')
