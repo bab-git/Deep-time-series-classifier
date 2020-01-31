@@ -25,7 +25,7 @@ from operator import itemgetter
 from heapq import nsmallest
 #import time
 
-
+import numpy as np
 
 #=====================
 class FilterPrunner:
@@ -46,19 +46,21 @@ class FilterPrunner:
         activation_index = 0
 #        for layer, (name, module) in enumerate (self.model.raw.modules()):
 #        for layer, module in enumerate(self.model.raw.modules()):
-        layer = 1
+        layer = 0
         x = x.unsqueeze(2)
         module = self.model.raw[0]
-        x = module(x)
+        x =module(x)
         for i_layer in range(1,5):              #4c2fc_sub2
             for (name,module) in self.model.raw[i_layer].layers._modules.items():
                 layer += 1
                 x = module(x)
-                if type(module) == nn.Conv1d or type(module) == nn.Conv2d:                
+#                modules = np.append(modules, module)
+                if (type(module) == nn.Conv1d or type(module) == nn.Conv2d) and module.in_channels != module.out_channels:
                     x.register_hook(self.compute_rank)
                     self.activations.append(x)
                     self.activation_to_layer[activation_index] = layer
                     activation_index += 1
+#        self.modules = modules
         return nn.Sequential(self.model.FC,self.model.out)(x.view(x.size(0), -1))
           
     
@@ -238,7 +240,7 @@ class PrunningFineTuner:
         for i_iter in range(iterations):
             print("Ranking filters...  iteration: ",i_iter)
             prune_targets = self.get_candidates_to_prune(num_filters_to_prune_per_iteration)
-            return prune_targets
+            
         
             layers_prunned = {}
             for layer_index, filter_index in prune_targets:
@@ -252,7 +254,9 @@ class PrunningFineTuner:
             
 #            for layer_index, filter_index in prune_targets:
 #                model = prune_vgg16_conv_layer(model, layer_index, filter_index, use_cuda=args.use_cuda)
-#
+#           
+            return prune_targets
+            
             self.model = model
             if torch.cuda.is_available():
                 self.model = self.model.cuda()

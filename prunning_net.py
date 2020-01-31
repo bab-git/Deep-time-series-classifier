@@ -41,6 +41,8 @@ from torchsummary import summary
 
 #from git import Repo
 
+import copy
+
 import option_utils
 
 import pickle
@@ -158,6 +160,7 @@ num_classes = 2
 # %%   loading the pre-trained model
 
 model = model_cls(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
+model0 = copy.deepcopy(model)
 
 try:
     if torch.cuda.is_available():
@@ -172,6 +175,9 @@ thresh_AF = 5
 TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, device = device)
 
 # %% ================== Pruning
+model = model_cls(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
+
+
 from  prunning_class import PrunningFineTuner
 print('''class loaded 
       
@@ -181,6 +187,15 @@ fine_tuner = PrunningFineTuner(trn_dl, val_dl, model)
 
 prune_targets = fine_tuner.prune()
 
+layer_history = []
+for layer_index, filter_index in prune_targets:    
+    if layer_index not in layer_history:
+        print("prunning layer:" , layer_index)
+        layer_history.append(layer_index)
+    model = prune_conv_layers(model, layer_index, filter_index)
+
+model(x_raw).shape    
+                
 #layers_prunned = {}
 #for layer_index, filter_index in prune_targets:
 #    print(layer_index, filter_index)
