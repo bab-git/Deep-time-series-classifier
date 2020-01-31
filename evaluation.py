@@ -47,6 +47,7 @@ def evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = 3, device = 'cpu'):
     #TP_rate = TP / (1 ==y_batch).sum().item() *100
     #FP_rate = FP / (0 ==y_batch).sum().item() *100
     
+    print("{:>40}  {:<8.2f}".format("Accuracy on all windows of test data:", acc))
     
     win_size = (data_tag==0).sum()
     # thresh_AF = win_size /2
@@ -80,7 +81,7 @@ def evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = 3, device = 'cpu'):
     
     flops, params = get_model_complexity_info(model, input_shape, as_strings=False, print_per_layer_stat=False)
 
-    print("{:>40}  {:<8.2f}".format("Accuracy on all windows of test data:", acc))
+#    print("{:>40}  {:<8.2f}".format("Accuracy on all windows of test data:", acc))
     
     print("{:>40}  {:<8d}".format("Threshold for detecting AF:", thresh_AF))
     print("{:>40}  {:<8.3f}".format("TP rate:", TP_ECG_rate))

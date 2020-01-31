@@ -175,7 +175,8 @@ thresh_AF = 5
 TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, device = device)
 
 # %% ================== Pruning
-model = model_cls(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
+model = pickle.load(open('train_'+save_name+'_best.pth', 'rb'))
+#TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, device = device)
 
 
 from  prunning_class import PrunningFineTuner
@@ -185,16 +186,25 @@ print('''class loaded
 
 fine_tuner = PrunningFineTuner(trn_dl, val_dl, model)
 
+#model_prunned = fine_tuner.prune()
 prune_targets = fine_tuner.prune()
 
-layer_history = []
-for layer_index, filter_index in prune_targets:    
-    if layer_index not in layer_history:
-        print("prunning layer:" , layer_index)
-        layer_history.append(layer_index)
-    model = prune_conv_layers(model, layer_index, filter_index)
+#layer_history = []
+#for layer_index, filter_index in prune_targets:
+#    if layer_index not in layer_history:
+#        print("prunning layer:" , layer_index)
+#        layer_history.append(layer_index)
+#    model = prune_conv_layers(model, layer_index, filter_index)
 
-model(x_raw).shape    
+#layer_index, filter_index = prune_targets[0]
+    
+#model(x_raw).shape
+ 
+#model = prune_conv_layers(model, layer_index, filter_index)
+
+TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, device = device)
+
+
                 
 #layers_prunned = {}
 #for layer_index, filter_index in prune_targets:
@@ -209,39 +219,39 @@ model(x_raw).shape
 # %%
 #assert 1==1
 
-i_batch, batch = next(enumerate(trn_dl))
-x_raw, y_target = batch
-x = x_raw
-#for layer, module in enumerate(model.modules()):
-
-
-#self = []
-activations = []
-gradients = []
-grad_index = 0
-activation_to_layer = {}
-
-model.train()
-layer = 1
-x = x_raw.cpu().unsqueeze(2)
-module = model.raw[0]
-x = module(x)
-for i_layer in range(1,5):  #4c2fc    
-    for (name,module) in model.raw[i_layer].layers._modules.items():
-        layer += 1
-        print (layer," ",module)
-        x = module(x)
-        if type(module) == nn.Conv1d or type(module) == nn.Conv2d:
-            assert 1==2
-            x.register_hook(self.compute_rank)
-#            print (i_layer," ",module)
-            print (" ")
-            
-            activation_index = len(activations) - grad_index - 1
-        	activation = activations[activation_index]
-        	values = \
-        		torch.sum((activation * grad), dim = 0).\
-        			sum(dim=2).sum(dim=3)[0, :, 0, 0].data
+#i_batch, batch = next(enumerate(trn_dl))
+#x_raw, y_target = batch
+#x = x_raw
+##for layer, module in enumerate(model.modules()):
+#
+#
+##self = []
+#activations = []
+#gradients = []
+#grad_index = 0
+#activation_to_layer = {}
+#
+#model.train()
+#layer = 1
+#x = x_raw.cpu().unsqueeze(2)
+#module = model.raw[0]
+#x = module(x)
+#for i_layer in range(1,5):  #4c2fc    
+#    for (name,module) in model.raw[i_layer].layers._modules.items():
+#        layer += 1
+#        print (layer," ",module)
+#        x = module(x)
+#        if type(module) == nn.Conv1d or type(module) == nn.Conv2d:
+#            assert 1==2
+#            x.register_hook(self.compute_rank)
+##            print (i_layer," ",module)
+#            print (" ")
+#            
+#            activation_index = len(activations) - grad_index - 1
+#        	activation = activations[activation_index]
+#        	values = \
+#        		torch.sum((activation * grad), dim = 0).\
+#        			sum(dim=2).sum(dim=3)[0, :, 0, 0].data
 
 
 

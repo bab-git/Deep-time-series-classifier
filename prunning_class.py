@@ -19,13 +19,15 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 #import dataset
-#from prune import *
+from prune import *
 #import argparse
 from operator import itemgetter
 from heapq import nsmallest
 #import time
 
 import numpy as np
+
+import pickle
 
 #=====================
 class FilterPrunner:
@@ -251,11 +253,12 @@ class PrunningFineTuner:
             print("Layers that will be prunned", layers_prunned)
             print("Prunning filters.. ")
             model = self.model.cpu()
+
+#            return prune_targets
             
-#            for layer_index, filter_index in prune_targets:
-#                model = prune_vgg16_conv_layer(model, layer_index, filter_index, use_cuda=args.use_cuda)
+            for layer_index, filter_index in prune_targets:
+                model = prune_conv_layers(model, layer_index, filter_index)
 #           
-            return prune_targets
             
             self.model = model
             if torch.cuda.is_available():
@@ -270,6 +273,15 @@ class PrunningFineTuner:
 #            optimizer = optim.SGD(self.model.parameters(), lr=0.001, momentum=0.9)
             optimizer = optim.Adam(self.model.parameters(), lr = 0.001)
             self.train(optimizer, epoches = 10)    
+            
+            self.test()
+            
+            return self.model
+    
+        print("Finished. Going to fine tune the model a bit more")
+        self.train(optimizer, epoches=15)
+#        torch.save(model.state_dict(), "model_prunned")
+        pickle.dump(model,open('model_prunned.pth','wb'))
     
     
 # %% test
