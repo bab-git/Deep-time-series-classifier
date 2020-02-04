@@ -31,10 +31,11 @@ import pickle
 
 #=====================
 class FilterPrunner:
-    def __init__(self, model, device):
+    def __init__(self, model, device, FC_prune):
         self.model = model
         self.device = device
         self.reset()
+        self. FC_prune = FC_prune
         
     def reset(self):
         self.filter_ranks = {}
@@ -45,7 +46,7 @@ class FilterPrunner:
         self.grad_index = 0
         self.activation_to_layer = {}
         
-        activation_index = 0
+        activation_index = 0 
 #        for layer, (name, module) in enumerate (self.model.raw.modules()):
 #        for layer, module in enumerate(self.model.raw.modules()):
         layer = 0
@@ -57,8 +58,8 @@ class FilterPrunner:
                 layer += 1
                 x = module(x)
 #                if i_layer ==4:
-                    print("module", module)
-                    print("activation size", x.shape)
+#                print("module", module)
+#                print("activation size", x.shape)
 #                modules = np.append(modules, module)
                 if (type(module) == nn.Conv1d or type(module) == nn.Conv2d) and module.in_channels != module.out_channels:
                     x.register_hook(self.compute_rank)
@@ -146,6 +147,7 @@ class PrunningFineTuner:
         self.epch_tr = epch_tr
         self.filter_per_iter = filter_per_iter
         self.save_name_pr = save_name_pr
+        self.FC_prune = False
         
         self.device = device
         if torch.cuda.is_available():
@@ -153,7 +155,7 @@ class PrunningFineTuner:
         
         self.model = model        
         self.criterion = nn.CrossEntropyLoss (reduction = 'sum')
-        self.prunner = FilterPrunner(self.model, self.device) 
+        self.prunner = FilterPrunner(self.model, self.device, self.FC_prune) 
         self.model.train()
         
     def test(self):
@@ -191,14 +193,13 @@ class PrunningFineTuner:
             self.train_epoch(optimizer)
             self.test()
             if self.acc > self.model.best_acc:
-                self.model.best_acc = acc
-                print("best accuracy updates")
+                self.model.best_acc = self.acc
+                print("best accuracy updated")
                 pickle.dump(self.model,open("train_"+self.save_name_pr+"_best.pth",'wb'))
         
         self.model = pickle.load(open("train_"+self.save_name_pr+"_best.pth",'rb'))
         self.test()
         print("Finished fine tuning.")
-
     
     def train_epoch(self, optimizer = None, rank_filters = False):
         for i, (batch, label) in enumerate(self.train_data_loader):
@@ -225,14 +226,21 @@ class PrunningFineTuner:
     def total_num_filters(self):
         filters = 0
         for module in self.model.modules():
-            if isinstance(module, torch.nn.modules.conv.Conv2d) or isinstance(module, torch.nn.modules.conv.Conv1d):
-                filters = filters + module.out_channels
+            if self.FC_prune == False:
+                if isinstance(module, torch.nn.modules.conv.Conv2d) or isinstance(module, torch.nn.modules.conv.Conv1d):
+                    filters = filters + module.out_channels
+            else:
+                print("not sure")                                
         return filters            
         
     
     def get_candidates_to_prune(self, num_filters_to_prune):
         self.prunner.reset()
         self.train_epoch(rank_filters = True)
+        if self.prunner.filter_ranks[3].size(0) > self.model.raw[4].layers[1].weight.data.size(0):
+            print("num ranked filters > num filters")
+            assert 1==2
+            
         self.prunner.normalize_ranks_per_layer()
         return self.prunner.get_prunning_plan(num_filters_to_prune)
 
@@ -255,7 +263,7 @@ class PrunningFineTuner:
         
         iterations = int(iterations * 2.0 / 3)
         
-        print("Number of prunning iterations to reduce ??% filters: ", iterations)
+        print("Number of prunning iterations to reduce 66% filters: ", iterations)
                         
         for i_iter in range(iterations):
             print("Ranking filters...  iteration: ",i_iter)
@@ -270,15 +278,16 @@ class PrunningFineTuner:
 #
             print("Layers that will be prunned", layers_prunned)
             print("Prunning filters.. ")
-            model = self.model.cpu()
+            model = self.model
+#            model = self.model.cpu()
 
 #            return prune_targets
             
             for layer_index, filter_index in prune_targets:
                 model = prune_conv_layers(model, layer_index, filter_index)
 #           
-            if i_iter == 4:
-                return self.model            
+#            if i_iter == 4:
+#                return self.model            
         
             self.model = model
             if torch.cuda.is_available():
@@ -302,6 +311,76 @@ class PrunningFineTuner:
         self.train(optimizer, epoches=15)
 #        torch.save(model.state_dict(), "model_prunned")
         pickle.dump(model,open('model_prunned.pth','wb'))
+        
+
+    def prune_FC(self):
+        #Get the accuracy before prunning
+        self.test()
+        self.model.train()
+        self.FC_prune = True
+        epch_tr = self.epch_tr
+        filter_per_iter = self.filter_per_iter
+        
+        #Make sure all the layers are trainable
+        for param in self.model.parameters():
+            param.requires_grad = True
+            
+        number_of_filters = self.total_num_filters()
+        
+        num_filters_to_prune_per_iteration = filter_per_iter
+        
+        iterations = int(float(number_of_filters) / num_filters_to_prune_per_iteration)
+        
+        iterations = int(iterations * 2.0 / 3)
+        
+        print("Number of prunning iterations to reduce 66% filters: ", iterations)
+                        
+        for i_iter in range(iterations):
+            print("Ranking filters...  iteration: ",i_iter)
+            prune_targets = self.get_candidates_to_prune(num_filters_to_prune_per_iteration)
+            
+        
+            layers_prunned = {}
+            for layer_index, filter_index in prune_targets:
+                if layer_index not in layers_prunned:
+                    layers_prunned[layer_index] = 0
+                layers_prunned[layer_index] = layers_prunned[layer_index] + 1 
+#
+            print("Layers that will be prunned", layers_prunned)
+            print("Prunning filters.. ")
+            model = self.model
+#            model = self.model.cpu()
+
+#            return prune_targets
+            
+            for layer_index, filter_index in prune_targets:
+                model = prune_conv_layers(model, layer_index, filter_index)
+#           
+#            if i_iter == 4:
+#                return self.model            
+        
+            self.model = model
+            if torch.cuda.is_available():
+                self.model = self.model.cuda()
+#
+            message = 100 - (100*float(self.total_num_filters()) / number_of_filters)
+            print("Filters prunned %2.2f" %(message), "%")
+            
+            self.test()
+            
+            print("Fine tuning to recover from prunning iteration.")
+#            optimizer = optim.SGD(self.model.parameters(), lr=0.001, momentum=0.9)
+            optimizer = optim.Adam(self.model.parameters(), lr = 0.001)
+            self.train(optimizer, epoches = epch_tr)
+            
+            self.test()            
+            pickle.dump(model,open(self.save_name_pr+"_iter_"+str(i_iter)+'.pth','wb'))
+#            return self.model
+    
+        print("Finished. Going to fine tune the model a bit more")
+        self.train(optimizer, epoches=15)
+#        torch.save(model.state_dict(), "model_prunned")
+        pickle.dump(model,open('model_prunned.pth','wb'))        
     
     
 # %% test

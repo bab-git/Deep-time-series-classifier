@@ -63,7 +63,7 @@ import pickle
 
 from evaluation import evaluate
 
-from  prunning_class import PrunningFineTuner
+from  prunning_class import PrunningFineTuner, prune_conv_layers
 
 #%% ============== options
 model_cls, model_name   = option_utils.show_model_chooser()
@@ -197,25 +197,50 @@ thresh_AF = 5
 #TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, device = device)
 
 # %% ================== Pruning
-model = pickle.load(open('train_'+save_name+'_best.pth', 'rb'))
-#TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, device = device)
-
-#prunned_1d_4c_2fc_sub2_qr_1fPi_20tpoch_bacc_iter_53
-
 save_name_pr = "prunned_"+save_name+"_"+str(filter_per_iter)+"fPi_"+str(epch_tr)+"tpoch"+suffix
 
-#prunned_1d_4c_2fc_sub2_qr_1fPi_20tpoch_bacc_iter_53
-
-from  prunning_class import PrunningFineTuner
-print('''class loaded 
-      
-''')
-
-epch_tr = 2
-filter_per_iter = 1
 fine_tuner = PrunningFineTuner(trn_dl, val_dl, model, epch_tr = epch_tr, filter_per_iter = filter_per_iter, save_name_pr = save_name_pr)
 
 model_prunned = fine_tuner.prune()
+
+TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = evaluate(model_prunned, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, device = device)
+
+assert 1==2
+
+# %% developement
+model = pickle.load(open('train_'+save_name+'_best.pth', 'rb'))
+
+fine_tuner = PrunningFineTuner(trn_dl, val_dl, model, epch_tr = epch_tr, filter_per_iter = filter_per_iter, save_name_pr = save_name_pr)
+
+fine_tuner.test()
+fine_tuner.model.train()
+
+#Make sure all the layers are trainable
+for param in fine_tuner.model.parameters():
+    param.requires_grad = True
+                
+for i in range(5):
+    prune_targets = fine_tuner.get_candidates_to_prune(1)
+    print("last layer filter ranks size:", fine_tuner.prunner.filter_ranks[3].shape)
+    print("prune_targets: ", prune_targets)
+    model = fine_tuner.model
+    
+    for layer_index, filter_index in prune_targets:
+        layer_index = 17
+        model = prune_conv_layers(model, layer_index, filter_index)
+        fine_tuner.model = model
+
+
+#prunned_1d_4c_2fc_sub2_qr_1fPi_20tpoch_bacc_iter_53
+
+#from  prunning_class import PrunningFineTuner
+#print('''class loaded 
+#      
+#''')
+
+#epch_tr = 2
+#filter_per_iter = 1
+
 #prune_targets = fine_tuner.prune()
 
 #layer_history = []
@@ -231,7 +256,7 @@ model_prunned = fine_tuner.prune()
  
 #model = prune_conv_layers(model, layer_index, filter_index)
 
-TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, device = device)
+
 
 
                 
@@ -245,16 +270,23 @@ TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = evaluate(model, tst_dl, tst_i
 
 
 
-# %%
+
+
+
+# %% recall prunnin gresult
 filter_per_ite = 1
 thresh_AF = 7
-epch_tr = 20
+epch_tr = 10
 suffix = ""
+suffix = "_bacc"
 save_name_pr = "prunned_"+save_name+"_"+str(filter_per_iter)+"fPi_"+str(epch_tr)+"tpoch"+suffix
-iteration = 200
+iteration = 8
 save_file = save_name_pr+"_iter_"+str(iteration)
 model_prunned = pickle.load(open(save_file+'.pth', 'rb'))
+
+print(model_prunned.raw[3:4])
 TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = evaluate(model_prunned, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, device = device)
+
 
 # %%
 #assert 1==1

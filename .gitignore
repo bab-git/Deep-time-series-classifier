@@ -36,3 +36,4 @@ prunned_1d_*.*
 model_prunned_i*.*
 train_prune_1d*.*
 temp*.*
+train_prunned_*.*
