@@ -137,9 +137,12 @@ class FilterPrunner:
 
 # =========================== PrunningFineTuner ====================
 class PrunningFineTuner:
-    def __init__(self, trn_dl, val_dl, model,device = 'cpu' ):
+    def __init__(self, trn_dl, val_dl, model,device = 'cpu', epch_tr = 10 , filter_per_iter = 1, save_name_pr = "temp"):
         self.train_data_loader = trn_dl
         self.test_data_loader = val_dl
+        self.epch_tr = epch_tr
+        self.filter_per_iter = filter_per_iter
+        self.save_name_pr = save_name_pr
         
         self.device = device
         if torch.cuda.is_available():
@@ -224,6 +227,8 @@ class PrunningFineTuner:
         #Get the accuracy before prunning
         self.test()
         self.model.train()
+        epch_tr = self.epch_tr
+        filter_per_iter = self.filter_per_iter
         
         #Make sure all the layers are trainable
         for param in self.model.parameters():
@@ -231,7 +236,7 @@ class PrunningFineTuner:
             
         number_of_filters = self.total_num_filters()
         
-        num_filters_to_prune_per_iteration = 32
+        num_filters_to_prune_per_iteration = filter_per_iter
         
         iterations = int(float(number_of_filters) / num_filters_to_prune_per_iteration)
         
@@ -259,7 +264,9 @@ class PrunningFineTuner:
             for layer_index, filter_index in prune_targets:
                 model = prune_conv_layers(model, layer_index, filter_index)
 #           
-            
+            if i_iter == 2:
+                return self.model            
+        
             self.model = model
             if torch.cuda.is_available():
                 self.model = self.model.cuda()
@@ -272,11 +279,11 @@ class PrunningFineTuner:
             print("Fine tuning to recover from prunning iteration.")
 #            optimizer = optim.SGD(self.model.parameters(), lr=0.001, momentum=0.9)
             optimizer = optim.Adam(self.model.parameters(), lr = 0.001)
-            self.train(optimizer, epoches = 10)    
+            self.train(optimizer, epoches = epch_tr)
             
-            self.test()
-            
-            return self.model
+            self.test()            
+            pickle.dump(model,open(self.save_name_pr+"_iter_"+str(i_iter)+'.pth','wb'))
+#            return self.model
     
         print("Finished. Going to fine tune the model a bit more")
         self.train(optimizer, epoches=15)

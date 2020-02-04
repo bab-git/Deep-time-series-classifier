@@ -102,6 +102,28 @@ if save_name == 'NONE':
 
 print("{:>40}  {:<8s}".format("Selected experiment:", save_name))
 
+filter_per_iter = input("filter to prune per iteration (def:1):")
+if filter_per_iter == '':
+    filter_per_iter = 1
+else:
+    filter_per_iter = int(filter_per_iter)
+    
+    
+    
+epch_tr = input("Training epochs per pruning (def:10):")
+if epch_tr == '':
+    epch_tr = 10    
+else:
+    epch_tr = int(epch_tr)
+
+suffix = input("added suffix to save name:")
+if suffix is not '':
+    suffix = "_"+suffix
+ 
+print()
+
+#prunned_1d_4c_2fc_sub2_qr_1fPi_20tpoch_bacc_iter_53
+
 #device              = option_utils.show_gpu_chooser(default=1)
 cuda_num = 0   # export CUDA_VISIBLE_DEVICES=x
 device = torch.device('cuda:'+str(cuda_num) if torch.cuda.is_available() and cuda_num != 'cpu' else 'cpu')
@@ -172,19 +194,26 @@ except:
 
 thresh_AF = 5
 
-TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, device = device)
+#TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, device = device)
 
 # %% ================== Pruning
 model = pickle.load(open('train_'+save_name+'_best.pth', 'rb'))
 #TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, device = device)
 
+#prunned_1d_4c_2fc_sub2_qr_1fPi_20tpoch_bacc_iter_53
+
+save_name_pr = "prunned_"+save_name+"_"+str(filter_per_iter)+"fPi_"+str(epch_tr)+"tpoch"+suffix
+
+#prunned_1d_4c_2fc_sub2_qr_1fPi_20tpoch_bacc_iter_53
 
 from  prunning_class import PrunningFineTuner
 print('''class loaded 
       
 ''')
 
-fine_tuner = PrunningFineTuner(trn_dl, val_dl, model)
+epch_tr = 5
+filter_per_iter = 1
+fine_tuner = PrunningFineTuner(trn_dl, val_dl, model, epch_tr = epch_tr, filter_per_iter = filter_per_iter, save_name_pr = save_name_pr)
 
 #model_prunned = fine_tuner.prune()
 prune_targets = fine_tuner.prune()
@@ -215,6 +244,16 @@ TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = evaluate(model, tst_dl, tst_i
 #    layers_prunned[layer_index] = layers_prunned[layer_index] + 1 
 
 
+
+# %%
+filter_per_ite = 1
+epch_tr = 20
+suffix = ""
+save_name_pr = "prunned_"+save_name+"_"+str(filter_per_iter)+"fPi_"+str(epch_tr)+"tpoch"+suffix
+iteration = 200
+save_file = save_name_pr+"_iter_"+str(iteration)
+model_prunned = pickle.load(open(save_file+'.pth', 'rb'))
+TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = evaluate(model_prunned, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, device = device)
 
 # %%
 #assert 1==1
