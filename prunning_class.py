@@ -56,6 +56,9 @@ class FilterPrunner:
             for (name,module) in self.model.raw[i_layer].layers._modules.items():
                 layer += 1
                 x = module(x)
+#                if i_layer ==4:
+                    print("module", module)
+                    print("activation size", x.shape)
 #                modules = np.append(modules, module)
                 if (type(module) == nn.Conv1d or type(module) == nn.Conv2d) and module.in_channels != module.out_channels:
                     x.register_hook(self.compute_rank)
@@ -160,6 +163,8 @@ class PrunningFineTuner:
         correct = 0
         total = 0
         
+#        self.model.best_acc = 0
+        
         for i, (batch, label) in enumerate(self.test_data_loader):
 #            if args.use_cuda:
             batch = batch.cuda()
@@ -168,8 +173,8 @@ class PrunningFineTuner:
 #            pred = output.data.max(1)[1]
             correct += pred.cpu().eq(label.cpu()).sum()
             total += label.size(0)
-        
-        print("Accuracy :", float(correct) / total)
+        self.acc = float(correct) / total
+        print("Accuracy : %2.4f" % (self.acc))        
         
         self.model.train()
     
@@ -180,10 +185,18 @@ class PrunningFineTuner:
 #            optimizer = optim.SGD(model.classifier.parameters(), lr=0.0001, momentum=0.9)
             optimizer = optim.Adam(self.model.parameters(), lr = 0.001)
 
+        self.model.best_acc = 0
         for i in range(epoches):
             print("Epoch: ", i)
             self.train_epoch(optimizer)
             self.test()
+            if self.acc > self.model.best_acc:
+                self.model.best_acc = acc
+                print("best accuracy updates")
+                pickle.dump(self.model,open("train_"+self.save_name_pr+"_best.pth",'wb'))
+        
+        self.model = pickle.load(open("train_"+self.save_name_pr+"_best.pth",'rb'))
+        self.test()
         print("Finished fine tuning.")
 
     
@@ -264,15 +277,15 @@ class PrunningFineTuner:
             for layer_index, filter_index in prune_targets:
                 model = prune_conv_layers(model, layer_index, filter_index)
 #           
-            if i_iter == 2:
+            if i_iter == 4:
                 return self.model            
         
             self.model = model
             if torch.cuda.is_available():
                 self.model = self.model.cuda()
 #
-            message = str(100*float(self.total_num_filters()) / number_of_filters) + "%"
-            print("Filters prunned", str(message))
+            message = 100 - (100*float(self.total_num_filters()) / number_of_filters)
+            print("Filters prunned %2.2f" %(message), "%")
             
             self.test()
             

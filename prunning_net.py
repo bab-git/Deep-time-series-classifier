@@ -211,12 +211,12 @@ print('''class loaded
       
 ''')
 
-epch_tr = 5
+epch_tr = 2
 filter_per_iter = 1
 fine_tuner = PrunningFineTuner(trn_dl, val_dl, model, epch_tr = epch_tr, filter_per_iter = filter_per_iter, save_name_pr = save_name_pr)
 
-#model_prunned = fine_tuner.prune()
-prune_targets = fine_tuner.prune()
+model_prunned = fine_tuner.prune()
+#prune_targets = fine_tuner.prune()
 
 #layer_history = []
 #for layer_index, filter_index in prune_targets:
@@ -247,6 +247,7 @@ TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = evaluate(model, tst_dl, tst_i
 
 # %%
 filter_per_ite = 1
+thresh_AF = 7
 epch_tr = 20
 suffix = ""
 save_name_pr = "prunned_"+save_name+"_"+str(filter_per_iter)+"fPi_"+str(epch_tr)+"tpoch"+suffix
