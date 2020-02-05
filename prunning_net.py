@@ -212,9 +212,9 @@ model = pickle.load(open('train_'+save_name+'_best.pth', 'rb'))
 
 fine_tuner = PrunningFineTuner(trn_dl, val_dl, model, epch_tr = epch_tr, filter_per_iter = filter_per_iter, save_name_pr = save_name_pr)
 
-
-fine_tuner.FC_prune = True
-fine_tuner.total_num_filters()
+fine_tuner.prune()
+#fine_tuner.prune(FC_prune = True)
+#fine_tuner.total_num_filters()
 
 
 

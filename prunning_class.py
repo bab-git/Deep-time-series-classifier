@@ -19,7 +19,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 #import dataset
-from prune import *
+from prune import prune_lin_layers, prune_conv_layers
 #import argparse
 from operator import itemgetter
 from heapq import nsmallest
@@ -67,24 +67,44 @@ class FilterPrunner:
                     self.activation_to_layer[activation_index] = layer
                     activation_index += 1
 #        self.modules = modules
-                    
-        return nn.Sequential(self.model.FC,self.model.out)(x.view(x.size(0), -1))
-          
+        
+#        x = x.view(x.size(0), -1)
+        
+        for (name,module) in self.model.FC._modules.items():
+            layer += 1
+            x = module(x)
+            if type(module) == nn.Linear and self.FC_prune:
+                x.register_hook(self.compute_rank)
+                self.activations.append(x)
+                self.activation_to_layer[activation_index] = layer
+                activation_index += 1            
+            
+        return self.model.out(x)
+#        return nn.Sequential(self.model.FC,self.model.out)(x)          
     
     def compute_rank(self, grad):
         activation_index = len(self.activations) - self.grad_index - 1
         activation = self.activations[activation_index]
+#        print("shape of grad = ", str(grad.shape))
         taylor = activation * grad
         
         # Get the average value for every filter, 
         # accross all the other dimensions
-        taylor = taylor.mean(dim=(0, 2, 3)).data
+        
+        if self.FC_prune == False:
+            taylor = taylor.mean(dim=(0, 2, 3)).data
+            filter_dime = activation.size(0) * activation.size(2) * activation.size(3)
+        else:
+            taylor = taylor.mean(dim=0).data
+            filter_dime = activation.size(0)
                 	
     	# Normalize the rank by the filter dimensions
         taylor = \
-            taylor / (activation.size(0) * activation.size(2) * activation.size(3))
+            taylor / (filter_dime)
     
         if activation_index not in self.filter_ranks:
+#            print("activation_index not in self.filter_ranks")
+#            print("activation_index:", activation_index)
             self.filter_ranks[activation_index] = \
                 torch.FloatTensor(activation.size(1)).zero_()
 
@@ -241,17 +261,20 @@ class PrunningFineTuner:
     def get_candidates_to_prune(self, num_filters_to_prune):
         self.prunner.reset()
         self.train_epoch(rank_filters = True)
-        if self.prunner.filter_ranks[3].size(0) > self.model.raw[4].layers[1].weight.data.size(0):
+        if self.FC_prune == False and (self.prunner.filter_ranks[3].size(0) > self.model.raw[4].layers[1].weight.data.size(0)):
             print("num ranked filters > num filters")
             assert 1==2
             
         self.prunner.normalize_ranks_per_layer()
         return self.prunner.get_prunning_plan(num_filters_to_prune)
 
-    def prune(self):
+    def prune(self, FC_prune = False):
         #Get the accuracy before prunning
         self.test()
         self.model.train()
+        self.FC_prune = FC_prune
+        self.prunner.FC_prune = self.FC_prune
+        
         epch_tr = self.epch_tr
         filter_per_iter = self.filter_per_iter
         
@@ -288,7 +311,11 @@ class PrunningFineTuner:
 #            return prune_targets
             
             for layer_index, filter_index in prune_targets:
-                model = prune_conv_layers(model, layer_index, filter_index)
+                if self.FC_prune:
+                    model = prune_lin_layers(model, layer_index, filter_index)
+                else:
+                    model = prune_conv_layers(model, layer_index, filter_index)
+                
 #           
 #            if i_iter == 4:
 #                return self.model            
@@ -309,7 +336,7 @@ class PrunningFineTuner:
             
             self.test()            
             pickle.dump(model,open(self.save_name_pr+"_iter_"+str(i_iter)+'.pth','wb'))
-#            return self.model
+            return self.model
     
         print("Finished. Going to fine tune the model a bit more")
         self.train(optimizer, epoches=15)
@@ -343,8 +370,7 @@ class PrunningFineTuner:
         for i_iter in range(iterations):
             print("Ranking filters...  iteration: ",i_iter)
             prune_targets = self.get_candidates_to_prune(num_filters_to_prune_per_iteration)
-            
-        
+                    
             layers_prunned = {}
             for layer_index, filter_index in prune_targets:
                 if layer_index not in layers_prunned:
@@ -359,7 +385,7 @@ class PrunningFineTuner:
 #            return prune_targets
             
             for layer_index, filter_index in prune_targets:
-                model = prune_conv_layers(model, layer_index, filter_index)
+                model = prune_lin_layers(model, layer_index, filter_index)
 #           
 #            if i_iter == 4:
 #                return self.model            
