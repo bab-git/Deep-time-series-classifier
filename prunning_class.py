@@ -61,12 +61,13 @@ class FilterPrunner:
 #                print("module", module)
 #                print("activation size", x.shape)
 #                modules = np.append(modules, module)
-                if (type(module) == nn.Conv1d or type(module) == nn.Conv2d) and module.in_channels != module.out_channels:
+                if (type(module) == nn.Conv1d or type(module) == nn.Conv2d) and module.in_channels != module.out_channels and self.FC_prune == False:
                     x.register_hook(self.compute_rank)
                     self.activations.append(x)
                     self.activation_to_layer[activation_index] = layer
                     activation_index += 1
 #        self.modules = modules
+                    
         return nn.Sequential(self.model.FC,self.model.out)(x.view(x.size(0), -1))
           
     
@@ -141,13 +142,14 @@ class FilterPrunner:
 
 # =========================== PrunningFineTuner ====================
 class PrunningFineTuner:
-    def __init__(self, trn_dl, val_dl, model,device = 'cpu', epch_tr = 10 , filter_per_iter = 1, save_name_pr = "temp"):
+    def __init__(self, trn_dl, val_dl, model,device = 'cpu', epch_tr = 10 , filter_per_iter = 1, save_name_pr = "temp" , best_acc = False):
         self.train_data_loader = trn_dl
         self.test_data_loader = val_dl
         self.epch_tr = epch_tr
         self.filter_per_iter = filter_per_iter
         self.save_name_pr = save_name_pr
         self.FC_prune = False
+        self.best_acc = best_acc
         
         self.device = device
         if torch.cuda.is_available():
@@ -175,8 +177,8 @@ class PrunningFineTuner:
 #            pred = output.data.max(1)[1]
             correct += pred.cpu().eq(label.cpu()).sum()
             total += label.size(0)
-        self.acc = float(correct) / total
-        print("Accuracy : %2.4f" % (self.acc))        
+        self.model.acc = float(correct) / total
+        print("Accuracy : %2.4f" % (self.model.acc))        
         
         self.model.train()
     
@@ -192,13 +194,14 @@ class PrunningFineTuner:
             print("Epoch: ", i)
             self.train_epoch(optimizer)
             self.test()
-            if self.acc > self.model.best_acc:
-                self.model.best_acc = self.acc
+            if self.model.acc > self.model.best_acc and self.best_acc:
+                self.model.best_acc = self.model.acc
                 print("best accuracy updated")
                 pickle.dump(self.model,open("train_"+self.save_name_pr+"_best.pth",'wb'))
         
-        self.model = pickle.load(open("train_"+self.save_name_pr+"_best.pth",'rb'))
-        self.test()
+        if self.best_acc:
+            self.model = pickle.load(open("train_"+self.save_name_pr+"_best.pth",'rb'))
+            self.test()
         print("Finished fine tuning.")
     
     def train_epoch(self, optimizer = None, rank_filters = False):
@@ -230,7 +233,8 @@ class PrunningFineTuner:
                 if isinstance(module, torch.nn.modules.conv.Conv2d) or isinstance(module, torch.nn.modules.conv.Conv1d):
                     filters = filters + module.out_channels
             else:
-                print("not sure")                                
+                if isinstance(module, torch.nn.modules.Linear): 
+                    filters = filters + module.out_features
         return filters            
         
     
@@ -318,6 +322,7 @@ class PrunningFineTuner:
         self.test()
         self.model.train()
         self.FC_prune = True
+        self.prunner.FC_prune = self.FC_prune
         epch_tr = self.epch_tr
         filter_per_iter = self.filter_per_iter
         
@@ -373,8 +378,10 @@ class PrunningFineTuner:
             optimizer = optim.Adam(self.model.parameters(), lr = 0.001)
             self.train(optimizer, epoches = epch_tr)
             
-            self.test()            
-            pickle.dump(model,open(self.save_name_pr+"_iter_"+str(i_iter)+'.pth','wb'))
+            self.test()
+            save_file = self.save_name_pr+"_iter_"+str(i_iter)+'.pth'            
+            pickle.dump(model,open(save_file,'wb'))
+            print("current prunned model is saved into ", save_file)
 #            return self.model
     
         print("Finished. Going to fine tune the model a bit more")

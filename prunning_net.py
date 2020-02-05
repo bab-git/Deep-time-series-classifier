@@ -212,6 +212,18 @@ model = pickle.load(open('train_'+save_name+'_best.pth', 'rb'))
 
 fine_tuner = PrunningFineTuner(trn_dl, val_dl, model, epch_tr = epch_tr, filter_per_iter = filter_per_iter, save_name_pr = save_name_pr)
 
+
+fine_tuner.FC_prune = True
+fine_tuner.total_num_filters()
+
+
+
+
+# %% developement
+
+model = pickle.load(open('train_'+save_name+'_best.pth', 'rb'))
+
+fine_tuner = PrunningFineTuner(trn_dl, val_dl, model, epch_tr = epch_tr, filter_per_iter = filter_per_iter, save_name_pr = save_name_pr)
 fine_tuner.test()
 fine_tuner.model.train()
 
@@ -274,17 +286,18 @@ for i in range(5):
 
 
 # %% recall prunnin gresult
-filter_per_ite = 1
+filter_per_iter = 1
 thresh_AF = 7
 epch_tr = 10
 suffix = ""
 suffix = "_bacc"
+#save_name_pr = "prunned_"+save_name+"_"+str(filter_per_iter)+"fPi"
 save_name_pr = "prunned_"+save_name+"_"+str(filter_per_iter)+"fPi_"+str(epch_tr)+"tpoch"+suffix
-iteration = 8
+iteration = 56
 save_file = save_name_pr+"_iter_"+str(iteration)
 model_prunned = pickle.load(open(save_file+'.pth', 'rb'))
-
-print(model_prunned.raw[3:4])
+print("The loaded file : ", save_file)
+#print(model_prunned.raw[3:4])
 TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = evaluate(model_prunned, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, device = device)
 
 
