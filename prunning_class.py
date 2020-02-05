@@ -336,7 +336,7 @@ class PrunningFineTuner:
             
             self.test()            
             pickle.dump(model,open(self.save_name_pr+"_iter_"+str(i_iter)+'.pth','wb'))
-            return self.model
+#            return self.model
     
         print("Finished. Going to fine tune the model a bit more")
         self.train(optimizer, epoches=15)

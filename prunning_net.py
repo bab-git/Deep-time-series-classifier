@@ -66,6 +66,10 @@ from evaluation import evaluate
 from  prunning_class import PrunningFineTuner, prune_conv_layers
 
 #%% ============== options
+FC_prune = input("FC pruning? (default: no)")
+if FC_prune == "yes":
+    print("Give the conv-prunned model to continue from")
+
 model_cls, model_name   = option_utils.show_model_chooser()
 dataset, data_name  = option_utils.show_data_chooser()
 save_name           = option_utils.find_save(model_name, data_name)
@@ -100,6 +104,7 @@ if save_name == 'NONE':
     #save_name = "batch_512_B"
     #t_stamp = "_batch_512_11_29_17_03"
 
+
 print("{:>40}  {:<8s}".format("Selected experiment:", save_name))
 
 filter_per_iter = input("filter to prune per iteration (def:1):")
@@ -107,9 +112,7 @@ if filter_per_iter == '':
     filter_per_iter = 1
 else:
     filter_per_iter = int(filter_per_iter)
-    
-    
-    
+     
 epch_tr = input("Training epochs per pruning (def:10):")
 if epch_tr == '':
     epch_tr = 10    
@@ -119,8 +122,11 @@ else:
 suffix = input("added suffix to save name:")
 if suffix is not '':
     suffix = "_"+suffix
+    
+iteration = input("The itration to FC prune from: (default:10)")
+iteration = int(iteration)
  
-print()
+print("iteration to continue:", iteration)
 
 #prunned_1d_4c_2fc_sub2_qr_1fPi_20tpoch_bacc_iter_53
 
@@ -198,10 +204,15 @@ thresh_AF = 5
 
 # %% ================== Pruning
 save_name_pr = "prunned_"+save_name+"_"+str(filter_per_iter)+"fPi_"+str(epch_tr)+"tpoch"+suffix
+if FC_prune == "yes":
+    save_file = save_name_pr+"_iter_"+str(iteration)
+    model = pickle.load(open(save_file+'.pth', 'rb'))
+    print("conv-prunned model is loaded", save_file)
+    save_name_pr = save_name_pr+"_FC_"+str(iteration)
 
 fine_tuner = PrunningFineTuner(trn_dl, val_dl, model, epch_tr = epch_tr, filter_per_iter = filter_per_iter, save_name_pr = save_name_pr)
 
-model_prunned = fine_tuner.prune()
+model_prunned = fine_tuner.prune(FC_prune)
 
 TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = evaluate(model_prunned, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, device = device)
 
@@ -212,8 +223,8 @@ model = pickle.load(open('train_'+save_name+'_best.pth', 'rb'))
 
 fine_tuner = PrunningFineTuner(trn_dl, val_dl, model, epch_tr = epch_tr, filter_per_iter = filter_per_iter, save_name_pr = save_name_pr)
 
-fine_tuner.prune()
-#fine_tuner.prune(FC_prune = True)
+#fine_tuner.prune()
+fine_tuner.prune(FC_prune = True)
 #fine_tuner.total_num_filters()
 
 
