@@ -122,11 +122,11 @@ else:
 suffix = input("added suffix to save name:")
 if suffix is not '':
     suffix = "_"+suffix
-    
-iteration = input("The itration to FC prune from: (default:10)")
-iteration = int(iteration)
- 
-print("iteration to continue:", iteration)
+
+if FC_prune == 'yes':
+    iteration = input("The itration to FC prune from: (default:10)")
+    iteration = int(iteration)
+    print("iteration to continue:", iteration)
 
 #prunned_1d_4c_2fc_sub2_qr_1fPi_20tpoch_bacc_iter_53
 
@@ -196,7 +196,8 @@ try:
     else:
         model.load_state_dict(torch.load("train_"+save_name+'_best.pth', map_location=lambda storage, loc: storage))
 except:    
-    model = pickle.load(open('train_'+save_name+'_best.pth', 'rb'))
+
+model = pickle.load(open('train_'+save_name+'_best.pth', 'rb'))
 
 thresh_AF = 5
 
@@ -217,6 +218,30 @@ model_prunned = fine_tuner.prune(FC_prune)
 TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = evaluate(model_prunned, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, device = device)
 
 assert 1==2
+
+# %% recall prunnin gresult
+filter_per_iter = 1
+thresh_AF = 7
+epch_tr = 20
+suffix = ""
+FC = "FC_200"
+#FC = "_FC_100"
+#FC = ""
+#suffix = "_bacc"
+#save_name_pr = "prunned_"+save_name+"_"+str(filter_per_iter)+"fPi"
+save_name_pr = "prunned_"+save_name+"_"+str(filter_per_iter)+"fPi_"+str(epch_tr)+"tpoch"+suffix
+iteration = 40
+save_file = save_name_pr+FC+"_iter_"+str(iteration)
+model_prunned = pickle.load(open(save_file+'.pth', 'rb'))
+print("The loaded file : ", save_file)
+#print(model_prunned.raw[3:4])
+TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = evaluate(model_prunned, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, device = device)
+fine_tuner.model = model_prunned
+fine_tuner.FC_prune = True
+fine_tuner.total_num_filters()
+
+
+
 
 # %% developement
 model = pickle.load(open('train_'+save_name+'_best.pth', 'rb'))
@@ -295,21 +320,6 @@ for i in range(5):
 
 
 
-
-# %% recall prunnin gresult
-filter_per_iter = 1
-thresh_AF = 7
-epch_tr = 10
-suffix = ""
-suffix = "_bacc"
-#save_name_pr = "prunned_"+save_name+"_"+str(filter_per_iter)+"fPi"
-save_name_pr = "prunned_"+save_name+"_"+str(filter_per_iter)+"fPi_"+str(epch_tr)+"tpoch"+suffix
-iteration = 56
-save_file = save_name_pr+"_iter_"+str(iteration)
-model_prunned = pickle.load(open(save_file+'.pth', 'rb'))
-print("The loaded file : ", save_file)
-#print(model_prunned.raw[3:4])
-TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = evaluate(model_prunned, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, device = device)
 
 
 # %%
