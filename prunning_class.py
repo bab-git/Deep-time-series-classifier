@@ -212,6 +212,7 @@ class PrunningFineTuner:
         self.model.best_acc = 0
         for i in range(epoches):
             print("Epoch: ", i)
+            self.model.train()
             self.train_epoch(optimizer)
             self.test()
             if self.model.acc > self.model.best_acc and self.best_acc:
@@ -221,6 +222,7 @@ class PrunningFineTuner:
         
         if self.best_acc:
             self.model = pickle.load(open("train_"+self.save_name_pr+"_best.pth",'rb'))
+            self.prunner.model = self.model
             self.test()
         print("Finished fine tuning.")
     
@@ -261,9 +263,12 @@ class PrunningFineTuner:
     def get_candidates_to_prune(self, num_filters_to_prune):
         self.prunner.reset()
         self.train_epoch(rank_filters = True)
-        if self.FC_prune == False and (self.prunner.filter_ranks[3].size(0) > self.model.raw[4].layers[1].weight.data.size(0)):
-            print("num ranked filters > num filters")
-            assert 1==2
+        if self.FC_prune == False:
+            if (self.prunner.filter_ranks[3].size(0) > self.model.raw[4].layers[1].weight.data.size(0)) or \
+            (self.prunner.filter_ranks[2].size(0) > self.model.raw[3].layers[1].weight.data.size(0)) or \
+            (self.prunner.filter_ranks[1].size(0) > self.model.raw[2].layers[1].weight.data.size(0)):
+                print("num ranked filters > num filters")
+                assert 1==2
             
         self.prunner.normalize_ranks_per_layer()
         return self.prunner.get_prunning_plan(num_filters_to_prune)
@@ -296,6 +301,9 @@ class PrunningFineTuner:
             print("Ranking filters...  iteration: ",i_iter)
             prune_targets = self.get_candidates_to_prune(num_filters_to_prune_per_iteration)
             
+            if self.model != self.prunner.model:
+                print("self.model != self.prunner.model:")
+                assert 1==2
         
             layers_prunned = {}
             for layer_index, filter_index in prune_targets:

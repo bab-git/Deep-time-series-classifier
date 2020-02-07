@@ -119,6 +119,8 @@ if epch_tr == '':
 else:
     epch_tr = int(epch_tr)
 
+best_acc = False if input("Keeping best model in each tuning loop? (default:no) ") in ('','no') else True
+
 suffix = input("added suffix to save name:")
 if suffix is not '':
     suffix = "_"+suffix
@@ -196,8 +198,7 @@ try:
     else:
         model.load_state_dict(torch.load("train_"+save_name+'_best.pth', map_location=lambda storage, loc: storage))
 except:    
-
-model = pickle.load(open('train_'+save_name+'_best.pth', 'rb'))
+    model = pickle.load(open('train_'+save_name+'_best.pth', 'rb'))
 
 thresh_AF = 5
 
@@ -205,13 +206,20 @@ thresh_AF = 5
 
 # %% ================== Pruning
 save_name_pr = "prunned_"+save_name+"_"+str(filter_per_iter)+"fPi_"+str(epch_tr)+"tpoch"+suffix
+
+
 if FC_prune == "yes":
     save_file = save_name_pr+"_iter_"+str(iteration)
     model = pickle.load(open(save_file+'.pth', 'rb'))
     print("conv-prunned model is loaded", save_file)
     save_name_pr = save_name_pr+"_FC_"+str(iteration)
+    FC_prune = True
+else:
+    FC_prune = False
 
-fine_tuner = PrunningFineTuner(trn_dl, val_dl, model, epch_tr = epch_tr, filter_per_iter = filter_per_iter, save_name_pr = save_name_pr)
+fine_tuner = PrunningFineTuner(trn_dl, val_dl, model, epch_tr = epch_tr, 
+                               filter_per_iter = filter_per_iter, save_name_pr = save_name_pr,
+                               best_acc = best_acc)
 
 model_prunned = fine_tuner.prune(FC_prune)
 
@@ -274,8 +282,8 @@ for i in range(5):
     model = fine_tuner.model
     
     for layer_index, filter_index in prune_targets:
-        layer_index = 17
-        model = prune_conv_layers(model, layer_index, filter_index)
+#        layer_index = 17
+        model = prune_conv_layers(fine_tuner.model, layer_index, filter_index)
         fine_tuner.model = model
 
 
