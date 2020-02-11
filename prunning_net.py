@@ -205,8 +205,10 @@ thresh_AF = 5
 #TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, device = device)
 
 # %% ================== Pruning
-save_name_pr = "prunned_"+save_name+"_"+str(filter_per_iter)+"fPi_"+str(epch_tr)+"tpoch"+suffix
+if best_acc == True:
+    suffix =  suffix+"_bacc"
 
+save_name_pr = "prunned_"+save_name+"_"+str(filter_per_iter)+"fPi_"+str(epch_tr)+"tpoch"+suffix
 
 if FC_prune == "yes":
     save_file = save_name_pr+"_iter_"+str(iteration)
@@ -216,6 +218,10 @@ if FC_prune == "yes":
     FC_prune = True
 else:
     FC_prune = False
+
+
+
+print("Models will be saved as: "+save_name_pr+'_iter_xxx.pth')
 
 fine_tuner = PrunningFineTuner(trn_dl, val_dl, model, epch_tr = epch_tr, 
                                filter_per_iter = filter_per_iter, save_name_pr = save_name_pr,
@@ -228,20 +234,22 @@ TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = evaluate(model_prunned, tst_d
 assert 1==2
 
 # %% recall prunnin gresult
-filter_per_iter = 1
+filter_per_iter = 2
 thresh_AF = 7
-epch_tr = 20
+epch_tr = 10
 suffix = ""
-FC = "FC_200"
+suffix = "_bacc"
+FC = ""
+#FC = "FC_200"
 #FC = "_FC_100"
-#FC = ""
-#suffix = "_bacc"
-#save_name_pr = "prunned_"+save_name+"_"+str(filter_per_iter)+"fPi"
-save_name_pr = "prunned_"+save_name+"_"+str(filter_per_iter)+"fPi_"+str(epch_tr)+"tpoch"+suffix
-iteration = 40
+
+save_name_pr = "prunned_"+save_name+"_"+str(filter_per_iter)+"fPi"
+#save_name_pr = "prunned_"+save_name+"_"+str(filter_per_iter)+"fPi_"+str(epch_tr)+"tpoch"+suffix
+iteration = 100
 save_file = save_name_pr+FC+"_iter_"+str(iteration)
 model_prunned = pickle.load(open(save_file+'.pth', 'rb'))
 print("The loaded file : ", save_file)
+
 #print(model_prunned.raw[3:4])
 TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = evaluate(model_prunned, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, device = device)
 fine_tuner.model = model_prunned

@@ -36,7 +36,7 @@ from my_data_classes import create_datasets, create_loaders, read_data, create_d
 import my_net_classes
 from my_net_classes import SepConv1d, _SepConv1d, Flatten, parameters
 
-
+import xavier
 #%% =======================
 seed = 1
 seed2 = input ('Enter seed value for randomizing the splits (default = 1):')
@@ -79,7 +79,10 @@ test_size = 0.3    #default
 #cuda_num = input("enter cuda number to use: ")
 cuda_num = 0   # export CUDA_VISIBLE_DEVICES=0
 
-device = torch.device('cuda:'+str(cuda_num) if torch.cuda.is_available() else 'cpu')
+#device = torch.device('cuda:'+str(cuda_num) if torch.cuda.is_available() else 'cpu')
+device = torch.device('cuda:'+str(cuda_num) if torch.cuda.is_available() and cuda_num != 'cpu' else 'cpu')
+#if torch.cuda.is_available():
+#    torch.cuda.device(cuda_num)
 #device = torch.device('cuda:4' if torch.cuda.is_available() else 'cpu')
 #device = torch.device('cpu')
 
@@ -166,7 +169,31 @@ raw_size = trn_ds[0][0].shape[1]
 trn_sz = len(trn_ds)
 
 
-model = my_net_classes.Classifier_1d_4c_2fc_sub_qr(raw_feat, num_classes, raw_size).to(device)
+# custom weights initialization called on netG and netD
+def weights_init(m):
+#    classname = m.__class__.__name__
+    if isinstance(m, nn.Conv2d) or isinstance(m, nn.Conv1d) or isinstance(m, nn.Linear):
+#        m.weight.data.normal_(0.0, 0.02)
+#    elif classname.find('BatchNorm') != -1:
+#        xavier(m.weight.data)
+        m.weight.data.normal_(0.0, 0.02)
+        m.bias.data.normal_(0.0, 0.02)
+#        xavier(m.bias.data)
+        
+    elif isinstance(m, nn.BatchNorm2d):
+#        xavier(m.weight.data)
+        m.weight.data.normal_(1.0, 0.02)
+        m.bias.data.fill_(0)
+        m.running_mean.fill_(0)        
+
+#---------------------- models
+#save_name = "1d_4c_2fc_sub2_qr"
+load_model = 'prunned_1d_4c_2fc_sub2_qr_1fPi_20tpoch_iter_346'
+model = pickle.load(open(load_model+'.pth', 'rb'))
+print ('The loaded model is : ', load_model)
+model.apply(weights_init)
+        
+#model = my_net_classes.Classifier_1d_4c_2fc_sub_qr(raw_feat, num_classes, raw_size).to(device)
 #model = my_net_classes.Classifier_1d_5_conv_v2(raw_feat, num_classes, raw_size).to(device)
 #model = my_net_classes.Classifier_1d_1_conv_1FC(raw_feat, num_classes, raw_size).to(device)
 #model = my_net_classes.Classifier_1d_3_conv_2FC_v2(raw_feat, num_classes, raw_size).to(device)
@@ -194,8 +221,12 @@ opt = optim.Adam(model.parameters(), lr=lr)
 
 #print('Enter a save-file name for this trainig:')
 print("chosen batch size: %d, test size: %2.2f" % (batch_size, test_size))
-save_name = input("Enter a save-file name for this trainig: ")
+save_name = input('''Enter a save-file name for this trainig: 
+    '''+'(default : '+load_model+'_trained)')
 
+if save_name =='':
+    save_name = load_model+'_trained'
+    
 print('Start model training')
 epoch = 0
 
