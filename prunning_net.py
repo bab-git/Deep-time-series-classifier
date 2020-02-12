@@ -54,6 +54,8 @@ import os
 
 os.chdir('/home/bhossein/BMBF project/code_repo')
 #os.chdir('C:\Hinkelstien\code_repo')
+result_dir = 'results/' 
+data_dir = 'data/' 
 
 from my_data_classes import create_datasets_file, create_loaders, smooth, create_datasets_win
 import my_net_classes
@@ -139,13 +141,13 @@ torch.cuda.device(cuda_num)
 # %% ================ loading data
 print("{:>40}  {:<8s}".format("Loading dataset:", dataset))
 
-load_ECG = torch.load(dataset)
+load_ECG = torch.load(data_dir+dataset)
 
 #%%===============  loading experiment's parameters and batches
 
 print("{:>40}  {:<8s}".format("Loading model:", model_name))
 
-loaded_vars = pickle.load(open("train_"+save_name+"_variables.p","rb"))
+loaded_vars = pickle.load(open(result_dir+"train_"+save_name+"_variables.p","rb"))
 #loaded_file = pickle.load(open("variables"+t_stamp+".p","rb"))
 #loaded_file = pickle.load(open("variables_ended"+t_stamp+".p","rb"))
 
@@ -188,17 +190,18 @@ raw_size = ecg_datasets[0][0][0].shape[1]
 num_classes = 2
 
 # %%   loading the pre-trained model
+model_path = result_dir+'train_'+save_name+'_best.pth'
 
 model = model_cls(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
 model0 = copy.deepcopy(model)
 
 try:
     if torch.cuda.is_available():
-        model.load_state_dict(torch.load("train_"+save_name+'_best.pth', map_location=lambda storage, loc: storage.cuda(device)))
+        model.load_state_dict(torch.load(model_path, map_location=lambda storage, loc: storage.cuda(device)))
     else:
-        model.load_state_dict(torch.load("train_"+save_name+'_best.pth', map_location=lambda storage, loc: storage))
+        model.load_state_dict(torch.load(model_path, map_location=lambda storage, loc: storage))
 except:    
-    model = pickle.load(open('train_'+save_name+'_best.pth', 'rb'))
+    model = pickle.load(open(model_path, 'rb'))
 
 thresh_AF = 5
 
@@ -208,7 +211,7 @@ thresh_AF = 5
 if best_acc == True:
     suffix =  suffix+"_bacc"
 
-save_name_pr = "prunned_"+save_name+"_"+str(filter_per_iter)+"fPi_"+str(epch_tr)+"tpoch"+suffix
+save_name_pr = result_dir+"prunned_"+save_name+"_"+str(filter_per_iter)+"fPi_"+str(epch_tr)+"tpoch"+suffix
 
 if FC_prune == "yes":
     save_file = save_name_pr+"_iter_"+str(iteration)
@@ -243,8 +246,8 @@ FC = ""
 #FC = "FC_200"
 #FC = "_FC_100"
 
-save_name_pr = "prunned_"+save_name+"_"+str(filter_per_iter)+"fPi"
-#save_name_pr = "prunned_"+save_name+"_"+str(filter_per_iter)+"fPi_"+str(epch_tr)+"tpoch"+suffix
+save_name_pr = result_dir+"prunned_"+save_name+"_"+str(filter_per_iter)+"fPi"
+#save_name_pr = result_dir+"prunned_"+save_name+"_"+str(filter_per_iter)+"fPi_"+str(epch_tr)+"tpoch"+suffix
 iteration = 100
 save_file = save_name_pr+FC+"_iter_"+str(iteration)
 model_prunned = pickle.load(open(save_file+'.pth', 'rb'))

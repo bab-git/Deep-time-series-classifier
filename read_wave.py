@@ -25,6 +25,8 @@ n = 8
 #sub_dim = [2*2,4]
 sub_dim = [2*2,4*2]
 
+th_ratio = 1.1
+
 plt.figure(figsize=(18,10))
 plt.subplots_adjust(wspace = 0.2, hspace = 0.5)
 
@@ -98,7 +100,7 @@ for i_data in range(n):
     plt.xlabel('samples')
     plt.grid()
     
-    trimm_out = wave_harsh_peaks(channel, ax  = 'silent', t_base = 3000)
+    trimm_out = wave_harsh_peaks(channel, ax  = 'silent', t_base = 3000, th_ratio= th_ratio)
     max_list, mean_max, trimmed_t = (trimm_out[0],trimm_out[1],trimm_out[4])
     list_p = np.where(channel>mean_max)    
     plt.scatter(list_p, channel[list_p], color = 'g')    
@@ -128,13 +130,13 @@ assert 1== 61090
 
 
 # %%================= individual files  
-    
+thresh_rate =1
            
 #i_file = 1000
-i_file = np.random.randint(8000, size = 1).item()
-#i_file = 7850
+#i_file = np.random.randint(8000, size = 1).item()
+i_file = 542
 
-i_class = 0 #0:normal  1:atrial
+i_class =1 #0:normal  1:atrial
 #i_class = np.random.randint(2, size = 1)+1    
     
 #path = '/data/BMBF/sample/filtered atrial waves/8aae6985-c0b9-41d4-ac89-9f721b8019d2.wav'
@@ -151,6 +153,10 @@ else:
     
 list_f = os.listdir(main_path)
 file = list_f[i_file]
+#file = "dadb672d-8c3a-4811-9cab-f8de7c309987.wav"
+#file = "ecbf5c09-c0ef-426f-b83e-31afbeac899e.wav"
+#file = "e9723cc4-6fb4-43f2-a4aa-ad68ee160e18.wav"
+
 path = main_path+file
 
 #==============================
@@ -165,7 +171,7 @@ fig, axes = plt.subplots(2, 1, sharex=True)
 #plt.subplot(311)
 #plt.figure(figsize=(8,6))
 
-trimm_out = wave_harsh_peaks_all(w.data, t_base = 3000, thresh_rate = 1)
+trimm_out = wave_harsh_peaks_all(w.data, t_base = 3000, thresh_rate = thresh_rate)
 
 i_ax = 0
 channel = w.data[:,0]
@@ -216,9 +222,9 @@ axes[i_ax].grid()
 
 axes[i_ax].set_xlabel('Time steps')
 
-my_data_classes.wave_harsh_peaks(w.data[:,0])
+my_data_classes.wave_harsh_peaks(w.data[:,0], th_ratio =  thresh_rate )
 
-my_data_classes.wave_harsh_peaks(w.data[:,1])
+my_data_classes.wave_harsh_peaks(w.data[:,1], th_ratio =  thresh_rate)
 
 assert w.data.shape[0] == 61090
     

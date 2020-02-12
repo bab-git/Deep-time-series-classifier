@@ -155,6 +155,8 @@ def read_data(save_file = 'temp_save' , t_length = 8000 , t_base = 3000, t_range
     main_path = path_data[1]
     IDs.extend(os.listdir(main_path))
 
+    IDs = IDs.sort()
+    
     target = np.ones(16000)
     target[0:8000]=0      # 0 : normal 1:AF
 #    t_range = range(0,6000)
@@ -326,8 +328,8 @@ def create_datasets_win(raw_x, target, data_tag, test_size, seed=None, t_range=N
     extend_idx = lambda idx: [i for j in idx for i in np.where(data_tag == j)[0]]
     
     idx = np.arange(len(target))
-#    idx = np.arange(raw_x.shape[0])
-#    idx = raw_x.shape[0]
+#    idx = np.arange(len(np.unique(data_tag)))
+
     trn_idx, tst_idx = train_test_split(idx, test_size=test_size, random_state=seed)
     val_idx, tst_idx= train_test_split(tst_idx, test_size=0.5, random_state=seed)
               
@@ -395,6 +397,7 @@ def wave_harsh_peaks(data, th_ratio = 3, ax  = None, t_base = 3000):
 #        np.mean(data[i*t_base:(i+1)*t_base])
     max_list = [max(data[i*t_base:(i+1)*t_base]) for i in range(0,np.floor(T/t_base).astype(int))]
     mean_max = np.mean(max_list)
+#    mean_max = np.median(max_list)
     thresh = mean_max*th_ratio
 
     list_p = np.where(data>mean_max)[0]    
