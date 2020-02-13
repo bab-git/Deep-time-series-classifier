@@ -31,11 +31,12 @@ import pickle
 
 #=====================
 class FilterPrunner:
-    def __init__(self, model, device, FC_prune):
+    def __init__(self, model, device, FC_prune, skipped_layers=[]):
         self.model = model
         self.device = device
         self.reset()
         self. FC_prune = FC_prune
+        self.skipped_layers = skipped_layers
         
     def reset(self):
         self.filter_ranks = {}
@@ -53,7 +54,7 @@ class FilterPrunner:
         x = x.unsqueeze(2)
         module = self.model.raw[0]
         x =module(x)
-        for i_layer in range(1,5):              #4c2fc_sub2
+        for i_layer in range(1,5):              #4c2fc_sub2, layers: 
             for (name,module) in self.model.raw[i_layer].layers._modules.items():
                 layer += 1
                 x = module(x)
@@ -61,7 +62,8 @@ class FilterPrunner:
 #                print("module", module)
 #                print("activation size", x.shape)
 #                modules = np.append(modules, module)
-                if (type(module) == nn.Conv1d or type(module) == nn.Conv2d) and module.in_channels != module.out_channels and self.FC_prune == False:
+                if (type(module) == nn.Conv1d or type(module) == nn.Conv2d) and module.in_channels != module.out_channels \
+                    and self.FC_prune == False and layer not in self.skipped_layers:
                     x.register_hook(self.compute_rank)
                     self.activations.append(x)
                     self.activation_to_layer[activation_index] = layer
@@ -162,7 +164,8 @@ class FilterPrunner:
 
 # =========================== PrunningFineTuner ====================
 class PrunningFineTuner:
-    def __init__(self, trn_dl, val_dl, model,device = 'cpu', epch_tr = 10 , filter_per_iter = 1, save_name_pr = "temp" , best_acc = False):
+    def __init__(self, trn_dl, val_dl, model,device = 'cpu', epch_tr = 10 , filter_per_iter = 1, 
+                 save_name_pr = "temp" , best_acc = False, skipped_layers = []):
         self.train_data_loader = trn_dl
         self.test_data_loader = val_dl
         self.epch_tr = epch_tr
@@ -170,6 +173,7 @@ class PrunningFineTuner:
         self.save_name_pr = save_name_pr
         self.FC_prune = False
         self.best_acc = best_acc
+        self.skipped_layers = skipped_layers
         
         self.device = device
         if torch.cuda.is_available():
@@ -177,7 +181,7 @@ class PrunningFineTuner:
         
         self.model = model        
         self.criterion = nn.CrossEntropyLoss (reduction = 'sum')
-        self.prunner = FilterPrunner(self.model, self.device, self.FC_prune) 
+        self.prunner = FilterPrunner(self.model, self.device, self.FC_prune, self.skipped_layers) 
         self.model.train()
         
     def test(self):
@@ -218,10 +222,10 @@ class PrunningFineTuner:
             if self.model.acc > self.model.best_acc and self.best_acc:
                 self.model.best_acc = self.model.acc
                 print("best accuracy updated")
-                pickle.dump(self.model,open("train_"+self.save_name_pr+"_best.pth",'wb'))
+                pickle.dump(self.model,open(self.save_name_pr+"_bacc.pth",'wb'))
         
         if self.best_acc:
-            self.model = pickle.load(open("train_"+self.save_name_pr+"_best.pth",'rb'))
+            self.model = pickle.load(open(self.save_name_pr+"_bacc.pth",'rb'))
             self.prunner.model = self.model
             self.test()
         print("Finished fine tuning.")
@@ -263,7 +267,7 @@ class PrunningFineTuner:
     def get_candidates_to_prune(self, num_filters_to_prune):
         self.prunner.reset()
         self.train_epoch(rank_filters = True)
-        if self.FC_prune == False:
+        if self.FC_prune == False and self.skipped_layers==[]:
             if (self.prunner.filter_ranks[3].size(0) > self.model.raw[4].layers[1].weight.data.size(0)) or \
             (self.prunner.filter_ranks[2].size(0) > self.model.raw[3].layers[1].weight.data.size(0)) or \
             (self.prunner.filter_ranks[1].size(0) > self.model.raw[2].layers[1].weight.data.size(0)):
@@ -322,6 +326,7 @@ class PrunningFineTuner:
                 if self.FC_prune:
                     model = prune_lin_layers(model, layer_index, filter_index)
                 else:
+#                    if layer_index != 2:  # skip first layer
                     model = prune_conv_layers(model, layer_index, filter_index)
                 
 #           
@@ -350,8 +355,8 @@ class PrunningFineTuner:
     
         print("Finished. Going to fine tune the model a bit more")
         self.train(optimizer, epoches=15)
-#        torch.save(model.state_dict(), "model_prunned")
-        pickle.dump(model,open('model_prunned.pth','wb'))
+#        torch.save(model.state_dict(), "model_prunned")        
+        pickle.dump(model,open(self.save_name_pr+'model_prunned.pth','wb'))
         
         return self.model
         

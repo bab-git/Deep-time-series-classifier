@@ -51,6 +51,11 @@ import pickle
 from evaluation import evaluate
 import option_utils
 
+result_dir = 'results/' 
+data_dir = 'data/' 
+data_dir_hink = '/vol/hinkelstn/codes/'
+
+import copy
 
 #%% ============== options
 model_cls, model_name   = option_utils.show_model_chooser()
@@ -94,7 +99,7 @@ device = torch.device('cuda:'+str(cuda_num) if torch.cuda.is_available() and cud
 # %% ================ loading data
 print("{:>40}  {:<8s}".format("Loading dataset:", dataset))
 
-load_ECG = torch.load(dataset)
+load_ECG = torch.load(data_dir_hink+dataset)
 
 #%%===============  loading experiment's parameters and batches
 
@@ -149,15 +154,18 @@ num_classes = 2
 #device = torch.device('cuda:4' if torch.cuda.is_available() else 'cpu')
 
 # %%
+model_path = result_dir+'train_'+save_name+'_best.pth'
 
 model = model_cls(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
+model0 = copy.deepcopy(model)
 
-if torch.cuda.is_available():
-    model.load_state_dict(torch.load("train_"+save_name+'_best.pth', map_location=lambda storage, loc: storage.cuda(device)))
-else:
-    model.load_state_dict(torch.load("train_"+save_name+'_best.pth', map_location=lambda storage, loc: storage))
-    
-#model = pickle.load(open('train_'+save_name+'_best.pth', 'rb'))
+try:
+    if torch.cuda.is_available():
+        model.load_state_dict(torch.load(model_path, map_location=lambda storage, loc: storage.cuda(device)))
+    else:
+        model.load_state_dict(torch.load(model_path, map_location=lambda storage, loc: storage))
+except:    
+    model = pickle.load(open(model_path, 'rb'))
 
 thresh_AF = 3
 

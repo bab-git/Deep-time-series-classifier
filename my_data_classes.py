@@ -155,7 +155,7 @@ def read_data(save_file = 'temp_save' , t_length = 8000 , t_base = 3000, t_range
     main_path = path_data[1]
     IDs.extend(os.listdir(main_path))
 
-    IDs = IDs.sort()
+    IDs.sort()
     
     target = np.ones(16000)
     target[0:8000]=0      # 0 : normal 1:AF

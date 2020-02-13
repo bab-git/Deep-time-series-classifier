@@ -59,9 +59,15 @@ models = [
 
 
 datasets = [
-    ("raw_x_8K_sync_win2K.pt",  "trim_2K_win"),
-    ("raw_x_8K_sync.pt",        "trim_8K_sync"), #?
-    ("raw_x_all.pt",            "trim_all")      #?
+    ("raw_x_all_win2K_s1600.pt",    "trim_all_2K_win_1600_shift"),
+    ("raw_x_8K_sync_win1.5K.pt",    "trim_1.5K_win_400_shift"),
+    ("raw_x_12K_sync_win1.5K.pt",   "trim_1.5K_win"),
+    ("raw_x_10K_sync_win1K.pt",     "trim_1K_win"),
+    ("raw_x_8K_sync_win2K.pt",      "trim_2K_win"),
+    ("raw_x_12K_sync.pt",           "trim_12K"),
+    ("raw_x_10K_sync.pt",           "trim_10K"),
+    ("raw_x_8K_sync.pt",            "trim_8K"),
+    ("raw_x_all.pt",                "trim_all")
 ]
 
 def show_model_chooser(default = 0, override = None):
@@ -75,7 +81,7 @@ def show_model_chooser(default = 0, override = None):
             return models[idx]
     return models[default]
 
-def show_data_chooser(default = 0, override = None):
+def show_data_chooser(default = 4, override = None):
     if override:
         return datasets[override]
     print("\n".join(["{}: {}".format(i, file_name) for i, (file_name, _) in enumerate(datasets)]))

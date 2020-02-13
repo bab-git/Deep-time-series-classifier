@@ -115,9 +115,9 @@ if filter_per_iter == '':
 else:
     filter_per_iter = int(filter_per_iter)
      
-epch_tr = input("Training epochs per pruning (def:10):")
+epch_tr = input("Training epochs per pruning (def:20):")
 if epch_tr == '':
-    epch_tr = 10    
+    epch_tr = 20    
 else:
     epch_tr = int(epch_tr)
 
@@ -131,6 +131,14 @@ if FC_prune == 'yes':
     iteration = input("The itration to FC prune from: (default:10)")
     iteration = int(iteration)
     print("iteration to continue:", iteration)
+
+if FC_prune != 'yes':
+    skipped_layers = input('layers to skip from pruning (e.g.  2,5,7):')
+    if skipped_layers == '':
+        skipped_layers = []
+    else:
+        skipped_layers = np.delete(list(skipped_layers),np.where(np.array(list(skipped_layers))==','))
+        skipped_layers = [int(i) for i in skipped_layers]
 
 #prunned_1d_4c_2fc_sub2_qr_1fPi_20tpoch_bacc_iter_53
 
@@ -228,7 +236,7 @@ print("Models will be saved as: "+save_name_pr+'_iter_xxx.pth')
 
 fine_tuner = PrunningFineTuner(trn_dl, val_dl, model, epch_tr = epch_tr, 
                                filter_per_iter = filter_per_iter, save_name_pr = save_name_pr,
-                               best_acc = best_acc)
+                               best_acc = best_acc, skipped_layers = skipped_layers)
 
 model_prunned = fine_tuner.prune(FC_prune)
 
@@ -237,18 +245,19 @@ TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = evaluate(model_prunned, tst_d
 assert 1==2
 
 # %% recall prunnin gresult
-filter_per_iter = 2
+filter_per_iter = 1
 thresh_AF = 7
-epch_tr = 10
+epch_tr = 20
 suffix = ""
-suffix = "_bacc"
+#suffix = "_bacc"
+suffix = "__skipconv1"
 FC = ""
 #FC = "FC_200"
 #FC = "_FC_100"
 
-save_name_pr = result_dir+"prunned_"+save_name+"_"+str(filter_per_iter)+"fPi"
-#save_name_pr = result_dir+"prunned_"+save_name+"_"+str(filter_per_iter)+"fPi_"+str(epch_tr)+"tpoch"+suffix
-iteration = 100
+#save_name_pr = result_dir+"prunned_"+save_name+"_"+str(filter_per_iter)+"fPi"
+save_name_pr = result_dir+"prunned_"+save_name+"_"+str(filter_per_iter)+"fPi_"+str(epch_tr)+"tpoch"+suffix
+iteration = 200
 save_file = save_name_pr+FC+"_iter_"+str(iteration)
 model_prunned = pickle.load(open(save_file+'.pth', 'rb'))
 print("The loaded file : ", save_file)
