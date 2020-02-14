@@ -58,6 +58,8 @@ def evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = 3, device = 'cpu'):
     #len(list_error_ECG)/8000*100
     
     TP_ECG, FP_ECG , total_P, total_N = np.zeros(4)
+    idx_TP = []
+    idx_FP = []
     list_pred_win = 100*np.ones([len(list_ECG), win_size])
     for i_row, i_ecg in enumerate(list_ECG):
         list_win = np.where(data_tag==i_ecg)[0]
@@ -68,11 +70,13 @@ def evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = 3, device = 'cpu'):
         if i_ecg >= 8000:   #AF
             total_P += 1
             if (np.array(pred_win)==1).sum() >= thresh_AF:
-                TP_ECG += 1                    
+                TP_ECG += 1
+                idx_TP = np.append(idx_TP,i_ecg)
         else:         # normal
             total_N += 1
             if (np.array(pred_win)==1).sum() >= thresh_AF:
                 FP_ECG += 1
+                idx_FP = np.append(idx_FP,i_ecg)
                 
         
     #TP_ECG_rate = TP_ECG / len(list_ECG) *100
@@ -90,7 +94,7 @@ def evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = 3, device = 'cpu'):
     print('{:>40}  {:<8d}'.format('Number of parameters:', params))
     print('{:>40}  {:<8.0f}'.format('Computational complexity:', flops))
     
-    return TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed
+    return (TP_ECG_rate,idx_TP), (FP_ECG_rate,idx_FP), list_pred_win, elapsed
 #print('True positives on test data:  %2.2f' %(TP_rate))
 #print('False positives on test data:  %2.2f' %(FP_rate))
 #------------------------------------------  

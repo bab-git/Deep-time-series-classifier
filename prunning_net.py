@@ -250,14 +250,15 @@ thresh_AF = 7
 epch_tr = 20
 suffix = ""
 #suffix = "_bacc"
-suffix = "__skipconv1"
+#suffix = suffix+"_skipconv1b"
+#suffix = suffix+"_bacc"
 FC = ""
 #FC = "FC_200"
 #FC = "_FC_100"
 
 #save_name_pr = result_dir+"prunned_"+save_name+"_"+str(filter_per_iter)+"fPi"
 save_name_pr = result_dir+"prunned_"+save_name+"_"+str(filter_per_iter)+"fPi_"+str(epch_tr)+"tpoch"+suffix
-iteration = 200
+iteration = 346
 save_file = save_name_pr+FC+"_iter_"+str(iteration)
 model_prunned = pickle.load(open(save_file+'.pth', 'rb'))
 print("The loaded file : ", save_file)
@@ -268,6 +269,7 @@ fine_tuner.model = model_prunned
 fine_tuner.FC_prune = True
 fine_tuner.total_num_filters()
 
+print("conv-layers out-channels:", [model_prunned.raw[i].layers[1].weight.shape[0] for i in range(1,5)])
 
 
 
