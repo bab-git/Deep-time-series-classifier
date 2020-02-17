@@ -105,7 +105,7 @@ load_ECG = torch.load(data_dir_hink+dataset)
 
 print("{:>40}  {:<8s}".format("Loading model:", model_name))
 
-loaded_vars = pickle.load(open("train_"+save_name+"_variables.p","rb"))
+loaded_vars = pickle.load(open(result_dir+"train_"+save_name+"_variables.p","rb"))
 #loaded_file = pickle.load(open("variables"+t_stamp+".p","rb"))
 #loaded_file = pickle.load(open("variables_ended"+t_stamp+".p","rb"))
 
@@ -128,7 +128,8 @@ raw_x = load_ECG['raw_x']
 #raw_x = load_ECG['raw_x'].to(device)
 target = load_ECG['target']
 data_tag = load_ECG['data_tag']
-#data_tag = load_ECG['IDs']
+IDs = load_ECG['IDs'] if 'IDs' in load_ECG else []
+
 if type(target) != 'torch.Tensor':
     target = torch.tensor(load_ECG['target']).to(device)
 

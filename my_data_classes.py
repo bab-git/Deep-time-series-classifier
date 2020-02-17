@@ -435,7 +435,9 @@ def wave_harsh_peaks_all(data, t_base = 3000, thresh_rate = 1):
     
     max_list = [data[i*t_base:(i+1)*t_base].max(axis = 0) for i in range(0,np.floor(T/t_base).astype(int))]
     
-    mean_max = np.mean(max_list, axis =0)    
+#    mean_max = np.mean(max_list, axis =0)    
+    
+    mean_max = np.median(max_list, axis =0)        
     
     thresh = thresh_rate*mean_max.copy()
     list_peaks = np.where(np.sum(data > thresh, axis = 1))[0]

@@ -230,3 +230,41 @@ print("{:>40}  ".format(20*"="))
 print("{:>40}  {:<8.2f}%".format("Kfp_Dfp rate:", Kfp_Dfp_rate))
 print("{:>40}  {:<8.2f}%".format("New FP rate on test data:", Kfp_Dfp_rate*FP_ECG_rate_kai/100))
 print("{:>40}  {:<8.2f}%".format("Dfp_Ktn rate:", Dfp_Ktn_rate))
+
+
+#%%----------------- inspection
+ID = IDs_Dfn_Ktp[0]
+idx = IDs.index(ID)
+idx_tsts = [int(i) for i in list_ECG].index(idx)
+list_pred_win[idx_tsts]
+idx_x = np.where(data_tag == idx)[0]
+
+#fig, axes = plt.subplots(2, 1, sharex=True)
+#for i_ax in range(2)
+#    channel = raw_x[i_data,i_ch,:]
+#    axes[i_ax].plot(channel,color = plt_color)
+
+
+sub_dim = [3*2,5]
+
+plt.figure(figsize=(18,10))
+plt.subplots_adjust(wspace = 0.2, hspace = .5)
+
+ch_color = ('g','r')
+
+for i_data in range(15):
+#    i_plt_ch1 = i_base+2*i_data+1
+#    i_plt_ch1x = i_base+2*i_data+2
+#    i_plt_ch2 = i_base+n+2*i_data+1
+#    i_plt_ch2x = i_base+n+2*i_data+2
+        
+    
+    for i_ch in range(2):
+        i_plt_ch = (i_data+1)+5*i_ch+np.floor(i_data/5)*5
+#        print(i_plt_ch)
+        channel = raw_x[i_data,i_ch,:]
+        plt.subplot(sub_dim[0],sub_dim[1],i_plt_ch)
+        #plt.figure(figsize=(8,6))
+        plt.plot(channel,color = ch_color[i_ch])
+        plt.title('windows:'+str(i_data)+', ch:'+str(i_ch))
+        plt.grid()

@@ -130,7 +130,7 @@ assert 1== 61090
 
 
 # %%================= individual files  
-thresh_rate =1
+thresh_rate =1.21
            
 #i_file = 1000
 #i_file = np.random.randint(8000, size = 1).item()
@@ -153,6 +153,7 @@ else:
     
 list_f = os.listdir(main_path)
 file = list_f[i_file]
+#file = IDs_Dfn_Ktp[0]
 #file = "dadb672d-8c3a-4811-9cab-f8de7c309987.wav"
 #file = "ecbf5c09-c0ef-426f-b83e-31afbeac899e.wav"
 #file = "e9723cc4-6fb4-43f2-a4aa-ad68ee160e18.wav"
