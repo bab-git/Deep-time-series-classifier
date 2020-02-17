@@ -136,7 +136,7 @@ thresh_rate =1.21
 #i_file = np.random.randint(8000, size = 1).item()
 i_file = 542
 
-i_class =1 #0:normal  1:atrial
+i_class =0 #0:normal  1:atrial
 #i_class = np.random.randint(2, size = 1)+1    
     
 #path = '/data/BMBF/sample/filtered atrial waves/8aae6985-c0b9-41d4-ac89-9f721b8019d2.wav'
@@ -152,8 +152,9 @@ else:
     plt_title = 'Atrial Fibrilation'
     
 list_f = os.listdir(main_path)
-file = list_f[i_file]
+#file = list_f[i_file]
 #file = IDs_Dfn_Ktp[0]
+file = IDs[2254]
 #file = "dadb672d-8c3a-4811-9cab-f8de7c309987.wav"
 #file = "ecbf5c09-c0ef-426f-b83e-31afbeac899e.wav"
 #file = "e9723cc4-6fb4-43f2-a4aa-ad68ee160e18.wav"

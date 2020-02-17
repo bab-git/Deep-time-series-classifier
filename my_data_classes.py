@@ -154,11 +154,13 @@ def read_data(save_file = 'temp_save' , t_length = 8000 , t_base = 3000, t_range
 #    main_path = '/vol/hinkelstn/data/FILTERED/sinus_rhythm_8k/'
     main_path = path_data[1]
     IDs.extend(os.listdir(main_path))
-
+    
+    idx = np.argsort(IDs)
     IDs.sort()
     
     target = np.ones(16000)
     target[0:8000]=0      # 0 : normal 1:AF
+    target = [int(target[i]) for i in idx]
 #    t_range = range(0,6000)
 #    t_range = range(40000,50000)
 #    t_range = range(0,60000)
