@@ -96,18 +96,18 @@ IDs = load_ECG0['IDs']
 
 load_ECG = torch.load(data_dir_hink+dataset)
 
-print("{:>40}  {:<8s}".format("Loading model:", model_name))
+print("{:>40}  {:<8s}".format("Loading model:", save_name))
 
 loaded_vars = pickle.load(open(result_dir+"train_"+save_name+"_variables.p","rb"))
 
 params = loaded_vars['params']
-#epoch = params.epoch
+epoch = params.epoch
 print("{:>40}  {:<8d}".format("Epoch:", epoch))
 seed = params.seed
 print("{:>40}  {:<8d}".format("Seed:", seed))
 test_size = params.test_size
 np.random.seed(seed)
-#t_range = params.t_range
+t_range = params.t_range
 
 raw_x = load_ECG['raw_x']
 target = load_ECG['target']

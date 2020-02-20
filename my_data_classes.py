@@ -170,22 +170,26 @@ def read_data(save_file = 'temp_save' , t_length = 8000 , t_base = 3000, t_range
     i_ID=0;
     #    for i, ID in enumerate(IDs):
     list_reject = []    
-    millis = (time.time())
+#    millis = (time.time())
     millis2 = (time.time())
     t_start = 0;  
 #    T = 0
+    s = time.time()
     while i_ID< len(IDs):        
         del t_start
         ID = IDs[i_ID]
 #        print('sample: %d , time: %5.2f (s)' % (i_ID, millis2-millis))
         
-        millis = (time.time())
+        
 #        pickle.dump({'i_ID':i_ID},open("read_data_i_ID.p","wb"))
         if i_ID % 100 == 0:
 #            pickle.dump({'i_ID':i_ID},open("read_data_i_ID.p","wb"))
-            print(i_ID)
+            elapsed = time.time() - s
+            print("ECG files: ",i_ID," Elapsed time (seconds): %2.3f"%(elapsed))
+#            print(i_ID)
+            s = time.time()
         y = target[i_ID]
-        assert y <= target.max()
+        assert y <= max(target)
         # Load data and get label
         if y == 0:
             main_path = path_data[0]

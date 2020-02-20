@@ -136,7 +136,7 @@ thresh_rate =1.21
 #i_file = np.random.randint(8000, size = 1).item()
 i_file = 542
 
-i_class =0 #0:normal  1:atrial
+i_class =1 #0:normal  1:atrial
 #i_class = np.random.randint(2, size = 1)+1    
     
 #path = '/data/BMBF/sample/filtered atrial waves/8aae6985-c0b9-41d4-ac89-9f721b8019d2.wav'
@@ -166,7 +166,6 @@ w = wavio.read(path)
 #w.data = w.data[30000:50000,:]
 
 #fig, axes = plt.subplots(3, 1, sharex=True)
-fig, axes = plt.subplots(2, 1, sharex=True)
 
 #plt.figure(figsize=(8,6))
 #plt.subplots(2,1,1)
@@ -174,6 +173,8 @@ fig, axes = plt.subplots(2, 1, sharex=True)
 #plt.figure(figsize=(8,6))
 
 trimm_out = wave_harsh_peaks_all(w.data, t_base = 3000, thresh_rate = thresh_rate)
+
+fig, axes = plt.subplots(2, 1, sharex=True)
 
 i_ax = 0
 channel = w.data[:,0]
