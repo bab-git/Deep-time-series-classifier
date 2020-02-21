@@ -59,8 +59,10 @@ import os
 #dname = os.path.dirname(abspath)
 #os.chdir(dname)
 
-os.chdir('/home/bhossein/BMBF project/code_repo')
-#os.chdir('C:\Hinkelstien\code_repo')
+# os.chdir('/home/bhossein/BMBF project/code_repo')
+#os.chdir('C:\Users\bhossein\Desktop\Hinkelsn\code_repo')
+data_dr = 'data/'
+res_dr = 'results/'
 
 from my_data_classes import create_datasets_file, create_loaders, smooth, create_datasets_win
 import my_net_classes
@@ -69,7 +71,7 @@ import torch
 import pickle
 #import console
 # %% ================ loading data
-#load_ECG =  torch.load ('raw_x_8K_sync_win2K.pt')
+load_ECG =  torch.load (data_dr+'raw_x_8K_sync_win2K.pt')
 
 
 save_name ="2d_6CN_3FC_no_BN_in_FC_long"
@@ -84,7 +86,7 @@ device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 if type(target) != 'torch.Tensor':
     target = torch.tensor(load_ECG['target']).to(device)
 
-loaded_vars = pickle.load(open("train_"+save_name+"_variables.p","rb"))
+loaded_vars = pickle.load(open(res_dr+"train_"+save_name+"_variables.p","rb"))
 
 params = loaded_vars['params']
 epoch = params.epoch
@@ -93,7 +95,7 @@ test_size = params.test_size
 np.random.seed(seed)
 t_range = params.t_range
 
-#dataset_splits = create_datasets_win(raw_x, target, data_tag, test_size, seed=seed, t_range = t_range, device = device)
+dataset_splits = create_datasets_win(raw_x, target, data_tag, test_size, seed=seed, t_range = t_range, device = device)
 ecg_datasets = dataset_splits[0:3]
 trn_idx, val_idx, tst_idx = dataset_splits[3:6]
 trn_ds, val_ds, tst_ds = ecg_datasets
@@ -108,7 +110,7 @@ num_classes = 2
 
 save_name ="2d_6CN_3FC_no_BN_in_FC_long"
 
-model = pickle.load(open('train_'+save_name+'_best.pth', 'rb'))
+model = pickle.load(open(res_dr+'train_'+save_name+'_best.pth', 'rb'))
 
 #%%===============  report
 
@@ -354,7 +356,7 @@ for i in [1,4]:
     
 save_file = save_name+"_qta_full_train.p"
 
-model_qta_best = pickle.load(open(save_file, 'rb'))
+model_qta_best = pickle.load(open(res_dr+save_file, 'rb'))
 model_qta_best.to('cpu')
 quantized_model_best = torch.quantization.convert(model_qta_best.eval(), inplace=False)
 quantized_model_best.eval()

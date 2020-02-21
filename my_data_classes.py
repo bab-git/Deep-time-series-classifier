@@ -333,8 +333,8 @@ def create_datasets_win(raw_x, target, data_tag, test_size, seed=None, t_range=N
        
     extend_idx = lambda idx: [i for j in idx for i in np.where(data_tag == j)[0]]
     
-    idx = np.arange(len(target))
-#    idx = np.arange(len(np.unique(data_tag)))
+#    idx = np.arange(len(target))
+    idx = np.arange(len(np.unique(data_tag)))
 
     trn_idx, tst_idx = train_test_split(idx, test_size=test_size, random_state=seed)
     val_idx, tst_idx= train_test_split(tst_idx, test_size=0.5, random_state=seed)

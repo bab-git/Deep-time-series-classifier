@@ -18,7 +18,7 @@ Training aware quantization
 @author: bhossein
 """
 
-import time
+# import time
 #from collections import defaultdict
 #from functools import partial
 #from multiprocessing import cpu_count
@@ -59,14 +59,15 @@ import os
 #dname = os.path.dirname(abspath)
 #os.chdir(dname)
 
-os.chdir('/home/bhossein/BMBF project/code_repo')
+# os.chdir('/home/bhossein/BMBF project/code_repo')
 #os.chdir('C:\Hinkelstien\code_repo')
+res_dr = 'results/'
 
 from my_data_classes import create_datasets_file, create_loaders, smooth, create_datasets_win
 import my_net_classes
 from my_net_classes import SepConv1d, _SepConv1d, Flatten, parameters
 import torch
-import pickle
+# import pickle
 #import console
 # %% ================ loading data
 ##load_ECG =  torch.load ('raw_x_8K_sync_win2K.pt')
@@ -84,7 +85,7 @@ device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 #if type(target) != 'torch.Tensor':
 #    target = torch.tensor(load_ECG['target']).to(device)
 #
-loaded_vars = pickle.load(open("train_"+save_name+"_variables.p","rb"))
+loaded_vars = pickle.load(open(res_dr+"train_"+save_name+"_variables.p","rb"))
 #
 #params = loaded_vars['params']
 #epoch = params.epoch
@@ -167,7 +168,8 @@ def model_summary(save_file, name1, name2):
     =======================================================================
            ''')
     
-    model = pickle.load(open(save_file+'.pth', 'rb'))
+    model = pickle.load(open(res_dr+save_file+'.pth', 'rb'))
+    # model = torch.load(res_dr+save_file+'.pth', map_location = torch.device('cpu'))
           
     print(model)
     

@@ -17,8 +17,9 @@ def main(args):
     t_base  = args.peak_window
     out     = args.out
 
-    target, raw_x, IDs, out_IDs, list_reject = read_data(t_win, t_shift, t_base, out)
-    extract_windows(t_win, t_shift, target, raw_x, IDs, out_IDs, out, list_reject)
+    target, raw_x, IDs, out_IDs, list_reject = read_data(t_win, t_shift, t_base, out)    
+
+    extract_windows(t_win, t_shift, target, raw_x, IDs, out_IDs, out, list_reject)    
 
 def read_data(t_length, t_shift, t_base, save_file):
     path_data = '/vol/hinkelstn/data/FILTERED/sinus_rhythm_8k/'
@@ -41,16 +42,17 @@ def read_data(t_length, t_shift, t_base, save_file):
     
     t_ovl = t_length-t_shift
 
-    d_x = int(16000*(60000/t_shift)*t_length)    
+    d_x = int(16000*(60000/t_shift)*t_length)
+    #d_x = 1
     #raw_x = torch.empty((d_x,t_shift,2), dtype=torch.float)
     raw_x = torch.empty((d_x,2), dtype=torch.float)
     out_IDs = np.empty((d_x,2))
     ind_x = 0
     
     thresh_rate0 = 1.1
-    list_reject = []   
+    list_reject = []    
     s = time.time()
-
+    
     for i_ID, ID in enumerate(IDs):    
         t_start = 0
         if i_ID % 100 == 0:
@@ -155,10 +157,9 @@ def read_data(t_length, t_shift, t_base, save_file):
         if thresh_rate > thresh_rate0:
             print ("For ID: %d , thresh %2.2f" % (i_ID, thresh_rate))
             list_reject = np.append(list_reject,{'i_ID':i_ID,'thresh':thresh_rate})                
-    
-#    if ind_x < raw_x.shape[0]:
-    raw_x = raw_x[:ind_x,:]
-    out_IDs = out_IDs[:ind_x,:]
+    if ind_x < raw_x.shape[0]:
+        raw_x = raw_x[:ind_x,:]
+        out_IDs = out_IDs[:ind_x,:]
     
     # pickle.dump(list_reject,open("read_data_i_ID.p","wb"))        
 #    torch.save({'IDs':IDs, 'raw_x':raw_x, 'target':target}, save_file+'_no_split.pt')
@@ -173,13 +174,11 @@ def extract_windows(t_win, t_shift, target, raw_x, IDs, out_IDs, save_file, list
     raw_x_extend = torch.empty([d_x,2,t_win])#.to(device)
     ind_x = 0
     
+    #target_extend = np.empty(0)
+    #data_tag = np.empty(0)
     target_extend = np.empty(d_x)
     data_tag = np.empty(d_x)
-
-#    raw_x_extend = torch.empty([0,raw_x.shape[2],t_win])#.to(device)
-#    target_extend = np.empty(0)
-#    data_tag = np.empty(0)
-
+    
     print("Extracting temporal windows from ECG files..." )
     s = time.time()
     for i_ID in range(len(IDs)):
@@ -201,10 +200,14 @@ def extract_windows(t_win, t_shift, target, raw_x, IDs, out_IDs, save_file, list
             target_extend[ind_x:ind_x_e] = [target[i_ID]] * c_data.shape[0]        
             data_tag[ind_x:ind_x_e] = [i_ID] * c_data.shape[0]
             ind_x += c_data.shape[0]
-                
+            
+    
     raw_x_extend = raw_x_extend[:ind_x,:,:]
     target_extend = target_extend[:ind_x]
     data_tag = data_tag[:ind_x]
+    
+    #torch.save({'raw_x':raw_x_extend,'target':target_extend,'target_ecg':target,
+    #            'data_tag':data_tag, 'IDs':IDs, 'list_reject':list_reject}, save_dir+save_file+'.pt')
     
     torch.save({'raw_x':raw_x_extend,'target':target_extend,'target_ecg':target,
                 'data_tag':data_tag, 'IDs':IDs, 'list_reject':list_reject}, save_file+'.pt')

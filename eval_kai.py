@@ -66,14 +66,14 @@ import option_utils
 
 result_dir = 'results/' 
 data_dir = 'data/' 
-data_dir_hink = '/vol/hinkelstn/codes/'
+#data_dir_hink = '/vol/hinkelstn/codes/'
 
 import copy
 
 # %%  read excell
-kai_dir = '/home/bhossein/BMBF project/Reports/'
+kai_dir = 'C:\Hinkelstien\Reports/'
 file_name = 'kai_result_10jan.xlsx'
-res_db = pd.read_excel(kai_dir+file_name, index_col=0)
+res_db = pd.read_excel(file_name, index_col=0)
 #pd.read_excel(open(res_dir+file_name, 'rb'))
 IDs_kai = res_db['File'].values
 data_tags_kai = list(res_db.index)
@@ -91,11 +91,11 @@ dataset0 = 'raw_x_8K_sync.pt'
 dataset = 'raw_x_8K_sync_win2K.pt'
 print("{:>40}  {:<8s}".format("Loading dataset:", dataset))
 
-load_ECG0 = torch.load(data_dir_hink+dataset0)
+load_ECG0 = torch.load(data_dir+dataset0)
 IDs = load_ECG0['IDs']
 
-load_ECG = torch.load(data_dir_hink+dataset)
-
+load_ECG = torch.load(data_dir+dataset)
+#%%
 print("{:>40}  {:<8s}".format("Loading model:", save_name))
 
 loaded_vars = pickle.load(open(result_dir+"train_"+save_name+"_variables.p","rb"))
@@ -157,7 +157,7 @@ total_N = (0 == target_kai).sum()
 
 TP_ECG_rate_kai = TP_ECG_kai / total_P *100
 FP_ECG_rate_kai = FP_ECG_kai / total_N *100
-
+print("{:>40}  ".format(20*"="))
 print("{:>40}  {:<8.2f}".format("Kai TP rate:", TP_ECG_rate_kai))
 print("{:>40}  {:<8.2f}".format("Kai FP rate:", FP_ECG_rate_kai))
 
@@ -213,8 +213,8 @@ IDs_Dfp_Ktn= [i for i in IDs_FP_DN if i in IDs_TN_tst_Kai]
 Dfp_Ktn_rate = len(IDs_Dfp_Ktn)/len(IDs_FP_DN)*100
 
 print("{:>40}  ".format(20*"="))
-print("{:>40}  {:<8.2f}%".format("DN TP rate on test data:", TP_tst_rate_kai))
-print("{:>40}  {:<8.2f}%".format("DN FP rate on test data:", FP_tst_rate_kai))
+print("{:>40}  {:<8.2f}%".format("DN TP rate on test data:", TP_ECG[0]))
+print("{:>40}  {:<8.2f}%".format("DN FP rate on test data:", FP_ECG[0]))
 
 print("{:>40}  ".format(20*"="))
 print("{:>40}  {:<8.2f}%".format("Kai TP rate on test data:", TP_tst_rate_kai))
@@ -231,7 +231,7 @@ print("{:>40}  {:<8.2f}%".format("Kfp_Dfp rate:", Kfp_Dfp_rate))
 print("{:>40}  {:<8.2f}%".format("New FP rate on test data:", Kfp_Dfp_rate*FP_ECG_rate_kai/100))
 print("{:>40}  {:<8.2f}%".format("Dfp_Ktn rate:", Dfp_Ktn_rate))
 
-
+assert 1==2
 #%%----------------- inspection
 ID = IDs_Dfn_Ktp[0]
 idx = IDs.index(ID)
