@@ -66,6 +66,7 @@ import option_utils
 
 result_dir = 'results/' 
 data_dir = 'data/' 
+rep_dir = '/home/bhossein/BMBF project/Reports/'
 #data_dir_hink = '/vol/hinkelstn/codes/'
 
 import copy
@@ -73,7 +74,7 @@ import copy
 # %%  read excell
 kai_dir = 'C:\Hinkelstien\Reports/'
 file_name = 'kai_result_10jan.xlsx'
-res_db = pd.read_excel(file_name, index_col=0)
+res_db = pd.read_excel(rep_dir+file_name, index_col=0)
 #pd.read_excel(open(res_dir+file_name, 'rb'))
 IDs_kai = res_db['File'].values
 data_tags_kai = list(res_db.index)

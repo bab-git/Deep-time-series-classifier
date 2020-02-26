@@ -4,7 +4,8 @@ from torch import cuda, load
 
 import my_net_classes as net
 
-models = [
+models = [    
+    (net.Classifier_1d_3conv_2fc_4str_2sub,                    "3conv_2fc_4str_2sub"),  #sub-sample 2 -  1dconv - 3 conv - 2 FC   ready to quantize  - drop after relu + BN2d
     (net.Classifier_1d_4c_2fc_sub_qr,                    "1d_4c_2fc_sub2_qr"),  #sub-sample 2 -  1dconv - 4 conv - 2 FC   ready to quantize  - drop after relu + BN2d
     (net.Classifier_1d_6_conv_v2,                       "2d_6CN_3FC_no_BN_in_FC"), #"1dconv - 6 conv - 3 FC with dropout after relu + BN2d"    
 #    (net.Classifier_4c_2f_k1_16_s1_8_sub,               "4c_2f_k16888_s8444_sub"),
@@ -82,7 +83,7 @@ def show_model_chooser(default = 0, override = None):
             return models[idx]
     return models[default]
 
-def show_data_chooser(default = 4, override = None):
+def show_data_chooser(default = 5, override = None):
     if override:
         return datasets[override]
     print("\n".join(["{}: {}".format(i, file_name) for i, (file_name, _) in enumerate(datasets)]))
@@ -106,10 +107,15 @@ def show_gpu_chooser(default = 0, override = None):
             return "cuda:{}".format(idx)
     return "cuda:{}".format(default)
 
-def build_name(model_name, data_name, batch_size, override = None):
+def build_name(model_name, data_name, override = None):
     if override:
         return override
-    return "{}_b{}_{}".format(model_name, batch_size, data_name)
+    save_name0 = "{}_{}".format(model_name, data_name)
+    save_name = input('''Enter a save-file name for this trainig:
+        default is {}   :'''.format(save_name0))
+    save_name = save_name if save_name !='' else save_name0
+    suffix = input('Enter any suffix for the save file (def: NONE):')
+    return save_name+'_'+suffix
 
 def find_save(model_name, data_name, override = None):
     if override:

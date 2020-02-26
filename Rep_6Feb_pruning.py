@@ -99,7 +99,8 @@ loaded_vars = pickle.load(open(res_dr+"train_"+save_name+"_variables.p","rb"))
 #trn_idx, val_idx, tst_idx = dataset_splits[3:6]
 #trn_ds, val_ds, tst_ds = ecg_datasets
 #
-batch_size = loaded_vars['params'].batch_size
+#batch_size = loaded_vars['params'].batch_size
+batch_size = 1
 #trn_dl, val_dl, tst_dl = create_loaders(ecg_datasets, bs=batch_size, jobs = 0)
 #raw_feat = ecg_datasets[0][0][0].shape[0]
 #raw_size = ecg_datasets[0][0][0].shape[1]

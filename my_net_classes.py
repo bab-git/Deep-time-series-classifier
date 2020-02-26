@@ -1019,7 +1019,7 @@ class Classifier_1d_3_conv_2FC_v2(nn.Module):
 
         drop0 = 0.2
 #        assert int(n_flt) == n_flt
-        flat_in = 128 * int (raw_size / (2*4*4))
+        flat_in = 128 * int (raw_size / (2*4*4*4))
 #        assert int (raw_size / (2*4**3)) == (raw_size / (2*4**3))
 #        flat_in = 256*int(n_flt)
         
@@ -1048,6 +1048,52 @@ class Classifier_1d_3_conv_2FC_v2(nn.Module):
 #        t_in = torch.cat([raw_out, fft_out], dim=1)
         out = self.out(raw_out)
 #        out  = self.dequant(out)
+        return out    
+
+#%% ==================   1dconv - 3 conv - 2 FC   -  change: ready to quantize: drop after relu + BN2d
+class Classifier_1d_3conv_2fc_4str_2sub(nn.Module):
+    def __init__(self, raw_ni, no, raw_size, drop=.5, batch_norm = True, conv_type = '2d'):
+        super().__init__()
+        
+        FC_neu = 64
+        kernels = [8,8,8]
+        drop0 = 0.2
+#        assert int(n_flt) == n_flt
+#        flat_in = 128 * int (raw_size / (2*4*4*4))
+        flat_in = 64 * int (raw_size / (2*4*4*4))
+#        assert int (raw_size / (2*4**3)) == (raw_size / (2*4**3))
+#        flat_in = 256*int(n_flt)
+        
+        
+#        if batch_norm:
+        self.raw = nn.Sequential(
+            nn.MaxPool2d(1, 2), # Subsampling
+            SepConv1d_v4(raw_ni,  32, kernels[0], 4, 2, drop0, batch_norm, conv_type),  #out: raw_size/str
+            SepConv1d_v4(    32,  64, kernels[1], 4, 2, drop0, batch_norm, conv_type),
+            SepConv1d_v4(    64, 64, kernels[2], 4, 2, drop0, batch_norm, conv_type),
+#                SepConv1d(   128, 256, 8, 4, 2, drop, batch_norm, conv_type),
+#                SepConv1d(   256, 512, 8, 4, 2, drop, batch_norm, conv_type),
+#                SepConv1d(   512,1024, 8, 4, 2, batch_norm = batch_norm, conv_type = conv_type),
+            )
+        
+        self.FC = nn.Sequential(
+            Flatten(),
+            nn.Linear(flat_in, FC_neu), nn.ReLU(inplace=True), nn.Dropout(drop),
+#                nn.Linear( 128, 128),    nn.BatchNorm1d(num_features = 128), nn.Dropout(drop), nn.ReLU(inplace=True)
+            )            
+        
+        self.out = nn.Sequential(
+#            nn.Linear(128, 64), nn.ReLU(inplace=True), 
+            nn.Linear(FC_neu, no))
+        
+    def forward(self, t_raw):        
+        t_raw  =  t_raw.unsqueeze(2)
+        raw_out = self.raw(t_raw)
+        FC_out = self.FC(raw_out)
+#        fft_out = self.fft(t_fft)
+#        t_in = torch.cat([raw_out, fft_out], dim=1)
+#        FC_out = self.FC(raw_out)        
+        out = self.out(FC_out)
         return out    
     
 #%% ==================   1dconv - 1 conv - 1 FC

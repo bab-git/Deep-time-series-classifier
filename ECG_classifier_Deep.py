@@ -1,42 +1,4 @@
-import time
-#from collections import defaultdict
-#from functools import partial
-#from multiprocessing import cpu_count
-#from pathlib import Path
-#from textwrap import dedent
-import matplotlib.pyplot as plt
-import numpy as np
-#import pandas as pd
-
-#from sklearn.externals import joblib
-#from sklearn.model_selection import train_test_split
-#from sklearn.preprocessing import LabelEncoder, StandardScaler
-
-import torch
-from torch import nn
-from torch import optim
-from torch.nn import functional as F
-#from torch.optim.lr_scheduler import _LRScheduler
-#from torch.utils.data import TensorDataset, DataLoader
-#import datetime
-import pickle
-#from git import Repo
-
-from torchsummary import summary
-
-import os
-#abspath = os.path.abspath('test_classifier_GPU_load.py')
-#dname = os.path.dirname(abspath)
-#os.chdir(dname)
-
-os.chdir('/home/bhossein/BMBF project/code_repo')
-#os.chdir('C:\Hinkelstien\code_repo')
-
-from my_data_classes import create_datasets, create_loaders, read_data, create_datasets_file, create_datasets_win, smooth
-import my_net_classes
-from my_net_classes import SepConv1d, _SepConv1d, Flatten, parameters
-
-import xavier
+from default_modules import *
 #%% =======================
 seed = 1
 seed2 = input ('Enter seed value for randomizing the splits (default = 1):')
@@ -64,15 +26,25 @@ t_win = 2**11  #2048
 t_shift = None
 
 t_range = range(t_win)
+
+
+dataset, data_name  = option_utils.show_data_chooser()
+
+print("{:>40}  {:<8s}".format("Loading dataset:", dataset))
+
+load_ECG =  torch.load (data_dir+dataset)
+
 #load_ECG =  torch.load ('raw_x_all.pt') 
 #load_ECG =  torch.load ('raw_x_40k_50K.pt') 
 #load_ECG =  torch.load ('raw_x_6K.pt') 
 #load_ECG =  torch.load ('raw_x_8K_sync.pt')
-load_ECG =  torch.load ('raw_x_8K_sync_win2K.pt')
+#load_ECG =  torch.load ('raw_x_8K_sync_win2K.pt')
+
             
 
 #%%==================== test and train splits
-"creating dataset"     
+print("{:>40}".format("creating datasets"))
+    
 #test_size = 0.25   
 test_size = 0.3    #default
 
@@ -186,13 +158,17 @@ def weights_init(m):
         m.bias.data.fill_(0)
         m.running_mean.fill_(0)        
 
-#---------------------- models
+#---------------------- pruned model training
 #save_name = "1d_4c_2fc_sub2_qr"
-load_model = 'prunned_1d_4c_2fc_sub2_qr_1fPi_20tpoch_iter_346'
-model = pickle.load(open(load_model+'.pth', 'rb'))
-print ('The loaded model is : ', load_model)
-model.apply(weights_init)
+#load_model = 'prunned_1d_4c_2fc_sub2_qr_1fPi_20tpoch_iter_346'
+#model = pickle.load(open(load_model+'.pth', 'rb'))
+#print ('The loaded model is : ', load_model)
+#model.apply(weights_init)
         
+#---------------------- model from scratch
+model_cls, model_name   = option_utils.show_model_chooser()
+model = model_cls(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
+
 #model = my_net_classes.Classifier_1d_4c_2fc_sub_qr(raw_feat, num_classes, raw_size).to(device)
 #model = my_net_classes.Classifier_1d_5_conv_v2(raw_feat, num_classes, raw_size).to(device)
 #model = my_net_classes.Classifier_1d_1_conv_1FC(raw_feat, num_classes, raw_size).to(device)
@@ -221,17 +197,22 @@ opt = optim.Adam(model.parameters(), lr=lr)
 
 #print('Enter a save-file name for this trainig:')
 print("chosen batch size: %d, test size: %2.2f" % (batch_size, test_size))
-save_name = input('''Enter a save-file name for this trainig: 
-    '''+'(default : '+load_model+'_trained)')
+#save_name = input('''Enter a save-file name for this trainig: 
+#    '''+'(default : '+model_name+'_trained)')
 
-if save_name =='':
-    save_name = load_model+'_trained'
-    
+save_name = option_utils.build_name(model_name, data_name)
+      
+#if save_name =='':
+#    save_name = load_model+'_trained'
+print("Result will be saved file into : "+save_name)    
 print('Start model training')
 epoch = 0
 
 #pickle.dump({'ecg_datasets':ecg_datasets},open("train_"+save_name+"_split.p","wb"))
 #torch.save(ecg_datasets, 'train_'+save_name+'.pth')
+
+
+
 #%%===============  Learning loop`
 #millis = round(time.time())
 
@@ -290,17 +271,17 @@ while epoch < n_epochs:
         best_acc = acc
 #        torch.save(model, "train_"+save_name+'_best.pth')
 #        torch.save(model.state_dict(), "train_"+save_name+'_best.pth')
-        pickle.dump(model,open("train_"+save_name+'_best.pth','wb'))
+        pickle.dump(model,open(result_dir+"train_"+save_name+'_best.pth','wb'))
 #        pickle.dump({'epoch':epoch,'acc_history':acc_history},open("train_"+save_name+"variables.p","wb"))
         params = parameters(lr, epoch, patience, step, batch_size, t_range, seed, test_size)
-        pickle.dump({'params':params,'acc_history':acc_history, 'loss_history':loss_history},open("train_"+save_name+"_variables.p","wb"))
+        pickle.dump({'params':params,'acc_history':acc_history, 'loss_history':loss_history},open(result_dir+"train_"+save_name+"_variables.p","wb"))
         
     else:
         trials += 1
         if trials >= patience:
             print('Early stopping on epoch %d' % (epoch))
 #            model.load_state_dict(torch.load("train_"+save_name+'_best.pth'))
-            model = pickle.load(open("train_"+save_name+'_best.pth','rb'))
+            model = pickle.load(open(result_dir+"train_"+save_name+'_best.pth','rb'))
             model.opt = opt
             break
     epoch += 1
@@ -331,19 +312,6 @@ print('Done!')
 #    box = np.ones(box_pts)/box_pts
 #    y_smooth = np.convolve(y, box, mode = 'same')
 #    return y_smooth
-
-#%%==========================  visualize training curve
-f, ax = plt.subplots(1,2, figsize=(12,4))    
-ax[0].plot(loss_history, label = 'loss')
-ax[0].set_title('Validation Loss History')
-ax[0].set_xlabel('Epoch no.')
-ax[0].set_ylabel('Loss')
-
-ax[1].plot(smooth(acc_history, 5)[:-2], label='acc')
-#ax[1].plot(acc_history, label='acc')
-ax[1].set_title('Validation Accuracy History')
-ax[1].set_xlabel('Epoch no.')
-ax[1].set_ylabel('Accuracy');
 
 #%%==========================  test result
 
@@ -436,6 +404,19 @@ thresh_AF = 3
 TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = evaluate(model, tst_dl, thresh_AF = thresh_AF)
 
 assert 1==2
+#%%==========================  visualize training curve
+f, ax = plt.subplots(1,2, figsize=(12,4))    
+ax[0].plot(loss_history, label = 'loss')
+ax[0].set_title('Validation Loss History')
+ax[0].set_xlabel('Epoch no.')
+ax[0].set_ylabel('Loss')
+
+ax[1].plot(smooth(acc_history, 5)[:-2], label='acc')
+#ax[1].plot(acc_history, label='acc')
+ax[1].set_title('Validation Accuracy History')
+ax[1].set_xlabel('Epoch no.')
+ax[1].set_ylabel('Accuracy');
+
 #%%===============  checking internal values
 drop=.5
 batch_norm = True

@@ -70,8 +70,16 @@ from my_net_classes import SepConv1d, _SepConv1d, Flatten, parameters
 import torch
 import pickle
 #import console
+initite = 0
 # %% ================ loading data
-load_ECG =  torch.load (data_dr+'raw_x_8K_sync_win2K.pt')
+if 'load_ECG' in locals() and initite == 0:
+    print('''
+        ==================      
+          Using already extracted data
+          ''')
+    time.sleep(5)
+else:    
+    load_ECG =  torch.load (data_dr+'raw_x_8K_sync_win2K.pt')
 
 
 save_name ="2d_6CN_3FC_no_BN_in_FC_long"
@@ -95,12 +103,15 @@ test_size = params.test_size
 np.random.seed(seed)
 t_range = params.t_range
 
-dataset_splits = create_datasets_win(raw_x, target, data_tag, test_size, seed=seed, t_range = t_range, device = device)
+if 'dataset_splits' not in locals():
+    dataset_splits = create_datasets_win(raw_x, target, data_tag, test_size, seed=seed, t_range = t_range, device = device)
+
 ecg_datasets = dataset_splits[0:3]
 trn_idx, val_idx, tst_idx = dataset_splits[3:6]
 trn_ds, val_ds, tst_ds = ecg_datasets
 
-batch_size = loaded_vars['params'].batch_size
+#batch_size = loaded_vars['params'].batch_size
+batch_size = 1
 trn_dl, val_dl, tst_dl = create_loaders(ecg_datasets, bs=batch_size, jobs = 0)
 raw_feat = ecg_datasets[0][0][0].shape[0]
 raw_size = ecg_datasets[0][0][0].shape[1]
@@ -374,8 +385,20 @@ There is only one de-quantiztion unit in the network in the last layer to get ba
 In each layer a scale factor is determined for each output channel.
     For example, a conv-layer with 32 inputs and 64 outputs has 64 different scale-factors.
     ''')
+    
+print ('''
+==============================================================================
+The summary of the 6-layer CNN network quantization:
+==============================================================================
+       ''')
+    
+raw_feat, raw_size = 2, 2048
+    
+print(quantized_model_best)
         
-print('''      
+print('''   
+
+==============================================================================
 Accuracy after using training-aware fixpoint quantization: 
 TP: 99.02    FP: 6.03    AF_threshold = 3
 TP: 98.77    FP: 2.81    AF_threshold = 7    
