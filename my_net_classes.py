@@ -1173,3 +1173,71 @@ class ConvBNReLU(nn.Sequential):
             nn.ReLU(inplace=False),
             nn.Dropout(0.5)
         )
+        
+#%% ==================   felexile net          R2Q: ready to quantize: drop after relu + BN2d
+class Classifier_1d_flex_net(nn.Module):
+    def __init__(self, raw_ni, no, raw_size, kernels, strides, pads, net,drop=.5 ,
+                 batch_norm = True, conv_type = '2d'):
+        
+        super().__init__()
+        
+#        FC_neu = 64
+        pre = net['pre'] if 'pre' in net else None
+        convs = net['conv']
+        FCs = net['fc']
+        kernels = [kernels]*len(convs) if type(kernels)==int else kernels
+        strides = [strides]*len(convs) if type(strides)==int else strides
+        pads    =    [pads]*len(convs) if type(pads)==int else pads
+        drop0 = 0.2
+
+        flat_in = convs[len(convs)-1] * int(raw_size / np.prod(pads))
+#        assert int (raw_size / (2*4**3)) == (raw_size / (2*4**3))
+#        flat_in = 256*int(n_flt)
+        
+        params = zip(convs[:len(convs)-1], convs[1:], kernels, strides, pads)
+#        if batch_norm:
+        if pre:
+            raw_layers = [nn.MaxPool2d(1, 2)] # Subsampling
+        else:
+            raw_layers = [] 
+            
+        raw_layers.append(SepConv1d_v4(raw_ni,  convs[0], kernels[0], strides[0], pads[0], 
+                                  drop0, batch_norm, conv_type))  #out: raw_size/str
+        [raw_layers.append(SepConv1d_v4(i_ch,  conv, kernel, strd, pad, drop0, 
+                                        batch_norm, conv_type))\
+                                        for  i_ch, conv, kernel, strd, pad in params]
+        
+        self.raw = nn.Sequential(*raw_layers)
+                
+#        self.raw = nn.Sequential(
+#            nn.MaxPool2d(1, 2), # Subsampling
+#            SepConv1d_v4(raw_ni,  32, kernels[0], 4, 2, drop0, batch_norm, conv_type),  #out: raw_size/str
+#            SepConv1d_v4(    32,  64, kernels[1], 4, 2, drop0, batch_norm, conv_type),
+#            SepConv1d_v4(    64, 128, kernels[2], 4, 2, drop0, batch_norm, conv_type),
+##                SepConv1d(   128, 256, 8, 4, 2, drop, batch_norm, conv_type),
+##                SepConv1d(   256, 512, 8, 4, 2, drop, batch_norm, conv_type),
+##                SepConv1d(   512,1024, 8, 4, 2, batch_norm = batch_norm, conv_type = conv_type),
+#            )
+        
+#        FC_layers = [Flatten()]
+#        [FC_layers.append([nn.Linear(flat_in, FC_neu), nn.ReLU(inplace=True), nn.Dropout(drop)]) for FC_neu in FCs]
+        
+        self.FC = nn.Sequential(
+            Flatten(),
+            nn.Linear(flat_in, FCs[0]), nn.ReLU(inplace=True), nn.Dropout(drop),
+#                nn.Linear( 128, 128),    nn.BatchNorm1d(num_features = 128), nn.Dropout(drop), nn.ReLU(inplace=True)
+            )            
+        
+        self.out = nn.Sequential(
+#            nn.Linear(128, 64), nn.ReLU(inplace=True), 
+            nn.Linear(FCs[0], no))
+        
+    def forward(self, t_raw):        
+        t_raw  =  t_raw.unsqueeze(2)
+        raw_out = self.raw(t_raw)
+        FC_out = self.FC(raw_out)
+#        fft_out = self.fft(t_fft)
+#        t_in = torch.cat([raw_out, fft_out], dim=1)
+#        FC_out = self.FC(raw_out)        
+        out = self.out(FC_out)
+        return out    

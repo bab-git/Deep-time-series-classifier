@@ -169,7 +169,7 @@ try:
 except:    
     model = pickle.load(open(model_path, 'rb'))
 
-thresh_AF = 3
+thresh_AF = 7
 
 TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, device = device)
 
