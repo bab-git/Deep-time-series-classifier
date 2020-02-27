@@ -1190,14 +1190,15 @@ class Classifier_1d_flex_net(nn.Module):
         pads    =    [pads]*len(convs) if type(pads)==int else pads
         drop0 = 0.2
 
-        flat_in = convs[len(convs)-1] * int(raw_size / np.prod(pads))
+        flat_in = convs[len(convs)-1] * int(raw_size / np.prod(strides))
 #        assert int (raw_size / (2*4**3)) == (raw_size / (2*4**3))
 #        flat_in = 256*int(n_flt)
         
         params = zip(convs[:len(convs)-1], convs[1:], kernels, strides, pads)
 #        if batch_norm:
         if pre:
-            raw_layers = [nn.MaxPool2d(1, 2)] # Subsampling
+            raw_layers = [nn.MaxPool2d(1, int(pre[4]))] # Subsampling
+            flat_in = int(flat_in / int(pre[4]))
         else:
             raw_layers = [] 
             
@@ -1209,18 +1210,7 @@ class Classifier_1d_flex_net(nn.Module):
         
         self.raw = nn.Sequential(*raw_layers)
                 
-#        self.raw = nn.Sequential(
-#            nn.MaxPool2d(1, 2), # Subsampling
-#            SepConv1d_v4(raw_ni,  32, kernels[0], 4, 2, drop0, batch_norm, conv_type),  #out: raw_size/str
-#            SepConv1d_v4(    32,  64, kernels[1], 4, 2, drop0, batch_norm, conv_type),
-#            SepConv1d_v4(    64, 128, kernels[2], 4, 2, drop0, batch_norm, conv_type),
-##                SepConv1d(   128, 256, 8, 4, 2, drop, batch_norm, conv_type),
-##                SepConv1d(   256, 512, 8, 4, 2, drop, batch_norm, conv_type),
-##                SepConv1d(   512,1024, 8, 4, 2, batch_norm = batch_norm, conv_type = conv_type),
-#            )
-        
-#        FC_layers = [Flatten()]
-#        [FC_layers.append([nn.Linear(flat_in, FC_neu), nn.ReLU(inplace=True), nn.Dropout(drop)]) for FC_neu in FCs]
+#        FC_layers = Flatten()        
         
         self.FC = nn.Sequential(
             Flatten(),
@@ -1230,7 +1220,7 @@ class Classifier_1d_flex_net(nn.Module):
         
         self.out = nn.Sequential(
 #            nn.Linear(128, 64), nn.ReLU(inplace=True), 
-            nn.Linear(FCs[0], no))
+            nn.Linear(FCs[len(FCs)-1], no))
         
     def forward(self, t_raw):        
         t_raw  =  t_raw.unsqueeze(2)

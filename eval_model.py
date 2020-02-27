@@ -61,7 +61,7 @@ from default_modules import *
 #%% ============== options
 model_cls, model_name   = option_utils.show_model_chooser()
 dataset, data_name  = option_utils.show_data_chooser()
-save_name           = option_utils.find_save(model_name, data_name)
+save_name           = option_utils.find_save(model_name, data_name, result_dir = result_dir)
 if save_name == 'NONE':
     save_name ="2d_6CN_3FC_no_BN_in_FC_long"
     #save_name ="2d_6CN_3FC_no_BN_in_FC"

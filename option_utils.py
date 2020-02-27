@@ -3,7 +3,7 @@ import glob
 from torch import cuda, load
 
 import my_net_classes as net
-
+# %%
 models = [    
     (net.Classifier_1d_3conv_2fc_4str_2sub,                    "3conv_2fc_4str_2sub"),  #sub-sample 2 -  1dconv - 3 conv - 2 FC   ready to quantize  - drop after relu + BN2d
     (net.Classifier_1d_4c_2fc_sub_qr,                    "1d_4c_2fc_sub2_qr"),  #sub-sample 2 -  1dconv - 4 conv - 2 FC   ready to quantize  - drop after relu + BN2d
@@ -117,14 +117,15 @@ def build_name(model_name, data_name, override = None):
     suffix = input('Enter any suffix for the save file (def: NONE):')
     return save_name+'_'+suffix
 
-def find_save(model_name, data_name, override = None):
+def find_save(model_name, data_name, override = None, result_dir = ''):
     if override:
         save_name = override
     else:
-        save_name = glob.glob("*{}*{}*.p".format(model_name, data_name))
+        save_name = glob.glob(result_dir+"*{}*{}*.p".format(model_name, data_name))
         if save_name != []:
             save_name.sort(key=len)
-            save_name = save_name[0][6:-12] # File name without "train_" and "_variables.p"
+            l = len(result_dir)
+            save_name = save_name[0][6+l:-12] # File name without "train_" and "_variables.p"
         else:
             save_name = "NONE"
     save_name2 = input("Input saved model name (default {}) :".format(save_name))
