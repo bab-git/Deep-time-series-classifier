@@ -167,7 +167,36 @@ def weights_init(m):
         
 #---------------------- model from scratch
 model_cls, model_name   = option_utils.show_model_chooser()
-model = model_cls(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
+if model_name == '1d_flex_net':
+    print('=============== Defining the network structure')
+    convs = input ('convolutions separated by comma (e.g. 32,64) : ')
+    convs = [int(i) for i in convs.split(",")]
+    
+    FCs = input ('FC layers separated by comma (e.g. 32,64) : ')
+    FCs = [int(i) for i in FCs.split(",")]
+    
+    pool = input ('Input sub-sampling (e.g. 2): ')
+#    pool = int(pool)  else 0
+    
+    rest_params = input ('Kernel size, strides, pad (def.: 8,4,2) : ')
+    if rest_params == '':
+        rest_params = [8,4,2]
+    else:
+        rest_params = [int(i) for i in rest_params.split(",")]
+    kernels, strides, pads = rest_params
+            
+#    net = {'conv':convs, 'fc':FCs}
+    net = {'conv':convs, 'fc':FCs, 'kernels': kernels, 'strides': strides, 'pads':pads}
+    if pool not in (None, '', '0'):
+        net['pre'] = 'pool' + pool
+    
+    print('Network summary:')
+    print(net)
+    
+    model = model_cls(raw_feat, 2, 2048, net).to(device)
+
+else:
+    model = model_cls(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
 
 #model = my_net_classes.Classifier_1d_4c_2fc_sub_qr(raw_feat, num_classes, raw_size).to(device)
 #model = my_net_classes.Classifier_1d_5_conv_v2(raw_feat, num_classes, raw_size).to(device)
@@ -201,6 +230,14 @@ print("chosen batch size: %d, test size: %2.2f" % (batch_size, test_size))
 #    '''+'(default : '+model_name+'_trained)')
 
 save_name = option_utils.build_name(model_name, data_name)
+if model_name == '1d_flex_net':
+    suf0 = '_{}c_{}fc{}_pool{}_ksp{}{}{}'.format(len(convs),len(FCs),FCs[0],pool,kernels,strides,pads)
+else:
+    suf0 = ''
+    
+suffix = input('Enter any suffix for the save file (def: {}):'.format(suf0))
+suffix = suf0 if suffix == '' else '_'+suffix
+save_name += suffix
       
 #if save_name =='':
 #    save_name = load_model+'_trained'

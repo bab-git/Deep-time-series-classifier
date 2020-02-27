@@ -1176,7 +1176,7 @@ class ConvBNReLU(nn.Sequential):
         
 #%% ==================   felexile net          R2Q: ready to quantize: drop after relu + BN2d
 class Classifier_1d_flex_net(nn.Module):
-    def __init__(self, raw_ni, no, raw_size, kernels, strides, pads, net,drop=.5 ,
+    def __init__(self, raw_ni, no, raw_size, net,drop=.5 ,
                  batch_norm = True, conv_type = '2d'):
         
         super().__init__()
@@ -1185,8 +1185,13 @@ class Classifier_1d_flex_net(nn.Module):
         pre = net['pre'] if 'pre' in net else None
         convs = net['conv']
         FCs = net['fc']
+        kernels = net['kernels']
         kernels = [kernels]*len(convs) if type(kernels)==int else kernels
+        
+        strides = net['strides']
         strides = [strides]*len(convs) if type(strides)==int else strides
+        
+        pads = net['pads']
         pads    =    [pads]*len(convs) if type(pads)==int else pads
         drop0 = 0.2
 

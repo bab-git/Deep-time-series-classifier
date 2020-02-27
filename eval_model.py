@@ -158,10 +158,9 @@ num_classes = 2
 # %%
 model_path = result_dir+'train_'+save_name+'_best.pth'
 
-model = model_cls(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
-model0 = copy.deepcopy(model)
-
 try:
+    model = model_cls(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
+    model0 = copy.deepcopy(model)
     if torch.cuda.is_available():
         model.load_state_dict(torch.load(model_path, map_location=lambda storage, loc: storage.cuda(device)))
     else:
