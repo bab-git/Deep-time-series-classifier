@@ -47,8 +47,10 @@ import os
 #dname = os.path.dirname(abspath)
 #os.chdir(dname)
 
-os.chdir('/home/bhossein/BMBF project/code_repo')
-#os.chdir('C:\Hinkelstien\code_repo')
+try:
+    os.chdir('/home/bhossein/BMBF project/code_repo')
+except:
+    os.chdir('C:\Hinkelstien\code_repo')
 
 from my_data_classes import create_datasets_file, create_loaders, smooth,\
     create_datasets_win
