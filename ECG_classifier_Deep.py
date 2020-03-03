@@ -310,7 +310,7 @@ while epoch < n_epochs:
 #        torch.save(model.state_dict(), "train_"+save_name+'_best.pth')
         pickle.dump(model,open(result_dir+"train_"+save_name+'_best.pth','wb'))
 #        pickle.dump({'epoch':epoch,'acc_history':acc_history},open("train_"+save_name+"variables.p","wb"))
-        params = parameters(lr, epoch, patience, step, batch_size, t_range, seed, test_size)
+        params = parameters(net, lr, epoch, patience, step, batch_size, t_range, seed, test_size)
         pickle.dump({'params':params,'acc_history':acc_history, 'loss_history':loss_history},open(result_dir+"train_"+save_name+"_variables.p","wb"))
         
     else:

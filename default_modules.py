@@ -63,7 +63,9 @@ from evaluation import evaluate
 import option_utils
 
 result_dir = 'results/' 
-data_dir = 'data/' 
-data_dir_hink = '/vol/hinkelstn/codes/'
+#data_dir = 'data/' 
+data_dir = '/vol/hinkelstn/codes/'
+if not os.path.exists(data_dir):
+    data_dir = 'data/'
 
 import copy

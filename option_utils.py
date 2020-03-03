@@ -118,7 +118,7 @@ def build_name(model_name, data_name, override = None):
 #    suffix = input('Enter any suffix for the save file (def: NONE):')
     return save_name
 
-def find_save(model_name, data_name, override = None, result_dir = ''):
+def find_save(model_name, data_name, override = None, result_dir = '', default = 0):
     if override:
         save_name = override
     else:
@@ -126,12 +126,24 @@ def find_save(model_name, data_name, override = None, result_dir = ''):
         if save_name != []:
             save_name.sort(key=len)
             l = len(result_dir)
-            save_name = save_name[0][6+l:-12] # File name without "train_" and "_variables.p"
+#            save_name = save_name[0][6+l:-12] # File name without "train_" and "_variables.p"
+            save_name = [i[6+l:-12] for i in save_name]
         else:
             save_name = "NONE"
-    save_name2 = input("Input saved model name (default {}) :".format(save_name))
-    if save_name2 != '':
-        save_name = save_name2
+    if len(save_name) > 1:
+        print("\n".join(["{}: {}".format(i, file_name) for i,file_name in enumerate(save_name)]))
+        idx = input("Choose model (default {}): ".format(default))
+        if idx.isdecimal():
+            idx = int(idx)
+            if idx in range(len(save_name)):
+                save_name = save_name[idx]
+        else:
+            save_name = save_name[default]
+                
+    else:        
+        save_name2 = input("Input saved model name (default {}) :".format(save_name))        
+        if save_name2 != '':
+            save_name = save_name2
     return save_name
 
 def load_partial_weights(model, file_name, device = "cpu"):

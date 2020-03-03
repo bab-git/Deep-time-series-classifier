@@ -100,7 +100,7 @@ device = torch.device('cuda:'+str(cuda_num) if torch.cuda.is_available() and cud
 # %% ================ loading data
 print("{:>40}  {:<8s}".format("Loading dataset:", dataset))
 
-load_ECG = torch.load(data_dir_hink+dataset)
+load_ECG = torch.load(data_dir+dataset)
 
 #%%===============  loading experiment's parameters and batches
 
