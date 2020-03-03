@@ -230,13 +230,14 @@ print("chosen batch size: %d, test size: %2.2f" % (batch_size, test_size))
 #    '''+'(default : '+model_name+'_trained)')
 
 save_name = option_utils.build_name(model_name, data_name)
-if model_name == '1d_flex_net':
-    suf0 = '_{}c_{}fc{}_pool{}_ksp{}{}{}'.format(len(convs),len(FCs),FCs[0],pool,kernels,strides,pads)
-else:
-    suf0 = ''
+#if model_name == '1d_flex_net':
+#    suf0 = '_{}c_{}fc{}_pool{}_ksp{}{}{}'.format(len(convs),len(FCs),FCs[0],pool,kernels,strides,pads)
+#else:
+#    suf0 = ''
     
+suf0 = ''
 suffix = input('Enter any suffix for the save file (def: {}):'.format(suf0))
-#suffix = suf0 if suffix == '' else '_'+suffix
+suffix = suf0 if suffix == '' else '_'+suffix
 save_name += suffix
       
 #if save_name =='':

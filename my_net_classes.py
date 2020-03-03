@@ -289,7 +289,8 @@ class parameters():
     """
     saves the training parameters  
     """
-    def __init__(self, lr, epoch, patience, step, batch_size, t_range, seed, test_size):
+    def __init__(self, net, lr, epoch, patience, step, batch_size, t_range, seed, test_size):
+        self.net = net
         self.lr = lr    
         self.epoch = epoch                
         self.patience = patience
