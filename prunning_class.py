@@ -6,17 +6,17 @@ Created on Tue Jan 28 17:12:27 2020
 @author: bhossein
 """
 
-from torch import nn
+#from torch import nn
 
 import torch
 from torch.autograd import Variable
-from torchvision import models
-import cv2
-import sys
+#from torchvision import models
+#import cv2
+#import sys
 import numpy as np
-import torchvision
+#import torchvision
 import torch.nn as nn
-import torch.nn.functional as F
+#import torch.nn.functional as F
 import torch.optim as optim
 #import dataset
 from prune import prune_lin_layers, prune_conv_layers
@@ -25,11 +25,11 @@ from operator import itemgetter
 from heapq import nsmallest
 #import time
 
-import numpy as np
+#import numpy as np
 
 import pickle
 
-#=====================
+#%%=====================
 class FilterPrunner:
     def __init__(self, model, device, FC_prune, skipped_layers=[]):
         self.model = model
@@ -49,20 +49,31 @@ class FilterPrunner:
         
         activation_index = 0 
 #        for layer, (name, module) in enumerate (self.model.raw.modules()):
-#        for layer, module in enumerate(self.model.raw.modules()):
-        layer = 0
+#        for layer, module in enumerate(self.model.raw.modules()):        
         x = x.unsqueeze(2)
-        module = self.model.raw[0]
-        x =module(x)
-        for i_layer in range(1,5):              #4c2fc_sub2, layers: 
+        model_l = len(self.model.raw)
+#        print(model_l)
+        
+        if type(self.model.raw[0]) == nn.MaxPool2d:
+            module = self.model.raw[0]
+            x = module(x)        
+            layer_range = range(1,model_l)
+            layer = 0
+        else:
+            layer = -1
+            layer_range = range(0,model_l)
+            
+        for i_layer in layer_range:              #raw layers: 
+#            print(i_layer)
             for (name,module) in self.model.raw[i_layer].layers._modules.items():
+#                print(module)
                 layer += 1
                 x = module(x)
 #                if i_layer ==4:
 #                print("module", module)
 #                print("activation size", x.shape)
 #                modules = np.append(modules, module)
-                if (type(module) == nn.Conv1d or type(module) == nn.Conv2d) and module.in_channels != module.out_channels \
+                if (type(module) == nn.Conv1d or type(module) == nn.Conv2d) and module.kernel_size[1] == 1 \
                     and self.FC_prune == False and layer not in self.skipped_layers:
                     x.register_hook(self.compute_rank)
                     self.activations.append(x)
@@ -267,10 +278,11 @@ class PrunningFineTuner:
     def get_candidates_to_prune(self, num_filters_to_prune):
         self.prunner.reset()
         self.train_epoch(rank_filters = True)
+#        model_l = len(self.model.raw)
         if self.FC_prune == False and self.skipped_layers==[]:
-            if (self.prunner.filter_ranks[3].size(0) > self.model.raw[4].layers[1].weight.data.size(0)) or \
-            (self.prunner.filter_ranks[2].size(0) > self.model.raw[3].layers[1].weight.data.size(0)) or \
-            (self.prunner.filter_ranks[1].size(0) > self.model.raw[2].layers[1].weight.data.size(0)):
+            
+            if any(self.prunner.filter_ranks[i].size(0) > self.model.raw[i+1].layers[1].weight.data.size(0)\
+                   for i in range(len(self.prunner.filter_ranks))):
                 print("num ranked filters > num filters")
                 assert 1==2
             

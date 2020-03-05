@@ -237,7 +237,7 @@ else:
     suf0 = ''
     
 #suf0 = ''
-suffix = input('Enter any suffix for the save file (def:{}):'.format(suf0))
+suffix = input('Enter any suffix for the save file (def:{}):'.format(suf0[1:]))
 suffix = suf0 if suffix == '' else '_'+suffix
 save_name += suffix
       

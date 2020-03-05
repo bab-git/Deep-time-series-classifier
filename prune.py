@@ -7,12 +7,13 @@ Created on Wed Jan 29 18:20:02 2020
 """
 
 import torch
-from torch.autograd import Variable
-from torchvision import models
-import cv2
-import sys
+#from torch.autograd import Variable
+#from torchvision import models
+#import cv2
+#import sys
 import numpy as np
 
+#%%=====================
 def replace_layers(model, i, indexes, layers):
     if i in indexes:
         return layers[indexes.index(i)]
@@ -72,11 +73,19 @@ def prune_conv_layers(model, layer_index, filter_index):
 #    _, conv = list(model.raw._modules.items())[layer_index]
     if torch.cuda.is_available():
         model = model.cuda()
-    layer = 0
-#    modules = list(model.raw._modules.items())[0][1]
-    modules = model.raw[0]
-#    _, modules = model.raw._modules.items()
-    for i_layer in range(1,5):              #4c2fc_sub2
+    
+    model_l = len(model.raw)
+    
+    if type(model.raw[0]) == torch.nn.MaxPool2d:    
+        layer = 0
+        modules = model.raw[0]
+        layer_range = range(1,model_l)
+    else:
+        layer = -1
+        modules = []
+        layer_range = range(0,model_l)
+        
+    for i_layer in layer_range:              #net.{raw,FC,out}
         for (name,module) in model.raw[i_layer].layers._modules.items():
             layer += 1
             modules = np.append(modules, module)

@@ -168,10 +168,15 @@ try:
 except:    
     model = pickle.load(open(model_path, 'rb'))
 
-thresh_AF = 7
+thresh_AF = 5
+win_size = 10
 
-TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, device = device)
+#TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, device = device)
+TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = \
+    evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, 
+             device = device, win_size = win_size)
 
+summary(model.to('cpu'), input_size=(raw_feat, raw_size), batch_size = 1, device = 'cpu', Unit = 'KB')
 #pickle.dump((TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed),open(save_name+"result.p","wb"))
 
 assert 1==2

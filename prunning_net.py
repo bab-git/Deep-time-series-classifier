@@ -6,75 +6,55 @@ Created on Tue Jan 28 15:24:54 2020
 @author: bhossein
 """
 
-import time
-#from collections import defaultdict
-#from functools import partial
-#from multiprocessing import cpu_count
-#from pathlib import Path
-#from textwrap import dedent
-import matplotlib.pyplot as plt
-import numpy as np
-import random
-#import pandas as pd
-
-#from sklearn.externals import joblib
-#from sklearn.model_selection import train_test_split
-#from sklearn.preprocessing import LabelEncoder, StandardScaler
-
-from ptflops import get_model_complexity_info
-from thop import profile
-
+#import time
+#import matplotlib.pyplot as plt
+#import numpy as np
+#import random
+#
+#from ptflops import get_model_complexity_info
+#from thop import profile
+#
+#from torch import nn
+#from torch.nn import functional as F
+#from torch.nn.utils import prune
+#import torch.quantization
+#from torch.quantization import QuantStub, DeQuantStub
+#
+#from torchsummary import summary
+#
+#import copy
+#
+#import option_utils
+#
+#import pickle
+#
+#import os
+#
+#os.chdir('/home/bhossein/BMBF project/code_repo')
+#result_dir = 'results/' 
+#data_dir = 'data/' 
+#
+#from my_data_classes import create_datasets_file, create_loaders, smooth, create_datasets_win
+#import my_net_classes
+#from my_net_classes import SepConv1d, _SepConv1d, Flatten, parameters
 #import torch
+#import pickle
+#
+#from evaluation import evaluate
 
-from torch import nn
-#from torch import optim
-from torch.nn import functional as F
-from torch.nn.utils import prune
-import torch.quantization
-from torch.quantization import QuantStub, DeQuantStub
-#from torch.optim.lr_scheduler import _LRScheduler
-#from torch.utils.data import TensorDataset, DataLoader
+from default_modules import *
 
-from torchsummary import summary
-
-#import datetime
-
-#from git import Repo
-
-import copy
-
-import option_utils
-
-import pickle
-
-import os
-#abspath = os.path.abspath('test_classifier_GPU_load.py')
-#dname = os.path.dirname(abspath)
-#os.chdir(dname)
-
-os.chdir('/home/bhossein/BMBF project/code_repo')
-#os.chdir('C:\Hinkelstien\code_repo')
-result_dir = 'results/' 
-data_dir = 'data/' 
-
-from my_data_classes import create_datasets_file, create_loaders, smooth, create_datasets_win
-import my_net_classes
-from my_net_classes import SepConv1d, _SepConv1d, Flatten, parameters
-import torch
-import pickle
-
-from evaluation import evaluate
-
-from  prunning_class import PrunningFineTuner, prune_conv_layers
+from prunning_class import PrunningFineTuner, prune_conv_layers
 
 #%% ============== options
 FC_prune = input("FC pruning? (default: no)")
 if FC_prune == "yes":
     print("Give the conv-prunned model to continue from")
 
+print('Model shoud be in form of model.{raw,FC,out}')
 model_cls, model_name   = option_utils.show_model_chooser()
 dataset, data_name  = option_utils.show_data_chooser()
-save_name           = option_utils.find_save(model_name, data_name)
+save_name           = option_utils.find_save(model_name, data_name, result_dir = result_dir, default = 5)
 if save_name == 'NONE':
     save_name = "1d_4c_2fc_sub2_qr"
 #    save_name ="2d_6CN_3FC_no_BN_in_FC_long"
@@ -123,10 +103,6 @@ else:
 
 best_acc = False if input("Keeping best model in each tuning loop? (default:no) ") in ('','no') else True
 
-suffix = input("added suffix to save name:")
-if suffix is not '':
-    suffix = "_"+suffix
-
 if FC_prune == 'yes':
     iteration = input("The itration to FC prune from: (default:10)")
     iteration = int(iteration)
@@ -140,6 +116,11 @@ if FC_prune != 'yes':
         skipped_layers = np.delete(list(skipped_layers),np.where(np.array(list(skipped_layers))==','))
         skipped_layers = [int(i) for i in skipped_layers]
 
+print('Current save name: '+"prunned_"+save_name+"_"+str(filter_per_iter)+"fPi_"+str(epch_tr)+"tpoch")
+suffix = input("added suffix to save name:")
+if suffix is not '':
+    suffix = "_"+suffix
+    
 #prunned_1d_4c_2fc_sub2_qr_1fPi_20tpoch_bacc_iter_53
 
 #device              = option_utils.show_gpu_chooser(default=1)
@@ -200,10 +181,10 @@ num_classes = 2
 # %%   loading the pre-trained model
 model_path = result_dir+'train_'+save_name+'_best.pth'
 
-model = model_cls(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
-model0 = copy.deepcopy(model)
-
 try:
+    model = model_cls(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
+    model0 = copy.deepcopy(model)
+
     if torch.cuda.is_available():
         model.load_state_dict(torch.load(model_path, map_location=lambda storage, loc: storage.cuda(device)))
     else:
@@ -258,7 +239,7 @@ FC = ""
 
 #save_name_pr = result_dir+"prunned_"+save_name+"_"+str(filter_per_iter)+"fPi"
 save_name_pr = result_dir+"prunned_"+save_name+"_"+str(filter_per_iter)+"fPi_"+str(epch_tr)+"tpoch"+suffix
-iteration = 346
+iteration = 3
 save_file = save_name_pr+FC+"_iter_"+str(iteration)
 model_prunned = pickle.load(open(save_file+'.pth', 'rb'))
 print("The loaded file : ", save_file)
@@ -269,7 +250,7 @@ fine_tuner.model = model_prunned
 fine_tuner.FC_prune = True
 fine_tuner.total_num_filters()
 
-print("conv-layers out-channels:", [model_prunned.raw[i].layers[1].weight.shape[0] for i in range(1,5)])
+print("conv-layers out-channels:", [model_prunned.raw[i].layers[1].weight.shape[0] for i in range(1,len(model.raw))])
 
 
 

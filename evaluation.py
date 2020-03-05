@@ -5,7 +5,7 @@ from torch.nn import functional as F
 from ptflops.flops_counter import get_model_complexity_info, print_model_with_flops
 
 #---------------------  Evaluation function
-def evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = 3, device = 'cpu', acc_eval = False):
+def evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = 3, device = 'cpu', acc_eval = False, win_size = None):
     model.to(device)
     input_shape = tuple(tst_dl.dataset.tensors[0].shape[1:3])
     s = time.time()
@@ -51,7 +51,8 @@ def evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = 3, device = 'cpu', ac
     
     if acc_eval:
             return acc, list_pred
-    win_size = (data_tag==0).sum()
+    if win_size == None:
+        win_size = (data_tag==0).sum()
     # thresh_AF = win_size /2
     # thresh_AF = 3
     
@@ -64,7 +65,7 @@ def evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = 3, device = 'cpu', ac
     idx_FP = []
     list_pred_win = 100*np.ones([len(list_ECG), win_size])
     for i_row, i_ecg in enumerate(list_ECG):
-        list_win = np.where(data_tag==i_ecg)[0]
+        list_win = np.where(data_tag==i_ecg)[0][:win_size]
         pred_win = [list_pred[tst_idx.index(i)] for i in list_win]
     #    print(pred_win)
         list_pred_win[i_row,:] = pred_win    
@@ -89,7 +90,7 @@ def evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = 3, device = 'cpu', ac
 
 #    print("{:>40}  {:<8.2f}".format("Accuracy on all windows of test data:", acc))
     
-    print("{:>40}  {:<8d}".format("Threshold for detecting AF:", thresh_AF))
+    print("{:>40}  {:d} / {:d}".format("Threshold for detecting AF:", thresh_AF, win_size))
     print("{:>40}  {:<8.3f}".format("TP rate:", TP_ECG_rate))
     print("{:>40}  {:<8.3f}".format("FP rate:", FP_ECG_rate))
 
