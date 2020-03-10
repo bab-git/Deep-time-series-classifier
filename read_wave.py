@@ -18,9 +18,9 @@ import my_data_classes
 
 
 
-#%%==============================
+#%%================== clipping
 plt.close('all')
-
+FIR = 0
 n = 8
 #sub_dim = [2*2,4]
 sub_dim = [2*2,4*2]
@@ -38,10 +38,16 @@ i_file = np.random.randint(8000, size = int(n/2))
 AF_file_list = []
 SIN_file_list = []
 
+filter_path = '/FILTERED' if FIR else '/ecg_8k_wav'
+
+path_data = '/vol/hinkelstn/data'+filter_path+'/sinus_rhythm_8k/'  
+path_data = np.append(path_data,'/vol/hinkelstn/data'+filter_path+'/atrial_fibrillation_8k/')
+
+
 for i_data in range(n):
     if i_data < n/2:        
 #        main_path = 'C:\Hinkelstien/data/FILTERED/sinus_rhythm_8k/'
-        main_path = '/vol/hinkelstn/data/FILTERED/sinus_rhythm_8k/'        
+        main_path = path_data[0]
         plt_color = 'b'
         plt_title = 'Sinus'
         i_f = i_data
@@ -50,7 +56,7 @@ for i_data in range(n):
 #        i_plt_x = 8+i_data+1
     else:
 #        main_path = 'C:\Hinkelstien/data/FILTERED/atrial_fibrillation_8k/'            
-        main_path = '/vol/hinkelstn/data/FILTERED/atrial_fibrillation_8k/'    
+        main_path = path_data[1]
         plt_color = 'r'
         plt_title = 'AF'
         i_f = int(i_data-n/2)
@@ -130,31 +136,36 @@ assert 1== 61090
 
 
 # %%================= individual files  
+FIR = 0
 thresh_rate =1.21
            
 #i_file = 1000
 #i_file = np.random.randint(8000, size = 1).item()
-i_file = 542
+i_file = 7129
 
-i_class =1 #0:normal  1:atrial
+i_class =0 #0:normal  1:atrial
 #i_class = np.random.randint(2, size = 1)+1    
     
 #path = '/data/BMBF/sample/filtered atrial waves/8aae6985-c0b9-41d4-ac89-9f721b8019d2.wav'
+
+filter_path = '/FILTERED' if FIR else '/ecg_8k_wav'
+path_data = '/vol/hinkelstn/data'+filter_path+'/sinus_rhythm_8k/'  
+path_data = np.append(path_data,'/vol/hinkelstn/data'+filter_path+'/atrial_fibrillation_8k/')
+
+
 if i_class==0:
-#    main_path = 'C:\Hinkelstien/data/FILTERED/sinus_rhythm_8k/'
-    main_path = '/vol/hinkelstn/data/FILTERED/sinus_rhythm_8k/'    
+    main_path = path_data[0]
     plt_color = 'b'
     plt_title = 'normal sinus rhythm'
 else:
-#    main_path = 'C:\Hinkelstien/data/FILTERED/atrial_fibrillation_8k/'    
-    main_path = '/vol/hinkelstn/data/FILTERED/atrial_fibrillation_8k/'    
+    main_path = path_data[1]
     plt_color = 'r'
     plt_title = 'Atrial Fibrilation'
     
 list_f = os.listdir(main_path)
-#file = list_f[i_file]
+file = list_f[i_file]
 #file = IDs_Dfn_Ktp[0]
-file = IDs[2254]
+#file = IDs[2254]
 #file = "dadb672d-8c3a-4811-9cab-f8de7c309987.wav"
 #file = "ecbf5c09-c0ef-426f-b83e-31afbeac899e.wav"
 #file = "e9723cc4-6fb4-43f2-a4aa-ad68ee160e18.wav"
@@ -307,6 +318,78 @@ plt.xlabel('Seconds')
 axes[2].grid()
 axes[2].set_ylabel('Channel III - Channel I')
 
+#%%================== Raw Vs. FIR
+#plt.close('all')
+thresh_rate =1.21
+           
+#i_file = 1000
+#i_file = np.random.randint(8000, size = 1).item()
+i_file = 5840
+
+i_class = 1 #0:normal  1:atrial
+#i_class = np.random.randint(2, size = 1)+1    
+    
+#plt.figure(figsize=(18,10))
+#plt.subplots_adjust(wspace = 0.2, hspace = 0.5)
+
+fig, axes = plt.subplots(4, 1, sharex=True)
+
+for i in range(2):
+    FIR = i
+    filter_path = '/FILTERED' if FIR else '/ecg_8k_wav'
+    path_data = '/vol/hinkelstn/data'+filter_path+'/sinus_rhythm_8k/'  
+    path_data = np.append(path_data,'/vol/hinkelstn/data'+filter_path+'/atrial_fibrillation_8k/')
+    
+    
+    if i_class==0:
+        main_path = path_data[0]
+#        plt_color = 'b'
+        plt_title = 'Normal,  '
+    else:
+        main_path = path_data[1]
+#        plt_color = 'r'
+        plt_title = 'AF,  '
+        
+    if i == 0:
+        list_f = os.listdir(main_path)
+        file = list_f[i_file]    
+    print(file)
+    path = main_path+file
+    
+    #==============================    
+    w = wavio.read(path)
+    
+    if FIR == 1:
+        plt_title = 'FIR data : ' + plt_title
+        plt_color = 'b'
+    else:
+        plt_title = 'Raw data : ' + plt_title
+        plt_color = 'r'
+        
+    for i_ch in range(2):
+#    i_ax = 0
+        i_ax = i_ch + i*2
+        channel = w.data[:,i_ch]
+        
+        axes[i_ax].plot(channel,color = plt_color)
+        if i_ch == 0:
+#            axes[i_ax].set_title(plt_title+', sample_id:'+str(i_file))
+            axes[i_ax].set_title(plt_title+' file:'+ file)
+    
+        axes[i_ax].grid()
+        
+        #plt.subplot(312)
+#        i_ax = 1
+#        channel = w.data[:,i_ch]
+        
+#        axes[i_ax].plot(channel,color = plt_color)
+#        axes[i_ax].grid()
+        if i_ch ==1 and i ==1:
+            axes[i_ax].set_xlabel('Time steps')
+
+
+#plt.savefig('{}.png'.format(file[:-4]))
+assert 1== 61090
 
 # %%============================= bad data list
 bad_list = []

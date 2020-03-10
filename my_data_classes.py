@@ -141,7 +141,7 @@ def create_loaders(data, bs=128, jobs=0, bs_val = None):
 
 #%% ================== read all data 
 def read_data(save_file = 'temp_save' , t_length = 8000 , t_base = 3000, t_range = None):
-    IDs = []
+#    IDs = []
 #    path_data = 'C:\Hinkelstien\data/FILTERED/sinus_rhythm_8k/'
     path_data = '/vol/hinkelstn/data/FILTERED/sinus_rhythm_8k/'    
     
@@ -149,7 +149,7 @@ def read_data(save_file = 'temp_save' , t_length = 8000 , t_base = 3000, t_range
     path_data = np.append(path_data,'/vol/hinkelstn/data/FILTERED/atrial_fibrillation_8k/')
 #    main_path = '/vol/hinkelstn/data/FILTERED/atrial_fibrillation_8k/'
     main_path = path_data[0]
-    IDs.extend(os.listdir(main_path))
+#    IDs.extend(os.listdir(main_path))
     IDs = os.listdir(main_path)
 #    main_path = '/vol/hinkelstn/data/FILTERED/sinus_rhythm_8k/'
     main_path = path_data[1]
