@@ -13,15 +13,20 @@ Created on Tue Mar 10 10:50:49 2020
 import numpy as np
 import mass_ts as mts
 
+import matplotlib.pyplot as plt
+
 import wavio
 import os
 os.chdir('/home/bhossein/BMBF project/code_repo')
 
+#%% Read ECG
 FIR = 0
           
 #i_file = 1000
-#i_file = np.random.randint(8000, size = 1).item()
-i_file = 7129
+i_file = np.random.randint(8000, size = 1).item()
+#i_file = 4275  #MAIN QUERY
+
+
 
 i_class =0 #0:normal  1:atrial
 #i_class = np.random.randint(2, size = 1)+1    
@@ -43,6 +48,7 @@ else:
     
 list_f = os.listdir(main_path)
 file = list_f[i_file]
+print(file)
 #file = IDs_Dfn_Ktp[0]
 #file = IDs[2254]
 #file = "dadb672d-8c3a-4811-9cab-f8de7c309987.wav"
@@ -53,8 +59,12 @@ path = main_path+file
 
 #==============================
 w = wavio.read(path)
+data = np.transpose(w.data)
+x = data[1,:] - data[0,:]
+data = np.row_stack((data,x))
 
-fig, axes = plt.subplots(2, 1, sharex=True)
+
+fig, axes = plt.subplots(3, 1, sharex=True)
 
 plt_color = 'b'
 if FIR == 1:
@@ -64,10 +74,10 @@ else:
     plt_title = 'Raw data : ' + plt_title
 #    plt_color = 'r'
     
-for i_ch in range(2):
+for i_ch in range(3):
 #    i_ax = 0
     i_ax = i_ch
-    channel = w.data[:,i_ch]
+    channel = data[i_ch,:]
     
     axes[i_ax].plot(channel,color = plt_color)
     if i_ch == 0:
@@ -76,31 +86,93 @@ for i_ch in range(2):
 
     axes[i_ax].grid()
         
-    if i_ch ==1 and i ==1:
+    if i_ch ==2:
         axes[i_ax].set_xlabel('Time steps')
 
+#%% ============== manual motifs
+#data0 = data.copy()
 
-# ============== manual motifs
-
+i_chh = 1
 k = 10
-indices, distances = mts.mass2_batch(
-    robot_dog, carpet_walk, 1000, top_matches = k)
-min_dist_idx = np.argmin(distances)
-min_idx = indices[min_dist_idx]
-max_idx = indices[k-1]
+exclude_zone = 300
+t_s = 57000
+t_step = 1000
+t = range(t_s,t_s+t_step)
+quary = data0[i_chh-1,t]
+target = data0[i_chh-1,:]
+
+distances = mts.mass2(target, quary)
+#distances = np.array([abs(i) for i in distances])
+#distances.sort()
+
+found = mts.top_k_motifs(distances, k, exclude_zone)
+indices = np.array(found)
+distances = distances[found] 
+
+#indices, distances = mts.mass2_batch(target, quary, 1000, top_matches = k)
+
+i_sort = np.argsort(distances)
+distances, indices = [t[i_sort] for t in (distances, indices)]
+distances = [abs(i) for i in distances]
+
 
 plt.figure()
 plt.subplot(2,1,1)
-plt.plot(carpet_walk)
+plt.plot(quary)
 plt.subplot(2,1,2)
-plt.plot(robot_dog)
+plt.plot(target)
 for ind in indices:
 #        plt.subplot(2,1,2)
-    t = range(ind,ind+int(1*len(carpet_walk)))
-    plt.plot(t, robot_dog[t], color = 'g')
+    t = range(ind,ind+int(1*len(quary)))
+    plt.plot(t, target[t], color = 'g')
 
-t = range(min_idx,min_idx+int(1*len(carpet_walk)))
-plt.plot(t, robot_dog[t], color = 'r')
+t = range(indices[0],indices[0]+int(1*len(quary)))
+plt.plot(t, target[t], color = 'r')
 
-t = range(max_idx,max_idx+int(1*len(carpet_walk)))
-plt.plot(t, robot_dog[t], color = 'y')
+t = range(indices[k-1],indices[k-1]+int(1*len(quary)))
+plt.plot(t, target[t], color = 'y')
+
+t = range(indices[1],indices[1]+int(1*len(quary)))
+plt.plot(t, target[t], color = 'c')
+
+print(distances[:5])
+#%% === find quary in another ECG
+#data2 = data.copy()
+#k = 60
+target = data2[i_chh-1,:]
+
+distances2 = mts.mass2(target, quary)
+#distances = np.array([abs(i) for i in distances])
+#distances.sort()
+
+found = mts.top_k_motifs(distances2, k, exclude_zone)
+indices2 = np.array(found)
+distances2 = distances2[found] 
+
+#indices2, distances2 = mts.mass2_batch(
+#    target, quary, 1000, top_matches = k)
+
+i_sort = np.argsort(distances2)
+distances2, indices2 = [t[i_sort] for t in (distances2, indices2)]
+distances2 = [abs(i) for i in distances2]
+
+plt.figure()
+plt.subplot(2,1,1)
+plt.plot(quary)
+plt.subplot(2,1,2)
+plt.plot(target)
+for ind in indices2:
+#        plt.subplot(2,1,2)
+    t = range(ind,ind+int(1*len(quary)))
+    plt.plot(t, target[t], color = 'g')
+
+#t = range(indices[0],indices[0]+int(1*len(quary)))
+#plt.plot(t, target[t], color = 'r')
+
+t = range(indices2[k-1],indices2[k-1]+int(1*len(quary)))
+plt.plot(t, target[t], color = 'y')
+
+t = range(indices2[0],indices2[0]+int(1*len(quary)))
+plt.plot(t, target[t], color = 'c')
+
+print(distances2[:5])

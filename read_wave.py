@@ -17,7 +17,6 @@ from my_data_classes import create_datasets, create_loaders, read_data, create_d
 import my_data_classes
 
 
-
 #%%================== clipping
 plt.close('all')
 FIR = 0
@@ -326,7 +325,7 @@ thresh_rate =1.21
 #i_file = np.random.randint(8000, size = 1).item()
 i_file = 5840
 
-i_class = 1 #0:normal  1:atrial
+i_class = 0 #0:normal  1:atrial
 #i_class = np.random.randint(2, size = 1)+1    
     
 #plt.figure(figsize=(18,10))
@@ -352,7 +351,9 @@ for i in range(2):
         
     if i == 0:
         list_f = os.listdir(main_path)
-        file = list_f[i_file]    
+        
+        file = 'd40d84e2-22ac-4473-801a-ae41c9d1e1e1.wav'
+#        file = list_f[i_file]    
     print(file)
     path = main_path+file
     
