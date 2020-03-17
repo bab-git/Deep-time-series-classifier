@@ -32,6 +32,7 @@ raw_x_8K_sync_win2K.pt
 ./.git/objects/pack/pack-7eff8125b8ca511afeee12782b9cf748412c1914.pack
 ./raw_x_8K_non_sync.pt
 ./raw_x_8K_sync.pt
+/data/*
 prunned_1d_*.*
 model_prunned_i*.*
 train_prune_1d*.*

@@ -21,7 +21,10 @@ np.random.seed(seed)
 
 #t_range = range(1000,1512)
 
-t_win = 2**11  #2048
+#t_win = 2**11  #2048
+t_win = 8000  #8000
+#t_win = 2**11  #2048
+
 #t_shift = 400
 t_shift = None
 
@@ -193,7 +196,7 @@ if model_name == '1d_flex_net':
     print('Network summary:')
     print(net)
     
-    model = model_cls(raw_feat, 2, 2048, net).to(device)
+    model = model_cls(raw_feat, 2, t_win, net).to(device)
 
 else:
     model = model_cls(raw_feat, num_classes, raw_size, batch_norm = True).to(device)

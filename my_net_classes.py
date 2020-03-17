@@ -1197,8 +1197,6 @@ class Classifier_1d_flex_net(nn.Module):
         drop0 = 0.2
 
         flat_in = convs[len(convs)-1] * int(raw_size / np.prod(strides))
-#        assert int (raw_size / (2*4**3)) == (raw_size / (2*4**3))
-#        flat_in = 256*int(n_flt)
         
         params = zip(convs[:len(convs)-1], convs[1:], kernels, strides, pads)
 #        if batch_norm:
@@ -1231,9 +1229,6 @@ class Classifier_1d_flex_net(nn.Module):
     def forward(self, t_raw):        
         t_raw  =  t_raw.unsqueeze(2)
         raw_out = self.raw(t_raw)
-        FC_out = self.FC(raw_out)
-#        fft_out = self.fft(t_fft)
-#        t_in = torch.cat([raw_out, fft_out], dim=1)
-#        FC_out = self.FC(raw_out)        
+        FC_out = self.FC(raw_out)        
         out = self.out(FC_out)
         return out    

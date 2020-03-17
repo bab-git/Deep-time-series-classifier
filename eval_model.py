@@ -62,8 +62,9 @@ from default_modules import *
 model_cls, model_name   = option_utils.show_model_chooser()
 dataset, data_name  = option_utils.show_data_chooser()
 save_name           = option_utils.find_save(model_name, data_name, result_dir = result_dir)
-if save_name == 'NONE':
-    save_name ="2d_6CN_3FC_no_BN_in_FC_long"
+if save_name in ['NONE','N']:
+    save_name ="2c_2f_k88_s44_sub4_b512_raw_4K_stable"
+#    save_name ="2d_6CN_3FC_no_BN_in_FC_long"
     #save_name ="2d_6CN_3FC_no_BN_in_FC"
     #save_name = "test_full_6conv_long"
     #save_name = "test_6conv_v2"
