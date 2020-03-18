@@ -59,7 +59,8 @@ def evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = 3,
     TP_ECG, FP_ECG , total_P, total_N = np.zeros(4)
     idx_TP = []
     idx_FP = []
-    
+    list_pred_win = 100*np.ones([len(list_ECG), win_size])
+
     if slide == False:
         TP_ECG = ((list_pred == y_tst) & (1 == y_tst)).sum().item()
         total_P = (1 ==y_tst).sum().item()
@@ -81,7 +82,7 @@ def evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = 3,
     #    TP_ECG, FP_ECG , total_P, total_N = np.zeros(4)
     #    idx_TP = []
     #    idx_FP = []
-        list_pred_win = 100*np.ones([len(list_ECG), win_size])
+#        list_pred_win = 100*np.ones([len(list_ECG), win_size])
         for i_row, i_ecg in enumerate(list_ECG):
             list_win = np.where(data_tag==i_ecg)[0][:win_size]
             pred_win = [list_pred[tst_idx.index(i)] for i in list_win]
