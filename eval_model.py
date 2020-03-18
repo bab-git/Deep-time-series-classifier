@@ -103,6 +103,9 @@ print("{:>40}  {:<8s}".format("Loading dataset:", dataset))
 
 load_ECG = torch.load(data_dir+dataset)
 
+slide = input("Sliding window? (def:yes)")
+slide = True if slide == '' else False
+print("{:>40}  {:}".format("Sliding window mode:", slide))
 #%%===============  loading experiment's parameters and batches
 
 print("{:>40}  {:<8s}".format("Loading model:", model_name))
@@ -175,7 +178,7 @@ win_size = 10
 #TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, device = device)
 TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = \
     evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, 
-             device = device, win_size = win_size)
+             device = device, win_size = win_size, slide = slide)
 
 summary(model.to('cpu'), input_size=(raw_feat, raw_size), batch_size = 1, device = 'cpu', Unit = 'KB')
 #pickle.dump((TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed),open(save_name+"result.p","wb"))

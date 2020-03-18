@@ -5,7 +5,9 @@ from torch.nn import functional as F
 from ptflops.flops_counter import get_model_complexity_info, print_model_with_flops
 
 #---------------------  Evaluation function
-def evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = 3, device = 'cpu', acc_eval = False, win_size = None):
+def evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = 3, 
+             device = 'cpu', acc_eval = False, win_size = None, 
+             slide = True):
     model.to(device)
     input_shape = tuple(tst_dl.dataset.tensors[0].shape[1:3])
     s = time.time()
@@ -16,6 +18,7 @@ def evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = 3, device = 'cpu', ac
     batch = []
     i_error = []
     list_pred = []
+    y_tst = []
     with torch.no_grad():
         for i_batch, batch in enumerate(tst_dl):
             x_raw, y_batch = [t.to(device) for t in batch]
@@ -29,6 +32,7 @@ def evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = 3, device = 'cpu', ac
             # preds = F.log_softmax(out, dim = 1).argmax(dim=1)
             # preds = F.log_softmax(out, dim = 1).argmax(dim=1).to('cpu')
             list_pred = np.append(list_pred,preds.cpu())
+            y_tst = np.append(y_tst,y_batch.cpu())            
             # list_pred = np.append(list_pred,preds.tolist())
             total += y_batch.size(0)
             correct += (preds ==y_batch).sum().item()    
@@ -51,36 +55,50 @@ def evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = 3, device = 'cpu', ac
     
     if acc_eval:
             return acc, list_pred
-    if win_size == None:
-        win_size = (data_tag==0).sum()
-    # thresh_AF = win_size /2
-    # thresh_AF = 3
-    
-    list_ECG = np.unique([data_tag[i] for i in tst_idx])
-    #list_ECG = np.unique([data_tag[i] for i in tst_idx if target[i] == label])
-    #len(list_error_ECG)/8000*100
     
     TP_ECG, FP_ECG , total_P, total_N = np.zeros(4)
     idx_TP = []
     idx_FP = []
-    list_pred_win = 100*np.ones([len(list_ECG), win_size])
-    for i_row, i_ecg in enumerate(list_ECG):
-        list_win = np.where(data_tag==i_ecg)[0][:win_size]
-        pred_win = [list_pred[tst_idx.index(i)] for i in list_win]
-    #    print(pred_win)
-        list_pred_win[i_row,:] = pred_win    
-                            
-        if i_ecg >= 8000:   #AF
-            total_P += 1
-            if (np.array(pred_win)==1).sum() >= thresh_AF:
-                TP_ECG += 1
-                idx_TP = np.append(idx_TP,i_ecg)
-        else:         # normal
-            total_N += 1
-            if (np.array(pred_win)==1).sum() >= thresh_AF:
-                FP_ECG += 1
-                idx_FP = np.append(idx_FP,i_ecg)
-                
+    
+    if slide == False:
+        TP_ECG = ((list_pred == y_tst) & (1 == y_tst)).sum().item()
+        total_P = (1 ==y_tst).sum().item()
+#        TP_ECG_rate = TP / total_P *100
+        FP_ECG = ((list_pred !=y_tst) & (0 == y_tst)).sum().item() 
+        total_N = total-total_P
+#        FP_ECG_rate = FP / (total-total_P) *100
+    else:
+            
+        if win_size == None:
+            win_size = (data_tag==0).sum()
+        # thresh_AF = win_size /2
+        # thresh_AF = 3
+        
+        list_ECG = np.unique([data_tag[i] for i in tst_idx])
+        #list_ECG = np.unique([data_tag[i] for i in tst_idx if target[i] == label])
+        #len(list_error_ECG)/8000*100
+        
+    #    TP_ECG, FP_ECG , total_P, total_N = np.zeros(4)
+    #    idx_TP = []
+    #    idx_FP = []
+        list_pred_win = 100*np.ones([len(list_ECG), win_size])
+        for i_row, i_ecg in enumerate(list_ECG):
+            list_win = np.where(data_tag==i_ecg)[0][:win_size]
+            pred_win = [list_pred[tst_idx.index(i)] for i in list_win]
+        #    print(pred_win)
+            list_pred_win[i_row,:] = pred_win    
+                                
+            if i_ecg >= 8000:   #AF
+                total_P += 1
+                if (np.array(pred_win)==1).sum() >= thresh_AF:
+                    TP_ECG += 1
+                    idx_TP = np.append(idx_TP,i_ecg)
+            else:         # normal
+                total_N += 1
+                if (np.array(pred_win)==1).sum() >= thresh_AF:
+                    FP_ECG += 1
+                    idx_FP = np.append(idx_FP,i_ecg)
+                    
         
     #TP_ECG_rate = TP_ECG / len(list_ECG) *100
     TP_ECG_rate = TP_ECG / total_P *100
