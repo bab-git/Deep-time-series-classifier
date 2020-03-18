@@ -28,7 +28,6 @@ t_win = 8000  #8000
 #t_shift = 400
 t_shift = None
 
-t_range = range(t_win)
 
 
 dataset, data_name  = option_utils.show_data_chooser()
@@ -46,6 +45,9 @@ t_max = load_ECG['raw_x'][0].shape[1]
 t_win_i = input("Enter the split out of {} (def: {}) : ".format(t_max,t_win)) 
 t_win = int(t_win_i) if t_win_i != '' else int(t_win)
 print("{:>40}  {:<8d}".format("Extracted window size :", t_win))
+
+t_range = range(t_win)
+
 
 slide = input("Sliding window? (def:yes)")
 slide = True if slide == '' else False
