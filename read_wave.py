@@ -8,15 +8,15 @@ Created on Wed Nov 13 10:28:34 2019
 import numpy as np
 import wavio
 import os
-os.chdir('/home/bhossein/BMBF project/code_repo')
+#os.chdir('/home/bhossein/BMBF project/code_repo')
 
 import matplotlib.pyplot as plt
 #import scipy
 
-from my_data_classes import create_datasets, create_loaders, read_data, create_datasets_file, smooth, wave_harsh_peaks, wave_harsh_peaks_all
+from my_data_classes import *
 import my_data_classes
 
-
+from default_modules import *
 #%%================== clipping
 plt.close('all')
 FIR = 0
@@ -37,10 +37,10 @@ i_file = np.random.randint(8000, size = int(n/2))
 AF_file_list = []
 SIN_file_list = []
 
-filter_path = '/FILTERED' if FIR else '/ecg_8k_wav'
+filter_path = 'FILTERED' if FIR else 'ecg_8k_wav'
 
-path_data = '/vol/hinkelstn/data'+filter_path+'/sinus_rhythm_8k/'  
-path_data = np.append(path_data,'/vol/hinkelstn/data'+filter_path+'/atrial_fibrillation_8k/')
+path_data = raw_data+filter_path+'/sinus_rhythm_8k/'  
+path_data = np.append(path_data,raw_data+filter_path+'/atrial_fibrillation_8k/')
 
 
 for i_data in range(n):
@@ -139,17 +139,18 @@ FIR = 0
 thresh_rate =1.21
            
 #i_file = 1000
-#i_file = np.random.randint(8000, size = 1).item()
-i_file = 7129
+i_file = np.random.randint(8000, size = 1).item()
+#i_file = 7129
+#i_file = 2
 
-i_class =0 #0:normal  1:atrial
+i_class = 0 #0:normal  1:atrial
 #i_class = np.random.randint(2, size = 1)+1    
     
 #path = '/data/BMBF/sample/filtered atrial waves/8aae6985-c0b9-41d4-ac89-9f721b8019d2.wav'
 
 filter_path = '/FILTERED' if FIR else '/ecg_8k_wav'
-path_data = '/vol/hinkelstn/data'+filter_path+'/sinus_rhythm_8k/'  
-path_data = np.append(path_data,'/vol/hinkelstn/data'+filter_path+'/atrial_fibrillation_8k/')
+path_data = raw_data+filter_path+'/sinus_rhythm_8k/'  
+path_data = np.append(path_data,raw_data+filter_path+'/atrial_fibrillation_8k/')
 
 
 if i_class==0:
@@ -183,6 +184,7 @@ w = wavio.read(path)
 #plt.figure(figsize=(8,6))
 
 trimm_out = wave_harsh_peaks_all(w.data, t_base = 3000, thresh_rate = thresh_rate)
+windata, t_range = extract_stable_part(w.data, win_size = 8000, stride = 2000)
 
 fig, axes = plt.subplots(2, 1, sharex=True)
 
@@ -238,6 +240,23 @@ axes[i_ax].set_xlabel('Time steps')
 my_data_classes.wave_harsh_peaks(w.data[:,0], th_ratio =  thresh_rate )
 
 my_data_classes.wave_harsh_peaks(w.data[:,1], th_ratio =  thresh_rate)
+
+fig, axes = plt.subplots(2, 1, sharex=True)
+labels = ['ECG signal', 'selected part']
+for i_ax in range(2):
+    channel = w.data[:,i_ax]
+
+    axes[i_ax].plot(channel, color = plt_color, label = 'ECG signal')
+    if i_ax ==0:
+        axes[i_ax].set_title(plt_title+', sample_id:'+str(i_file))
+
+    data_masked = channel[t_range]
+
+    axes[i_ax].plot(t_range, data_masked,color = 'g', label = 'Selected part') 
+
+    axes[i_ax].grid()
+    axes[i_ax].legend()
+axes[i_ax].set_xlabel('Time steps')
 
 assert w.data.shape[0] == 61090
     

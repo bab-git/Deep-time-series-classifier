@@ -14,7 +14,8 @@ import seaborn as sns
 #%matplotlib inline
 #%%
 
-doc_path = '/home/bhossein/BMBF project/code_resources/matrixprofile-ts-master/'
+#doc_path = '/home/bhossein/BMBF project/code_resources/matrixprofile-ts-master/'
+doc_path = 'C:\Hinkelstien\code_resources\matrixprofile-ts-master/'
 
 data = pd.read_csv(doc_path+'docs/examples/rawdata.csv')
 pattern = data.data.values

@@ -1,4 +1,4 @@
-% Functions here are based on the work in 
+% Functions here are based on the work in
 % Ogita et al, Accurate Sum and Dot Product
 
 function [mu,sig] = muinvn(a,w)
@@ -17,23 +17,23 @@ sig = 1./sqrt(sig);
 end
 
 
-function res = sq2s(a)
-h = a .* a;
-c = ((2^27) + 1) * a;  % <-- can be replaced with fma where available
-a1 = (c - (c - a));
-a2 = a - a1;
-a3 = a1 .* a2;
-r = a2 .* a2 - (((h - a1 .* a1) - a3) - a3);
-p = h(1);
-s = r(1);
-for i = 2 : length(a)
-    x = p + h(i);
-    z = x - p;
-    s = s + (((p - (x - z)) + (h(i) - z)) + r(i));
-    p = x;
-end
-res = p + s;
-end
+% function res = sq2s(a)
+% h = a .* a;
+% c = ((2^27) + 1) * a;  % <-- can be replaced with fma where available
+% a1 = (c - (c - a));
+% a2 = a - a1;
+% a3 = a1 .* a2;
+% r = a2 .* a2 - (((h - a1 .* a1) - a3) - a3);
+% p = h(1);
+% s = r(1);
+% for i = 2 : length(a)
+%     x = p + h(i);
+%     z = x - p;
+%     s = s + (((p - (x - z)) + (h(i) - z)) + r(i));
+%     p = x;
+% end
+% res = p + s;
+% end
 
 
 function [x,y] = TwoSquare(a)

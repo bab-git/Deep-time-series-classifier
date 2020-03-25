@@ -474,5 +474,18 @@ def wave_harsh_peaks_all(data, t_base = 3000, thresh_rate = 1):
 #        t_start = list_t[ind_list[0]-1]+1
     
     return mean_max, list_t, trimmed_t
-    
-                
+
+#%%    
+def extract_stable_part(data, win_size = 8000, stride = 2000):
+    offset = len(data) % stride
+    indices = np.arange(offset, len(data)-(win_size-1), stride)
+    min_diff = np.inf
+    best = 0
+    for idx in indices:
+        test = data[idx:idx+win_size]
+        diff = np.sum(np.max(test, axis=0) - np.min(test, axis=0)) + (test < 100).sum() + (test > 3900).sum()
+        if diff < min_diff:
+            min_diff = diff
+            best = idx
+    t_range = list(range(best,best+win_size))
+    return data[t_range], t_range

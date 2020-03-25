@@ -14,13 +14,31 @@ def muinvn(a,w):
     
 #    mu = [i/w for i in sum2s(a,w)]
     mu = sum2s(a,w)/w
-    sig = np.zeros(len(a) - w + 1)
     
-    for i in range(len(mu)):
-        sig[i] = sq2s(a[i : i + w] - mu[i])
+#    t0 = time.time()
+           
+    sig_in = map(lambda i:a[i:i+w]-mu[i], range(len(mu)))
     
+    sig_out = map(sq2s, sig_in)
+    sig = map(lambda i: 1/np.sqrt(i), sig_out)
+
+#    t1 = time.time()-t0
+#    print(t1)
+
+#    sig_out = list(sig_out)
+#    t1b = time.time()-t0
+#    print(t1b)
     
-    sig = [1/np.sqrt(i) for i in sig]
+#    t0 = time.time()
+#    
+#    sig = np.zeros(len(a) - w + 1)
+#    for i in range(len(mu)):
+#        sig[i] = sq2s(a[i : i + w] - mu[i])
+#            
+#    sig = [1/np.sqrt(i) for i in sig]
+#    t2 = time.time()-t0
+#    print(t2)
+#    sig == list(sig_out)
     return mu,sig
 #%%    
 def sq2s(a):
@@ -75,7 +93,24 @@ def sum2s(a,w):
         res[i - w + 1] = p + s
     
     return res
-#%%    
+#%%  
+dfa = map(lambda ib:df[ia+ib], range(mx))
+dga = map(lambda ib:dg[ia+ib], range(mx))
+invnaa = map(lambda ib:invna[ia+ib], range(mx))
+mpa = map(lambda ib:mp[ia+ib], range(mx))
+
+c = c + df[ib + ia] * dy[ib] + dg[ib + ia] * dx[ib];
+
+
+
+c_cmp = map(mp_sub, dfa, dy, dga, dx,invnaa, invnb)
+def mp_sub(dfa,dy,dga,dx,invnaa,invnb, c = c):
+    c = c + dfa * dy + dga * dx
+    c_cmp = c * invnaa * invnb;
+#    if c_cmp > mpa[ib + ia]:
+#        mp[ib + ia] = c_cmp;
+#        mpi[ib + ia] = ib;
+    return c_cmp
 
 def mpx_AB(a, b, w):
 #    % matrix profile code 
@@ -86,7 +121,7 @@ def mpx_AB(a, b, w):
         a = np.array(a)
     
     if not isinstance(b,np.ndarray):
-        b = np.array(b)
+        b = np.sarray(b)
     
     [mua, invna] = muinvn(a,w)
     [mub, invnb] = muinvn(b,w)

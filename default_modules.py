@@ -49,8 +49,12 @@ import os
 
 try:
     os.chdir('/home/bhossein/BMBF project/code_repo')
+    data_dir = "/vol/hinkelstn/codes/"
+    raw_data = "/vol/hinkelstn/data/"
 except:
     os.chdir('C:\Hinkelstien\code_repo')
+    data_dir = 'data/'
+    raw_data = "C:/Hinkelstien/data/"
 
 from my_data_classes import create_datasets_file, create_loaders, smooth,\
     create_datasets_win
@@ -64,8 +68,8 @@ import option_utils
 
 result_dir = 'results/' 
 #data_dir = 'data/' 
-data_dir = '/vol/hinkelstn/codes/'
-if not os.path.exists(data_dir):
-    data_dir = 'data/'
+#data_dir = '/vol/hinkelstn/codes/'
+#if not os.path.exists(data_dir):
+#    data_dir = 'data/'
 
 import copy

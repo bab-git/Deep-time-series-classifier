@@ -29,6 +29,7 @@ hold off;
 title(sprintf('k = %d time series',k));
 ax.YTick = [];
 drawnow;
+%%
 [sol,obj] = consensus_search.from_nan_cat(T,subsequence_len,true);
 % title(sprintf('corresponding consensus motif for subsequence length: %d radius %g',subsequence_len,sol.radius));
 % drawnow;

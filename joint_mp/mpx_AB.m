@@ -25,6 +25,7 @@ mp = repmat(-1, amx, 1);
 mpi = NaN(amx, 1);
 
 for ia = 1 : amx
+%     disp(ia)
     mx = min(amx - ia + 1, bmx);
     c = sum((a(ia : ia + w - 1) - mua(ia)) .* (b(1 : w) - mub(1)));
     for ib = 1 : mx
