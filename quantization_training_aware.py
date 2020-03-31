@@ -237,7 +237,7 @@ opt = torch.optim.Adam(model_qta.parameters(), lr=0.001)
 criterion = nn.CrossEntropyLoss (reduction = 'sum')
 
 ntrain_batches = 200000
-n_epochs = 200
+n_epochs = 20
 
 
 def train_one_epoch(model, criterion, opt, trn_dl, device, ntrain_batches):
