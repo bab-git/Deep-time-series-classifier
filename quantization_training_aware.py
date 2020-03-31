@@ -329,8 +329,8 @@ for nepoch in range(n_epochs):
         print ("file saved to :"+save_file)
 
 #        torch.jit.save(torch.jit.script(quantized_model), 'quantized_model.pth')
-        quantized_model_best = copy.deepcopy(quantized_model)
-        model_qta_best = copy.deepcopy(model_qta)
+        quantized_model_best = quantized_model
+        model_qta_best = model_qta
         acc_0 = acc
 
     if e_loss < e_loss0:
