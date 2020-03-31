@@ -324,7 +324,8 @@ for nepoch in range(n_epochs):
 
 #        pickle.dump(model_qta,open(save_name+"qta_full_train.p",'wb'))
         pickle.dump(model_qta,open(result_dir+save_file,'wb'))
-        pickle.dump(quantized_model,open(result_dir+save_file_Q,'wb'))
+#        torch.jit.save(torch.jit.script(model_qta), result_dir+save_file)
+#        pickle.dump(quantized_model,open(result_dir+save_file_Q,'wb'))
         print ("file saved to :"+save_file)
 
 #        torch.jit.save(torch.jit.script(quantized_model), 'quantized_model.pth')
