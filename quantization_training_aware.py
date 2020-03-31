@@ -308,8 +308,8 @@ for nepoch in range(n_epochs):
 
     # Check the accuracy after each epoch
     model_qta.to('cpu')
-    quantized_model = torch.quantization.convert(model_qta.eval(), inplace=False)
-    quantized_model.eval()
+#    quantized_model = torch.quantization.convert(model_qta.eval(), inplace=False)
+#    quantized_model.eval()
 
 #    acc = evaluation1(quantized_model,val_dl,'cpu', 30)
 #    model_qta.to(device)
@@ -324,13 +324,14 @@ for nepoch in range(n_epochs):
 
 #        pickle.dump(model_qta,open(save_name+"qta_full_train.p",'wb'))
         pickle.dump(model_qta,open(result_dir+save_file,'wb'))
+#        torch.save(model_qta.state_dict(), result_dir+save_file)
 #        torch.jit.save(torch.jit.script(model_qta), result_dir+save_file)
 #        pickle.dump(quantized_model,open(result_dir+save_file_Q,'wb'))
         print ("file saved to :"+save_file)
 
 #        torch.jit.save(torch.jit.script(quantized_model), 'quantized_model.pth')
-        quantized_model_best = quantized_model
-        model_qta_best = model_qta
+#        quantized_model_best = quantized_model
+#        model_qta_best = model_qta
         acc_0 = acc
 
     if e_loss < e_loss0:
@@ -340,7 +341,8 @@ for nepoch in range(n_epochs):
 #    elif:
         
 #quantized_model_best = model_best
-#quantized_model = pickle.load(open("quantized_model.pth",'rb'))
+model_qta_best = pickle.load(open(result_dir+save_file,'rb'))
+#model_qta_best.load_state_dict(torch.load(result_dir+save_file, map_location=lambda storage, loc: storage))
 
 thresh_AF = 7
 
