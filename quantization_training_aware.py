@@ -109,7 +109,7 @@ TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = \
 summary(model.to('cpu'), input_size=(raw_feat, raw_size), batch_size = 1, device = 'cpu', Unit = 'KB')
 #pickle.dump((TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed),open(save_name+"result.p","wb"))
 
-assert 1==2
+#assert 1==2
 
 #%%
 #device = ecg_datasets[0].tensors[0].device
