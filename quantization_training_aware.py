@@ -319,14 +319,17 @@ for nepoch in range(n_epochs):
 
     if acc > acc_0:
 #        save_file = save_name+"_qta_full_train.p"
-#        save_file = save_name+"_qta.p"
+        save_file = save_name+"_qta_float.pth"
+        save_file_Q = save_name+"_qta.pth"
+
 #        pickle.dump(model_qta,open(save_name+"qta_full_train.p",'wb'))
-        pickle.dump(model_qta,open(save_file,'wb'))
+        pickle.dump(model_qta,open(result_dir+save_file,'wb'))
+        pickle.dump(quantized_model,open(result_dir+save_file_Q,'wb'))
         print ("file saved to :"+save_file)
 
 #        torch.jit.save(torch.jit.script(quantized_model), 'quantized_model.pth')
-        quantized_model_best = quantized_model
-        model_qta_best = model_qta
+        quantized_model_best = copy.deepcopy(quantized_model)
+        model_qta_best = copy.deepcopy(model_qta)
         acc_0 = acc
 
     if e_loss < e_loss0:
@@ -351,11 +354,15 @@ print('%2.2f' %(acc))
 
 print("")
 print("=========  Q-trained floating point test result ===============")        
-TP_ECG_rate_taq, FP_ECG_rate_taq,x,y = evaluate(model_qta_best,tst_dl, device = device, thresh_AF = thresh_AF)
-
+#TP_ECG_rate_taq, FP_ECG_rate_taq,x,y = evaluate(model_qta_best,tst_dl, device = device, thresh_AF = thresh_AF)
+TP_ECG_rate_taq, FP_ECG_rate_taq, list_pred_win, elapsed = \
+    evaluate(model_qta_best, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, 
+             device = device, win_size = win_size, slide = slide)
 print("=========  Qquantized-model test result ===============")        
-TP_ECG_rate_taq, FP_ECG_rate_taq,x,y = evaluate(quantized_model_best,tst_dl, thresh_AF = thresh_AF)
-
+#TP_ECG_rate_taq, FP_ECG_rate_taq,x,y = evaluate(quantized_model_best,tst_dl, thresh_AF = thresh_AF)
+TP_ECG_rate_taq, FP_ECG_rate_taq, list_pred_win, elapsed = \
+    evaluate(quantized_model_best, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, 
+             device = device, win_size = win_size, slide = slide)
 assert 1==2
 # %%======================= loading trained model_qta
 save_file = save_name+"_qta_full_train.p"

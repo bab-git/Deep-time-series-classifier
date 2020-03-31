@@ -33,6 +33,7 @@ raw_x_8K_sync_win2K.pt
 ./raw_x_8K_non_sync.pt
 ./raw_x_8K_sync.pt
 /data/*
+/__pycache__/*
 prunned_1d_*.*
 model_prunned_i*.*
 train_prune_1d*.*
