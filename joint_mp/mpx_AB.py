@@ -5,6 +5,10 @@ Created on Sun Mar 22 19:33:33 2020
 @author: babak
 """
 import numpy as np
+
+from itertools import accumulate
+
+
 #% Functions here are based on the work in 
 #% Ogita et al, Accurate Sum and Dot Product
 #%%
@@ -101,6 +105,10 @@ mpa = map(lambda ib:mp[ia+ib], range(mx))
 
 c = c + df[ib + ia] * dy[ib] + dg[ib + ia] * dx[ib];
 
+startVal =  18
+myList   =  [0,0,0,1,0,2]
+accumulator = reduce((lambda x, y: ( x + [y + (0 if len(x) == 0 else x[-1])])), myList, [])  
+[startVal + v for v in accumulator]
 
 
 c_cmp = map(mp_sub, dfa, dy, dga, dx,invnaa, invnb)
@@ -165,6 +173,20 @@ def mpx_AB(a, b, w):
         mx = min(amx - ia, bmx);
         c = sum((a[ia : ia + w] - mua[ia]) * (b[:w] - mub[0]))
 #        c = sum(np.array(a[ia : ia + w] - mua[ia]) * np.array(b[:w] - mub[0]));
+                       
+        c_i = accumulate(map(lambda ib: c if ib ==-1 else df[ib + ia] * dy[ib] + dg[ib + ia] * dx[ib],range(-1,mx)), lambda x,y:x+y)    
+        c_cmp = list(map(lambda ci,ib:ci*invnab*invnb[ib], c_i, range(mx)))
+        for ib in range(mx):
+#            c = c + df[ib + ia] * dy[ib] + dg[ib + ia] * dx[ib];
+            c_cmp = c * invna[ib + ia] * invnb[ib];
+            if c_cmp > mp[ib + ia]:
+                mp[ib + ia] = c_cmp;
+                mpi[ib + ia] = ib;
+      
+       
+        
+        
+        
         for ib in range(mx):
             c = c + df[ib + ia] * dy[ib] + dg[ib + ia] * dx[ib];
             c_cmp = c * invna[ib + ia] * invnb[ib];
