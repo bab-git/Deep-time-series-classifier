@@ -107,8 +107,8 @@ def evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = 3,
     flops, params = get_model_complexity_info(model, input_shape, as_strings=False, print_per_layer_stat=False)
 
 #    print("{:>40}  {:<8.2f}".format("Accuracy on all windows of test data:", acc))
-    
-    print("{:>40}  {:d} / {:d}".format("Threshold for detecting AF:", thresh_AF, win_size))
+    if slide:
+        print("{:>40}  {:d} / {:d}".format("Threshold for detecting AF:", thresh_AF, win_size))
     print("{:>40}  {:<8.3f}".format("TP rate:", TP_ECG_rate))
     print("{:>40}  {:<8.3f}".format("FP rate:", FP_ECG_rate))
 

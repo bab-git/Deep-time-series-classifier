@@ -197,40 +197,7 @@ def evaluate(model, tst_dl, thresh_AF = 3, device = 'cpu'):
     return TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed
 #print('True positives on test data:  %2.2f' %(TP_rate))
 #print('False positives on test data:  %2.2f' %(FP_rate))
-#------------------------------------------  
-
-# %%
-
-#model = my_net_classes.Classifier_1d_1_conv_1FC(raw_feat, num_classes, raw_size).to(device)
-#model = my_net_classes.Classifier_1d_3_conv_2FC_v2(raw_feat, num_classes, raw_size).to(device)
-#model = my_net_classes.Classifier_1d_3_conv_2FC(raw_feat, num_classes, raw_size, batch_norm = True, conv_type = '2d').to(device)
-#model = my_net_classes.Classifier_1d_5_conv_v2(raw_feat, num_classes, raw_size).to(device)
-#model = my_net_classes.Classifier_1d_6_conv_v2(raw_feat, num_classes, raw_size).to(device)
-#model = my_net_classes.Classifier_1d_6_conv(raw_feat, num_classes, raw_size).to(device)
-#model = my_net_classes.Classifier_1d_6_conv_ver1(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
-#model = my_net_classes.Classifier_1d_6_conv(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
-#model = my_net_classes.Classifier_1dconv(raw_feat, num_classes, raw_size).to(device)
-#model = my_net_classes.Classifier_1dconv(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
-#model = my_net_classes.Classifier_1dconv_BN(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
-
-
-#model.load_state_dict(torch.load("train_"+save_name+'_best.pth', map_location=lambda storage, loc: storage))
-    
-model = pickle.load(open('train_'+save_name+'_best.pth', 'rb'))
-
-#model = Classifier_1dconv(raw_feat, num_classes, raw_size/(2*4**3)).to(device)
-#model.load_state_dict(torch.load("train_"+save_name+'_best.pth'))
-
-print("=========  original floating point accuracy ===============")
-
-thresh_AF = 3
-
-TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = evaluate(model, tst_dl, thresh_AF = thresh_AF, device = device)
-
-#pickle.dump((TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed),open(save_name+"result.p","wb"))
-
-
-  
+#------------------------------------------   
 # %%==================================================================== 
 # ================================== Trining aware  Quantization
 # ====================================================================     
@@ -256,15 +223,13 @@ def evaluation1(model_test,tst_dl, device = 'cpu', num_batch = len(tst_dl)):
 #    print("")
 #    print(acc)    
     return acc
-   
-model_qta = pickle.load(open('train_'+save_name+'_best.pth', 'rb'))
-device = torch.device('cuda:0')
+  
+#model_qta = pickle.load(open('train_'+save_name+'_best.pth', 'rb'))
+#device = torch.device('cuda:0')
+device = torch.device('cuda:0' if torch.cuda.is_available() and cuda_num != 'cpu' else 'cpu')
 
-#model_qta.to('cpu')
+model_qta = model.to(device)
 
-
-
-#device = torch.device('cpu')
 
 #opt = torch.optim.SGD(model_qta.parameters(), lr = 0.0001) 
 opt = torch.optim.Adam(model_qta.parameters(), lr=0.001)
@@ -311,7 +276,7 @@ def train_one_epoch(model, criterion, opt, trn_dl, device, ntrain_batches):
     print('Full Loss %3.3f' %(epoch_loss / cnt))
     return epoch_loss / cnt
 
-model_qta = model_qta.to(device)
+#model_qta = model_qta.to(device)
 
 e_loss0 = train_one_epoch(model_qta, criterion, opt, trn_dl, device, ntrain_batches)
 

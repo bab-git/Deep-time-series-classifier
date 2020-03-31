@@ -259,7 +259,43 @@ class SepConv1d_v4(nn.Module):
         x = self.layers(x)
 #        x = x.squeeze()
         return x
+#%% ==================    SepConv1d  -  change: add relu_ instead of relu for inplace
+class SepConv1d_v5(nn.Module):
+    """Implementes a 1-d convolution with 'batteries included'.
+    
+    The module adds (optionally) activation function and dropout layers right after
+    a separable convolution layer.
+    """
+    def __init__(self, ni, no, kernel, stride, pad, drop=0.2, batch_norm = None,
+                 conv_type = '1d', activ=lambda: nn.ReLU()):
+    
+        super().__init__()
+        assert drop is None or (0.0 < drop < 1.0)
         
+        layers = [nn.Conv2d(ni, ni, kernel_size = (1,kernel), stride = (1,stride), padding = (0,pad), groups = ni)]
+        layers.append(nn.Conv2d(ni, no, kernel_size=(1,1)))
+        
+#        if drop is not None:
+#            layers.append(nn.Dropout(drop))      
+        
+        if batch_norm:
+            layers.append(nn.BatchNorm2d(num_features = no))        
+            
+        if activ:
+            layers.append(activ())        
+            
+        if drop is not None:
+            layers.append(nn.Dropout(drop))            
+                
+            
+            
+        self.layers = nn.Sequential(*layers)
+        
+    def forward(self, x): 
+#        x = torch.unsqueeze(x,2)
+        x = self.layers(x)
+#        x = x.squeeze()
+        return x        
 #%% ==================         
 class Flatten(nn.Module):
     """Converts N-dimensional tensor into 'flat' one."""
@@ -1206,9 +1242,9 @@ class Classifier_1d_flex_net(nn.Module):
         else:
             raw_layers = [] 
             
-        raw_layers.append(SepConv1d_v4(raw_ni,  convs[0], kernels[0], strides[0], pads[0], 
+        raw_layers.append(SepConv1d_v5(raw_ni,  convs[0], kernels[0], strides[0], pads[0], 
                                   drop0, batch_norm, conv_type))  #out: raw_size/str
-        [raw_layers.append(SepConv1d_v4(i_ch,  conv, kernel, strd, pad, drop0, 
+        [raw_layers.append(SepConv1d_v5(i_ch,  conv, kernel, strd, pad, drop0, 
                                         batch_norm, conv_type))\
                                         for  i_ch, conv, kernel, strd, pad in params]
         
@@ -1218,14 +1254,23 @@ class Classifier_1d_flex_net(nn.Module):
         
         self.FC = nn.Sequential(
             Flatten(),
-            nn.Linear(flat_in, FCs[0]), nn.ReLU(inplace=True), nn.Dropout(drop),
+            nn.Linear(flat_in, FCs[0]), nn.ReLU(inplace=False), nn.Dropout(drop),
 #                nn.Linear( 128, 128),    nn.BatchNorm1d(num_features = 128), nn.Dropout(drop), nn.ReLU(inplace=True)
             )            
         
         self.out = nn.Sequential(
 #            nn.Linear(128, 64), nn.ReLU(inplace=True), 
             nn.Linear(FCs[len(FCs)-1], no))
-        
+    
+    def fuse_model(self):
+        for m in self.modules():
+            if type(m) == SepConv1d_v5:
+                fuse_profile = ['layers.1', 'layers.2', 'layers.3']
+#                fuse_profile = ['layers.0.pointwise', 'layers.1', 'layers.2']
+                torch.quantization.fuse_modules(m, fuse_profile, inplace=True)
+#                torch.quantization.fuse_modules(m, ['0', '1', '2'], inplace=True)
+        torch.quantization.fuse_modules(self.FC, ['1','2'], inplace=True)
+       
     def forward(self, t_raw):        
         t_raw  =  t_raw.unsqueeze(2)
         raw_out = self.raw(t_raw)
