@@ -138,8 +138,10 @@ def find_save(model_name, data_name, override = None, result_dir = '', default =
         idx = int(idx)
         if idx in range(len(save_name)):
             save_name = save_name[idx]
-    else:
+    elif idx =='':
         save_name = save_name[default]
+    else:
+        save_name = idx
                 
 #    else:        
 #        save_name2 = input("Input saved model name (default {}) :".format(save_name))        

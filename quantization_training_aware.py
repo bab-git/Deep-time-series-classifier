@@ -32,6 +32,10 @@ load_ECG = torch.load(data_dir+dataset)
 slide = input("Sliding window? (def:yes)")
 slide = True if slide == '' else False
 print("{:>40}  {:}".format("Sliding window mode:", slide))
+
+n_epochs = input("Quantization training epochs? (def:200)")
+n_epochs = 200 if n_epochs == '' else int(n_epochs)
+#print("{:>40}  {:}".format("Sliding window mode:", slide))
 #%%===============  loading experiment's parameters and batches
 
 print("{:>40}  {:<8s}".format("Loading model:", model_name))
@@ -238,7 +242,7 @@ opt = torch.optim.Adam(model_qta.parameters(), lr=0.001)
 criterion = nn.CrossEntropyLoss (reduction = 'sum')
 
 ntrain_batches = 200000
-n_epochs = 20
+#n_epochs = 20
 
 
 def train_one_epoch(model, criterion, opt, trn_dl, device, ntrain_batches):
@@ -309,7 +313,7 @@ for nepoch in range(n_epochs):
 
     # Check the accuracy after each epoch
     model_qta.to('cpu')
-#    quantized_model = torch.quantization.convert(model_qta.eval(), inplace=False)
+    quantized_model = torch.quantization.convert(model_qta.eval(), inplace=False)
 #    quantized_model.eval()
 
 #    acc = evaluation1(quantized_model,val_dl,'cpu', 30)
@@ -341,8 +345,6 @@ for nepoch in range(n_epochs):
         break
 #    elif:
         
-#quantized_model_best = model_best
-#model_qta_best = pickle.load(open(result_dir+save_file,'rb'))        
 model_qta = copy.deepcopy(model)
 model_qta = model_qta.to(device)
 model_qta.eval()
@@ -351,12 +353,13 @@ model_qta.qconfig = torch.quantization.get_default_qat_qconfig('fbgemm')
 torch.quantization.prepare_qat(model_qta, inplace=True)
 model_qta.load_state_dict(torch.load(result_dir+save_file, map_location=lambda storage, loc: storage))
 
-quantized_model = torch.quantization.convert(model_qta.eval(), inplace=False)
+model_qta.to('cpu')
+quantized_model_best = torch.quantization.convert(model_qta.eval(), inplace=False)
 
 thresh_AF = 7
 
 print("=========  Q-trained floating point validation accuracy ===============")        
-acc = evaluation1(model_qta_best,val_dl,'cpu', 30)
+acc = evaluation1(model_qta,val_dl,'cpu', 30)
 print('%2.2f' %(acc))
 
 print("")
