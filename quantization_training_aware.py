@@ -228,7 +228,8 @@ def evaluation1(model_test,tst_dl, device = 'cpu', num_batch = len(tst_dl)):
 #device = torch.device('cuda:0')
 device = torch.device('cuda:0' if torch.cuda.is_available() and cuda_num != 'cpu' else 'cpu')
 
-model_qta = model.to(device)
+model_qta = copy.deepcopy(model)
+model_qta = model_qta.to(device)
 
 
 #opt = torch.optim.SGD(model_qta.parameters(), lr = 0.0001) 
@@ -323,8 +324,8 @@ for nepoch in range(n_epochs):
         save_file_Q = save_name+"_qta.pth"
 
 #        pickle.dump(model_qta,open(save_name+"qta_full_train.p",'wb'))
-        pickle.dump(model_qta,open(result_dir+save_file,'wb'))
-#        torch.save(model_qta.state_dict(), result_dir+save_file)
+#        pickle.dump(model_qta,open(result_dir+save_file,'wb'))
+        torch.save(model_qta.state_dict(), result_dir+save_file)
 #        torch.jit.save(torch.jit.script(model_qta), result_dir+save_file)
 #        pickle.dump(quantized_model,open(result_dir+save_file_Q,'wb'))
         print ("file saved to :"+save_file)
@@ -341,8 +342,16 @@ for nepoch in range(n_epochs):
 #    elif:
         
 #quantized_model_best = model_best
-model_qta_best = pickle.load(open(result_dir+save_file,'rb'))
-#model_qta_best.load_state_dict(torch.load(result_dir+save_file, map_location=lambda storage, loc: storage))
+#model_qta_best = pickle.load(open(result_dir+save_file,'rb'))        
+model_qta = copy.deepcopy(model)
+model_qta = model_qta.to(device)
+model_qta.eval()
+model_qta.fuse_model()
+model_qta.qconfig = torch.quantization.get_default_qat_qconfig('fbgemm')
+torch.quantization.prepare_qat(model_qta, inplace=True)
+model_qta.load_state_dict(torch.load(result_dir+save_file, map_location=lambda storage, loc: storage))
+
+quantized_model = torch.quantization.convert(model_qta.eval(), inplace=False)
 
 thresh_AF = 7
 
