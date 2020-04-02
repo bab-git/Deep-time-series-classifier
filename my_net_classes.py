@@ -640,7 +640,7 @@ class Classifier_1d_6_conv(nn.Module):
         out = self.out(raw_out)
         return out    
 
-#%% ==================   1dconv - 6 conv - 3 FC   drop after relu + BN2d
+#%% ==================   1dconv - 6 conv - 3 FC   drop after relu + BN2d   R2Q: ready 2 quantize
 class Classifier_1d_6_conv_v2(nn.Module):
     def __init__(self, raw_ni, no, raw_size, drop=.5, batch_norm = True, conv_type = '2d'):
         super().__init__()
@@ -664,8 +664,8 @@ class Classifier_1d_6_conv_v2(nn.Module):
             )
 
         self.FC = nn.Sequential(
-            Flatten(),
-#            Flatten2(),
+#            Flatten(),
+            Flatten2(),
             nn.Linear(flat_in, 128), nn.ReLU(inplace=True), nn.Dropout(drop),
 #            nn.Linear(flat_in, 128), nn.BatchNorm1d(num_features = 128),  nn.ReLU(inplace=True), nn.Dropout(drop),            
             nn.Linear( 128, 128),    nn.ReLU(inplace=True), nn.Dropout(drop)
@@ -938,7 +938,7 @@ class Classifier_1d_4_conv_v1(nn.Module):
         out  = self.dequant(out)
         return out        
 
-#%% ==================  sub-sample 2 -  1dconv - 4 conv - 2 FC   ready to quantize  - drop after relu + BN2d
+#%% ==================  sub-sample 2 -  1dconv - 4 conv - 2 FC   R2Q: ready 2 quantize  - drop after relu + BN2d
 class Classifier_1d_4c_2fc_sub_qr(nn.Module):
     def __init__(self, raw_ni, no, raw_size, drop=.5, batch_norm = True, conv_type = '2d'):
         super().__init__()
@@ -968,8 +968,8 @@ class Classifier_1d_4c_2fc_sub_qr(nn.Module):
             )
 
         self.FC = nn.Sequential(
-            Flatten(),
-#            Flatten2(),
+#            Flatten(),
+            Flatten2(),
             nn.Linear(flat_in, 128), nn.ReLU(inplace=True), nn.Dropout(drop),
 #            nn.Linear(flat_in, 128), nn.BatchNorm1d(num_features = 128),  nn.ReLU(inplace=True), nn.Dropout(drop),            
 #            nn.Linear( 128, 128),    nn.ReLU(inplace=True), nn.Dropout(drop)
@@ -998,7 +998,7 @@ class Classifier_1d_4c_2fc_sub_qr(nn.Module):
 #                fuse_profile = ['layers.0.pointwise', 'layers.1', 'layers.2']
                 torch.quantization.fuse_modules(m, fuse_profile, inplace=True)
 #                torch.quantization.fuse_modules(m, ['0', '1', '2'], inplace=True)
-        torch.quantization.fuse_modules(self.FC, [['1','2'],['4','5']], inplace=True)
+        torch.quantization.fuse_modules(self.FC, ['1','2'], inplace=True)
                 
                 
     def forward(self, t_raw):
@@ -1242,9 +1242,9 @@ class Classifier_1d_flex_net(nn.Module):
         else:
             raw_layers = [] 
             
-        raw_layers.append(SepConv1d_v5(raw_ni,  convs[0], kernels[0], strides[0], pads[0], 
+        raw_layers.append(SepConv1d_v4(raw_ni,  convs[0], kernels[0], strides[0], pads[0], 
                                   drop0, batch_norm, conv_type))  #out: raw_size/str
-        [raw_layers.append(SepConv1d_v5(i_ch,  conv, kernel, strd, pad, drop0, 
+        [raw_layers.append(SepConv1d_v4(i_ch,  conv, kernel, strd, pad, drop0, 
                                         batch_norm, conv_type))\
                                         for  i_ch, conv, kernel, strd, pad in params]
         
@@ -1253,18 +1253,22 @@ class Classifier_1d_flex_net(nn.Module):
 #        FC_layers = Flatten()        
         
         self.FC = nn.Sequential(
-            Flatten(),
-            nn.Linear(flat_in, FCs[0]), nn.ReLU(inplace=False), nn.Dropout(drop),
+            Flatten2(),
+            nn.Linear(flat_in, FCs[0]), nn.ReLU(inplace=True), nn.Dropout(drop),
 #                nn.Linear( 128, 128),    nn.BatchNorm1d(num_features = 128), nn.Dropout(drop), nn.ReLU(inplace=True)
             )            
         
         self.out = nn.Sequential(
 #            nn.Linear(128, 64), nn.ReLU(inplace=True), 
             nn.Linear(FCs[len(FCs)-1], no))
+
+        self.quant = QuantStub()
+        
+        self.dequant = DeQuantStub()
     
     def fuse_model(self):
         for m in self.modules():
-            if type(m) == SepConv1d_v5:
+            if type(m) == SepConv1d_v4:
                 fuse_profile = ['layers.1', 'layers.2', 'layers.3']
 #                fuse_profile = ['layers.0.pointwise', 'layers.1', 'layers.2']
                 torch.quantization.fuse_modules(m, fuse_profile, inplace=True)
@@ -1272,8 +1276,10 @@ class Classifier_1d_flex_net(nn.Module):
         torch.quantization.fuse_modules(self.FC, ['1','2'], inplace=True)
        
     def forward(self, t_raw):        
+        t_raw = self.quant(t_raw)        
         t_raw  =  t_raw.unsqueeze(2)
         raw_out = self.raw(t_raw)
         FC_out = self.FC(raw_out)        
         out = self.out(FC_out)
+        out  = self.dequant(out)
         return out    
