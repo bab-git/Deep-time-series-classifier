@@ -1242,9 +1242,9 @@ class Classifier_1d_flex_net(nn.Module):
         else:
             raw_layers = [] 
             
-        raw_layers.append(SepConv1d_v4(raw_ni,  convs[0], kernels[0], strides[0], pads[0], 
+        raw_layers.append(SepConv1d_v5(raw_ni,  convs[0], kernels[0], strides[0], pads[0], 
                                   drop0, batch_norm, conv_type))  #out: raw_size/str
-        [raw_layers.append(SepConv1d_v4(i_ch,  conv, kernel, strd, pad, drop0, 
+        [raw_layers.append(SepConv1d_v5(i_ch,  conv, kernel, strd, pad, drop0, 
                                         batch_norm, conv_type))\
                                         for  i_ch, conv, kernel, strd, pad in params]
         
@@ -1268,7 +1268,7 @@ class Classifier_1d_flex_net(nn.Module):
     
     def fuse_model(self):
         for m in self.modules():
-            if type(m) == SepConv1d_v4:
+            if type(m) == SepConv1d_v5:
                 fuse_profile = ['layers.1', 'layers.2', 'layers.3']
 #                fuse_profile = ['layers.0.pointwise', 'layers.1', 'layers.2']
                 torch.quantization.fuse_modules(m, fuse_profile, inplace=True)

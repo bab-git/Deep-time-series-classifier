@@ -3,7 +3,7 @@ import numpy as np
 import torch
 from torch.nn import functional as F
 from ptflops.flops_counter import get_model_complexity_info, print_model_with_flops
-
+from torchsummary import summary
 #---------------------  Evaluation function
 def evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = 3, 
              device = 'cpu', acc_eval = False, win_size = None, 
@@ -105,6 +105,9 @@ def evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = 3,
     FP_ECG_rate = FP_ECG / total_N *100
     
     flops, params = get_model_complexity_info(model, input_shape, as_strings=False, print_per_layer_stat=False)
+
+#    mem_size = summary(model.to('cpu'), input_size=(raw_feat, raw_size), batch_size = 1, device = 'cpu', Unit = 'KB', verbose = False)
+
 
 #    print("{:>40}  {:<8.2f}".format("Accuracy on all windows of test data:", acc))
     if slide:

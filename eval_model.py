@@ -148,13 +148,13 @@ flops1, params = get_model_complexity_info(model, (raw_feat, raw_size), as_strin
 # %%==================================================================== 
 # ================================== Quantization
 # ====================================================================     
-model.to('cpu')
-
+model_fp = copy.deepcopy(model)
+model_fp.fuse_model()
 
 # ----------------- Dynamic Quantization
 
 model_dqn = torch.quantization.quantize_dynamic(
-        model, {nn.Linear, nn.Conv2d} , dtype= torch.qint8
+        model_fp, {nn.Linear, torch.conv2d} , dtype= torch.qint8
         )
 
 summary(model, input_size=(raw_feat, raw_size), batch_size = batch_size, device = 'cpu')
@@ -169,7 +169,9 @@ summary(model_dqn, input_size=(raw_feat, raw_size), batch_size = batch_size, dev
 #model_qn.to(device)
 model_dqn.to('cpu');
 
-TP_ECG_rate_q, FP_ECG_rate_q, list_pred_win, elapsed = evaluate(model_qn, tst_dl)
+P_ECG_rate_taq, FP_ECG_rate_taq, list_pred_win, elapsed = \
+    evaluate(model_dqn, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, 
+             device = device, win_size = win_size, slide = slide)
 
 
 flops1, params = get_model_complexity_info(model, (raw_feat, raw_size), as_strings=False, print_per_layer_stat=True);

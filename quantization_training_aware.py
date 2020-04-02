@@ -111,7 +111,8 @@ TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = \
     evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, 
              device = device, win_size = win_size, slide = slide)
 
-summary(model.to('cpu'), input_size=(raw_feat, raw_size), batch_size = 1, device = 'cpu', Unit = 'KB')
+mem_size = summary(model.to('cpu'), input_size=(raw_feat, raw_size), batch_size = 1, device = 'cpu', Unit = 'KB', verbose = False)
+print('Memory size: ' +str(mem_size))
 #pickle.dump((TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed),open(save_name+"result.p","wb"))
 
 #assert 1==2
@@ -126,6 +127,7 @@ def evaluation1(model_test,tst_dl, device = 'cpu', num_batch = len(tst_dl)):
     with torch.no_grad():
         print("i_batch:", end =" ")
         for i_batch, batch in enumerate(tst_dl):
+#            print(i_batch)
             if i_batch%10 == 0:
                 print(i_batch, end =" ")
             x_raw, y_batch = [t.to(device) for t in batch]
@@ -149,7 +151,7 @@ def train_one_epoch(model, criterion, opt, trn_dl, device, ntrain_batches):
     else:
         ls = random.sample(range(len(trn_dl)), ntrain_batches)
     
-    model=model.to(device)
+    model = model.to(device)
     print(next(model.parameters()).is_cuda)
     model.train()
     
@@ -173,10 +175,10 @@ def train_one_epoch(model, criterion, opt, trn_dl, device, ntrain_batches):
         opt.step()
                 
         if cnt >= ntrain_batches:
-            print('Loss %3.3f' %(epoch_loss / cnt))
+            print('not-complete epoch Loss %3.3f' %(epoch_loss / cnt))
             return epoch_loss / cnt
 
-    print('Full Loss %3.3f' %(epoch_loss / cnt))
+    print('Complete epoch loss %3.3f' %(epoch_loss / cnt))
     return epoch_loss / cnt    
 # %%==================================================================== 
 # ================================== Trining aware  Quantization
@@ -192,7 +194,7 @@ model_qta = model_qta.to(device)
 
 
 #opt = torch.optim.SGD(model_qta.parameters(), lr = 0.0001) 
-opt = torch.optim.Adam(model_qta.parameters(), lr=0.001)
+opt = torch.optim.Adam(model_qta.parameters(), lr=0.0001)
 
 criterion = nn.CrossEntropyLoss (reduction = 'sum')
 
@@ -209,6 +211,7 @@ e_loss0 = train_one_epoch(model_qta, criterion, opt, trn_dl, device, ntrain_batc
 model_qta.eval()
 model_qta.fuse_model()
 model_qta.qconfig = torch.quantization.get_default_qat_qconfig('fbgemm')
+torch.backends.quantized.engine = 'fbgemm'
 torch.quantization.prepare_qat(model_qta, inplace=True)
 
 print("=========  original floating point validation accuracy ===============")
@@ -225,10 +228,10 @@ print('%2.2f' %(acc_0))
 for nepoch in range(n_epochs):
     e_loss = train_one_epoch(model_qta, criterion, opt, trn_dl, device, ntrain_batches)
     
-    if nepoch > 3:
+    if nepoch > 3000:
         # Freeze quantizer parameters
         model_qta.apply(torch.quantization.disable_observer)
-    if nepoch > 2:
+    if nepoch > 2000:
         # Freeze batch norm mean and variance estimates
         model_qta.apply(torch.nn.intrinsic.qat.freeze_bn_stats)
 
@@ -239,14 +242,17 @@ for nepoch in range(n_epochs):
 
 #    acc = evaluation1(quantized_model,val_dl,'cpu', 30)
 #    model_qta.to(device)
-    acc = evaluation1(model_qta,val_dl,device , 30)
+#    acc = evaluation1(model_qta,val_dl,device , 30)
+    acc = evaluation1(quantized_model,val_dl,'cpu', 30)
     
-    print(', Epoch %d : accuracy = %2.2f'%(nepoch,acc))
+    print(', Epoch %d : best_acc = %2.2f, accuracy = %2.2f'%(nepoch,acc_0, acc))
 
     if acc > acc_0:
 #        save_file = save_name+"_qta_full_train.p"
         save_file = save_name+"_qta_float.pth"
-        save_file_Q = save_name+"_qta.pth"
+#        save_file_Q = save_name+"_qta.pth"
+        
+        model_qta_best = copy.deepcopy(model_qta)
 
 #        pickle.dump(model_qta,open(save_name+"qta_full_train.p",'wb'))
 #        pickle.dump(model_qta,open(result_dir+save_file,'wb'))
@@ -263,24 +269,25 @@ for nepoch in range(n_epochs):
     if e_loss < e_loss0:
         print("")
         print("original loss is reached")
-        break
+#        break
 #    elif:
-        
-model_qta = copy.deepcopy(model)
-model_qta = model_qta.to(device)
-model_qta.eval()
-model_qta.fuse_model()
-model_qta.qconfig = torch.quantization.get_default_qat_qconfig('fbgemm')
-torch.quantization.prepare_qat(model_qta, inplace=True)
-model_qta.load_state_dict(torch.load(result_dir+save_file, map_location=lambda storage, loc: storage))
+#%%     
+model_qta_best = copy.deepcopy(model)
+model_qta_best = model_qta_best.to(device)
+model_qta_best.eval()
+model_qta_best.fuse_model()
+model_qta_best.qconfig = torch.quantization.get_default_qat_qconfig('fbgemm')
+torch.quantization.prepare_qat(model_qta_best, inplace=True)
+model_qta_best.load_state_dict(torch.load(result_dir+save_file, map_location=lambda storage, loc: storage))
 
-model_qta.to('cpu')
-quantized_model_best = torch.quantization.convert(model_qta.eval(), inplace=False)
+#%%     
+model_qta_best.to('cpu')
+quantized_model_best = torch.quantization.convert(model_qta_best.eval(), inplace=False)
 
 thresh_AF = 7
 
 print("=========  Q-trained floating point validation accuracy ===============")        
-acc = evaluation1(model_qta,val_dl,'cpu', 30)
+acc = evaluation1(model_qta_best,val_dl,'cpu', 30)
 print('%2.2f' %(acc))
 
 print("")
@@ -298,7 +305,7 @@ print("=========  Qquantized-model test result ===============")
 #TP_ECG_rate_taq, FP_ECG_rate_taq,x,y = evaluate(quantized_model_best,tst_dl, thresh_AF = thresh_AF)
 TP_ECG_rate_taq, FP_ECG_rate_taq, list_pred_win, elapsed = \
     evaluate(quantized_model_best, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, 
-             device = device, win_size = win_size, slide = slide)
+             device = 'cpu', win_size = win_size, slide = slide)
 assert 1==2
 # %%======================= loading trained model_qta
 save_file = save_name+"_qta_full_train.p"
@@ -331,7 +338,7 @@ F.close()
 #%% Debug
 i,batch = next(enumerate(trn_dl))
 x_raw = batch[0].to('cpu')
-model_qta = copy.deepcopy(model3)
+model_qta = copy.deepcopy(model)
 model_qta = model_qta.to(device)
 
 

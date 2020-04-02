@@ -6,7 +6,7 @@ from collections import OrderedDict
 import numpy as np
 
 
-def summary(model, input_size, batch_size=-1, device="cuda", gradients = False, Unit = 'MB'):
+def summary(model, input_size, batch_size=-1, device="cuda", gradients = False, Unit = 'MB', verbose = True):
 
     def register_hook(module):
 
@@ -74,11 +74,12 @@ def summary(model, input_size, batch_size=-1, device="cuda", gradients = False, 
     # remove these hooks
     for h in hooks:
         h.remove()
-
-    print("----------------------------------------------------------------")
-    line_new = "{:>20}  {:>25} {:>15}".format("Layer (type)", "Output Shape", "Param #")
-    print(line_new)
-    print("================================================================")
+    
+    if verbose:    
+        print("----------------------------------------------------------------")
+        line_new = "{:>20}  {:>25} {:>15}".format("Layer (type)", "Output Shape", "Param #")
+        print(line_new)
+        print("================================================================")
     total_params = 0
     total_output = 0
     trainable_params = 0
@@ -94,7 +95,8 @@ def summary(model, input_size, batch_size=-1, device="cuda", gradients = False, 
         if "trainable" in summary[layer]:
             if summary[layer]["trainable"] == True:
                 trainable_params += summary[layer]["nb_params"]
-        print(line_new)
+        if verbose:
+            print(line_new)
 
     
     if gradients:
@@ -116,15 +118,16 @@ def summary(model, input_size, batch_size=-1, device="cuda", gradients = False, 
     total_params_size = abs(total_params.numpy() * 4. / (1024 ** unit_mlt))
     total_size = total_params_size + total_output_size + total_input_size
 
-    print("================================================================")
-    print("Total params: {0:,}".format(total_params))
-    print("Trainable params: {0:,}".format(trainable_params))
-    print("Non-trainable params: {0:,}".format(total_params - trainable_params))
-    print("----------------------------------------------------------------")
-    print("Input size ({}): {:0.2f}".format(Unit,total_input_size))
-    
-    print(f_str+" pass size ({}): {:0.2f}".format(Unit,total_output_size))
-    print("Params size ({}): {:0.2f}".format(Unit,total_params_size))
-    print("Estimated Total Size ({}): {:0.2f}".format(Unit,total_size))
-    print("----------------------------------------------------------------")
-    # return summary
+    if verbose:
+        print("================================================================")
+        print("Total params: {0:,}".format(total_params))
+        print("Trainable params: {0:,}".format(trainable_params))
+        print("Non-trainable params: {0:,}".format(total_params - trainable_params))
+        print("----------------------------------------------------------------")
+        print("Input size ({}): {:0.2f}".format(Unit,total_input_size))
+        
+        print(f_str+" pass size ({}): {:0.2f}".format(Unit,total_output_size))
+        print("Params size ({}): {:0.2f}".format(Unit,total_params_size))
+        print("Estimated Total Size ({}): {:0.2f}".format(Unit,total_size))
+        print("----------------------------------------------------------------")
+    return total_size
