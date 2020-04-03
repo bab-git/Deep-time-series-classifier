@@ -1,13 +1,14 @@
 import time
 import numpy as np
 import torch
+import copy
 from torch.nn import functional as F
 from ptflops.flops_counter import get_model_complexity_info, print_model_with_flops
 from torchsummary import summary
 #---------------------  Evaluation function
 def evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = 3, 
              device = 'cpu', acc_eval = False, win_size = None, 
-             slide = True):
+             slide = True, verbose = True):
     model.to(device)
     input_shape = tuple(tst_dl.dataset.tensors[0].shape[1:3])
     s = time.time()
@@ -43,7 +44,8 @@ def evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = 3,
             # FP += ((preds !=y_batch) & (0 ==y_batch)).sum().item()
 
     elapsed = time.time() - s
-    print("{:>40}  {:<8.2f}".format("Elapsed time (seconds):", elapsed))
+    if verbose:
+        print("{:>40}  {:<8.2f}".format("Elapsed time (seconds):", elapsed))
         
     acc = correct / total * 100
     #TP_rate = TP / total_P *100
@@ -51,7 +53,8 @@ def evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = 3,
     #TP_rate = TP / (1 ==y_batch).sum().item() *100
     #FP_rate = FP / (0 ==y_batch).sum().item() *100
     
-    print("{:>40}  {:<8.2f}".format("Accuracy on all windows of test data:", acc))
+    if verbose:
+        print("{:>40}  {:<8.2f}".format("Accuracy on all windows of test data:", acc))
     
     if acc_eval:
             return acc, list_pred
@@ -104,20 +107,23 @@ def evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = 3,
     TP_ECG_rate = TP_ECG / total_P *100
     FP_ECG_rate = FP_ECG / total_N *100
     
-    flops, params = get_model_complexity_info(model, input_shape, as_strings=False, print_per_layer_stat=False)
+    if verbose:
+        model_flop = copy.deepcopy(model)
+        flops, params = get_model_complexity_info(model_flop, input_shape, as_strings=False, print_per_layer_stat=False)
 
 #    mem_size = summary(model.to('cpu'), input_size=(raw_feat, raw_size), batch_size = 1, device = 'cpu', Unit = 'KB', verbose = False)
 
 
 #    print("{:>40}  {:<8.2f}".format("Accuracy on all windows of test data:", acc))
-    if slide:
-        print("{:>40}  {:d} / {:d}".format("Threshold for detecting AF:", thresh_AF, win_size))
-    print("{:>40}  {:<8.3f}".format("TP rate:", TP_ECG_rate))
-    print("{:>40}  {:<8.3f}".format("FP rate:", FP_ECG_rate))
-
-    print('{:>40}  {:<8d}'.format('Number of parameters:', params))
-    print('{:>40}  {:<8.0f}'.format('Computational complexity:', flops))
+    if verbose:
+        if slide:
+            print("{:>40}  {:d} / {:d}".format("Threshold for detecting AF:", thresh_AF, win_size))
+        print("{:>40}  {:<8.3f}".format("TP rate:", TP_ECG_rate))
+        print("{:>40}  {:<8.3f}".format("FP rate:", FP_ECG_rate))
     
+        print('{:>40}  {:<8d}'.format('Number of parameters:', params))
+        print('{:>40}  {:<8.0f}'.format('Computational complexity:', flops))
+        
     if slide:
         return (TP_ECG_rate,idx_TP), (FP_ECG_rate,idx_FP), list_pred_win, elapsed
     else:

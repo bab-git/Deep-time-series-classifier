@@ -171,7 +171,8 @@ model_dqn.to('cpu');
 
 P_ECG_rate_taq, FP_ECG_rate_taq, list_pred_win, elapsed = \
     evaluate(model_dqn, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, 
-             device = device, win_size = win_size, slide = slide)
+             device = 'cpu', win_size = win_size, slide = slide,
+             verbose = False)
 
 
 flops1, params = get_model_complexity_info(model, (raw_feat, raw_size), as_strings=False, print_per_layer_stat=True);

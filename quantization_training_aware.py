@@ -30,13 +30,15 @@ print("{:>40}  {:<8s}".format("Loading dataset:", dataset))
 
 load_ECG = torch.load(data_dir+dataset)
 
-slide = input("Sliding window? (def:yes)")
-slide = True if slide == '' else False
+slide = input("Sliding window? (def:no)")
+slide = False if slide == '' else True
 print("{:>40}  {:}".format("Sliding window mode:", slide))
 
 n_epochs = input("Quantization training epochs? (def:200)")
 n_epochs = 200 if n_epochs == '' else int(n_epochs)
 #print("{:>40}  {:}".format("Sliding window mode:", slide))
+quantize_flag = input("Also performing quantization? (def. yes)")
+quantize_flag = True if quantize_flag == '' else False
 #%%===============  loading experiment's parameters and batches
 
 print("{:>40}  {:<8s}".format("Loading model:", model_name))
@@ -115,7 +117,8 @@ mem_size = summary(model.to('cpu'), input_size=(raw_feat, raw_size), batch_size 
 print('Memory size: ' +str(mem_size))
 #pickle.dump((TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed),open(save_name+"result.p","wb"))
 
-#assert 1==2
+if not quantize_flag:
+    assert 1==2
 
 #%%
 #device = ecg_datasets[0].tensors[0].device
@@ -219,13 +222,15 @@ acc = evaluation1(model,val_dl,device, 30)
 print('%2.2f' %(acc))
 
 print("")
-print("=========  q-prepared floating point validation accuracy ===============")
+print("=========  Intital q-prepared floating point validation accuracy ===============")
 acc_0 = evaluation1(model_qta,val_dl,device, 30)
 print('%2.2f' %(acc_0))
 
 
-#acc_0 = 0
-for nepoch in range(n_epochs):
+acc_0 = 0
+nepoch =1
+#%%
+while nepoch < n_epochs:
     e_loss = train_one_epoch(model_qta, criterion, opt, trn_dl, device, ntrain_batches)
     
     if nepoch > 3000:
@@ -243,7 +248,18 @@ for nepoch in range(n_epochs):
 #    acc = evaluation1(quantized_model,val_dl,'cpu', 30)
 #    model_qta.to(device)
 #    acc = evaluation1(model_qta,val_dl,device , 30)
-    acc = evaluation1(quantized_model,val_dl,'cpu', 30)
+    
+    
+    TP_ECG_rate_taq, FP_ECG_rate_taq, list_pred_win, elapsed = \
+    evaluate(quantized_model, val_dl, val_idx, data_tag, thresh_AF = thresh_AF, 
+             device = 'cpu', win_size = win_size, slide = slide,
+             verbose = False)
+    
+    acc = 60+ 2*(TP_ECG_rate_taq[0]-90) + 20-FP_ECG_rate_taq[0]
+#    acc = 3.33*acc
+    
+    
+#    acc = evaluation1(quantized_model,val_dl,'cpu', 30)
     
     print(', Epoch %d : best_acc = %2.2f, accuracy = %2.2f'%(nepoch,acc_0, acc))
 
@@ -252,11 +268,11 @@ for nepoch in range(n_epochs):
         save_file = save_name+"_qta_float.pth"
 #        save_file_Q = save_name+"_qta.pth"
         
-        model_qta_best = copy.deepcopy(model_qta)
+#        model_qta_best = copy.deepcopy(model_qta)
 
 #        pickle.dump(model_qta,open(save_name+"qta_full_train.p",'wb'))
-#        pickle.dump(model_qta,open(result_dir+save_file,'wb'))
-        torch.save(model_qta.state_dict(), result_dir+save_file)
+        pickle.dump(model_qta,open(result_dir+save_file,'wb'))
+#        torch.save(model_qta.state_dict(), result_dir+save_file)
 #        torch.jit.save(torch.jit.script(model_qta), result_dir+save_file)
 #        pickle.dump(quantized_model,open(result_dir+save_file_Q,'wb'))
         print ("file saved to :"+save_file)
@@ -269,18 +285,20 @@ for nepoch in range(n_epochs):
     if e_loss < e_loss0:
         print("")
         print("original loss is reached")
+    nepoch += 1
 #        break
 #    elif:
 #%%     
-model_qta_best = copy.deepcopy(model)
-model_qta_best = model_qta_best.to(device)
-model_qta_best.eval()
-model_qta_best.fuse_model()
-model_qta_best.qconfig = torch.quantization.get_default_qat_qconfig('fbgemm')
-torch.quantization.prepare_qat(model_qta_best, inplace=True)
-model_qta_best.load_state_dict(torch.load(result_dir+save_file, map_location=lambda storage, loc: storage))
+model_qta_best = pickle.load(open(result_dir+save_file,'rb'))
+#model_qta_best = copy.deepcopy(model)
+#model_qta_best = model_qta_best.to(device)
+#model_qta_best.eval()
+#model_qta_best.fuse_model()
+#model_qta_best.qconfig = torch.quantization.get_default_qat_qconfig('fbgemm')
+#torch.quantization.prepare_qat(model_qta_best, inplace=True)
+#model_qta_best.load_state_dict(torch.load(result_dir+save_file, map_location=lambda storage, loc: storage))
 
-#%%     
+#%     
 model_qta_best.to('cpu')
 quantized_model_best = torch.quantization.convert(model_qta_best.eval(), inplace=False)
 
@@ -305,7 +323,12 @@ print("=========  Qquantized-model test result ===============")
 #TP_ECG_rate_taq, FP_ECG_rate_taq,x,y = evaluate(quantized_model_best,tst_dl, thresh_AF = thresh_AF)
 TP_ECG_rate_taq, FP_ECG_rate_taq, list_pred_win, elapsed = \
     evaluate(quantized_model_best, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, 
-             device = 'cpu', win_size = win_size, slide = slide)
+             device = 'cpu', win_size = win_size, slide = slide,
+             verbose = False)
+print("{:>40}  {:<8.3f}".format("TP rate:", TP_ECG_rate_taq[0]))
+print("{:>40}  {:<8.3f}".format("FP rate:", FP_ECG_rate_taq[0]))
+    
+    
 assert 1==2
 # %%======================= loading trained model_qta
 save_file = save_name+"_qta_full_train.p"

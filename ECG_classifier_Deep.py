@@ -52,6 +52,9 @@ t_range = range(t_win)
 slide = input("Sliding window? (def:no)")
 slide = False if slide == '' else True
 print("{:>40}  {:}".format("Sliding window mode:", slide))
+
+acc_eval = input("Early stop based on accuracy (or TP)? (def. acc)")
+acc_eval = True if acc_eval in ('','acc') else False
 #%%==================== test and train splits
 print("{:>40}".format("creating datasets"))
     
@@ -137,7 +140,7 @@ n_epochs = 10000
 #n_epochs = 30  # FP = 7.4%
 #iterations_per_epoch = len(trn_dl)
 num_classes = 2
-best_acc = 0
+best_acc = 0 if acc_eval else -100
 patience, trials = 500, 0
 base = 1
 step = 2
@@ -260,7 +263,8 @@ epoch = 0
 #pickle.dump({'ecg_datasets':ecg_datasets},open("train_"+save_name+"_split.p","wb"))
 #torch.save(ecg_datasets, 'train_'+save_name+'.pth')
 
-
+thresh_AF = 5
+win_size = 10
 
 #%%===============  Learning loop`
 #millis = round(time.time())
@@ -295,16 +299,31 @@ while epoch < n_epochs:
     correct, total = 0, 0
     
 #    print('validation....')
-    for batch in val_dl:
-        x_raw, y_batch = batch
-#        x_raw, y_batch = [t.to(device) for t in batch]
-#    x_raw, y_batch = [t.to(device) for t in val_ds.tensors]
-        out = model(x_raw)
-        preds = F.log_softmax(out, dim = 1).argmax(dim=1)
-        total += y_batch.size(0)
-        correct += (preds ==y_batch).sum().item()
+    if acc_eval:    
+        acc, temp = \
+            evaluate(model, val_dl, val_idx, data_tag, thresh_AF = thresh_AF, 
+                     device = device, win_size = win_size, slide = slide,
+                     verbose = False, acc_eval = True)
+    else:
+        TP_ECG_rate_taq, FP_ECG_rate_taq, list_pred_win, elapsed = \
+            evaluate(model, val_dl, val_idx, data_tag, 
+                     device = device, slide = slide,
+                     verbose = False)
+    
+        acc = 60 + 2*(TP_ECG_rate_taq[0]-90) + 20-FP_ECG_rate_taq[0]                
+    
         
-    acc = correct / total * 100
+#    for batch in val_dl:
+#        x_raw, y_batch = batch
+##        x_raw, y_batch = [t.to(device) for t in batch]
+##    x_raw, y_batch = [t.to(device) for t in val_ds.tensors]
+#        out = model(x_raw)
+#        preds = F.log_softmax(out, dim = 1).argmax(dim=1)
+#        total += y_batch.size(0)
+#        correct += (preds ==y_batch).sum().item()
+#        
+#    acc = correct / total * 100
+        
     acc_history.append(acc)
 
     millis2 = (time.time())
