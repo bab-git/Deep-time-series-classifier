@@ -148,10 +148,15 @@ flops1, params = get_model_complexity_info(model, (raw_feat, raw_size), as_strin
 # %%==================================================================== 
 # ================================== Quantization
 # ====================================================================     
-model_fp = copy.deepcopy(model)
-model_fp.fuse_model()
-
 # ----------------- Dynamic Quantization
+model_fp = copy.deepcopy(model)
+#model_fp.fuse_model()
+
+
+#model_fp.qconfig =  qn.default_dynamic_qconfig 
+#torch.quantization.prepare(model_fp, inplace=True)
+#model_qn = torch.quantization.convert(model_test)
+
 
 model_dqn = torch.quantization.quantize_dynamic(
         model_fp, {nn.Linear, torch.conv2d} , dtype= torch.qint8
@@ -182,8 +187,6 @@ print('{:<30}  {:<8}'.format('Number of parameters: ', params))
 
 #input = torch.randn(1, raw_feat, raw_size)
 flops, params = profile(model.to('cpu'), inputs=(torch.randn(1, raw_feat, raw_size), ))
-
-
 
 
 
@@ -298,17 +301,6 @@ flops_q, params_q = get_model_complexity_info(model_qn, (raw_feat, raw_size), as
 #input = torch.randn(1, raw_feat, raw_size)
 #flops, params = profile(model_test, inputs=(torch.randn(1, raw_feat, raw_size), ))
 
-#%%===========  static quantization
-
-#import my_net_classes
-#num_calibration_batches = 10
-#model = my_net_classes.Classifier_1d_6_conv_v2(raw_feat, num_classes, raw_size)
-model = pickle.load(open('train_'+save_name+'_best.pth', 'rb'))
-model.to('cpu')
-model.eval()
-#model(x_raw)
-
-
 def fuse_model(model):
         for m in model.modules():
             if type(m) == my_net_classes.SepConv1d_v4:
@@ -318,20 +310,7 @@ def fuse_model(model):
 #                torch.quantization.fuse_modules(m, ['0', '1', '2'], inplace=True)
         torch.quantization.fuse_modules(model.FC, [['1','2'],['4','5']], inplace=True)
         return model
-
-fuse_model(model)
-#model.fuse_model()
-#model.fuse_model2()
-model.qconfig = torch.quantization.default_qconfig
-
-
-print(model.qconfig)
-torch.quantization.prepare(model, inplace=True)
-
-#model(x_raw)
-
-# Calibrate with the training set
-
+    
 def evaluation1(model_test,tst_dl, device = 'cpu', num_batch = len(tst_dl)):
     correct, total = 0, 0
     with torch.no_grad():
@@ -351,24 +330,102 @@ def evaluation1(model_test,tst_dl, device = 'cpu', num_batch = len(tst_dl)):
     acc = correct / total * 100
     print("")
     print(acc)    
-    return acc
+    return acc   
+#%%===========  manual quantization
+model_mq = copy.deepcopy(model)
+model_mq.fuse_model()
+model_mq.qconfig = torch.quantization.default_qconfig
+
+my_qconfig = qn.QConfig(activation=qn.MinMaxObserver.with_args(dtype=torch.qint8, qscheme = torch.per_tensor_affine), 
+                     weight=qn.default_observer.with_args(dtype=torch.qint8))
+
+torch.quantization.prepare(model_mq, inplace=True)
+
+evaluation1(model_mq,trn_dl)
+
+#max_val, min_val = 10, -10
+max_val, min_val = None, None
+
+#model_mq.qconfig = my_qconfig 
+for m in model_mq.modules():
+    try:
+        m.observer.max_val = max_val if max_val else m.observer.max_val 
+        m.observer.min_val = min_val if min_val else m.observer.min_val
+    except:
+        continue
+        
+
+model_stq = torch.quantization.convert(model_mq)
+
+TP_ECG_rate_taq, FP_ECG_rate_taq, list_pred_win, elapsed = \
+    evaluate(model_stq, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, 
+             device = 'cpu', win_size = win_size, slide = slide,
+             verbose = False)
+print("{:>40}  {:<8.3f}".format("TP rate:", TP_ECG_rate_taq[0]))
+print("{:>40}  {:<8.3f}".format("FP rate:", FP_ECG_rate_taq[0]))
+
+ 
+#%%===========  static quantization
+
+#import my_net_classes
+#num_calibration_batches = 10
+#model = my_net_classes.Classifier_1d_6_conv_v2(raw_feat, num_classes, raw_size)
+model = pickle.load(open(result_dir+'train_'+save_name+'_best.pth', 'rb'))
+model.to('cpu')
+model_st = copy.deepcopy(model)
+model_st.eval()
+#model(x_raw)
+
+
+
+
+model_st.fuse_model()
+#model.fuse_model()
+#model.fuse_model2()
+model_st.qconfig = torch.quantization.default_qconfig
+
+my_qconfig = qn.QConfig(activation=qn.MinMaxObserver.with_args(dtype=torch.qint8), 
+                     weight=qn.default_observer.with_args(dtype=torch.qint8))
+
+print(model_st.qconfig)
+torch.quantization.prepare(model_st, inplace=True)
+
+#model(x_raw)
+
+# Calibrate with the training set
+
+
     
-evaluation1(model,tst_dl)
+evaluation1(model_st,val_dl)
 print('Post Training Quantization: Calibration done')
 
 # Convert to quantized model
-model_stq = torch.quantization.convert(model)
+model_stq = torch.quantization.convert(model_st)
 print('Post Training Quantization: Convert done')
 
 #print(model_qn(x_raw).shape)
 
 #evaluation1(model_qn,tst_dl)
-a = evaluate(model_stq,tst_dl)
+acc = evaluation1(model_stq,val_dl)
 print('Post Training Quantization: Calibration done')
 
+print("=========  Q-trained floating point test result ===============")        
+#TP_ECG_rate_taq, FP_ECG_rate_taq,x,y = evaluate(model_qta_best,tst_dl, device = device, thresh_AF = thresh_AF)
+TP_ECG_rate_taq, FP_ECG_rate_taq, list_pred_win, elapsed = \
+    evaluate(model_st, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, 
+             device = 'cpu', win_size = win_size, slide = slide)
+print("=========  Qquantized-model test result ===============")        
+#TP_ECG_rate_taq, FP_ECG_rate_taq,x,y = evaluate(quantized_model_best,tst_dl, thresh_AF = thresh_AF)
+TP_ECG_rate_taq, FP_ECG_rate_taq, list_pred_win, elapsed = \
+    evaluate(model_stq, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, 
+             device = 'cpu', win_size = win_size, slide = slide,
+             verbose = False)
+print("{:>40}  {:<8.3f}".format("TP rate:", TP_ECG_rate_taq[0]))
+print("{:>40}  {:<8.3f}".format("FP rate:", FP_ECG_rate_taq[0]))
 
 #%%===========  per channel static quantization
-model_ch = pickle.load(open('train_'+save_name+'_best.pth', 'rb'))
+model_ch = copy.deepcopy(model)
+#model_ch = pickle.load(open('train_'+save_name+'_best.pth', 'rb'))
 model_ch.to(device)
 model_ch.eval()
 model_ch.fuse_model()
@@ -376,103 +433,53 @@ model_ch.qconfig = torch.quantization.get_default_qconfig('fbgemm')
 print(model_ch.qconfig)
 
 torch.quantization.prepare(model_ch, inplace=True)
-evaluation1(model_ch,tst_dl,device)
+evaluation1(model_ch,val_dl,device)
 
 model_stq_ch = torch.quantization.convert(model_ch.to('cpu'))
 
 evaluation1(model_stq_ch,tst_dl)
 TP_ECG_rate_chq, FP_ECG_rate_chq = evaluate(model_stq_ch,tst_dl, thresh_AF = 3)
 
-# %%================================== Training aware quantization
-model_qta = pickle.load(open('train_'+save_name+'_best.pth', 'rb'))
-device = torch.device('cuda:0')
-
-#model_qta.to('cpu')
-model_qta = model_qta.to(device)
-model_qta.eval()
-model_qta.fuse_model()
+# %%================================== Value clipping
+model_thresh = copy.deepcopy(model)
 
 
-#device = torch.device('cpu')
+def forward(self, x):     
+#    x = f(x)
+    max_val, min_val = 4.5, -3.6
+    x = torch.nn.Conv2d.forward(self,x)
+    x = x.masked_fill((x > max_val), max_val)
+    x = x.masked_fill((x < min_val), min_val)
+    return x  
 
-#opt = torch.optim.SGD(model_qta.parameters(), lr = 0.0001) 
-opt = torch.optim.Adam(model_qta.parameters(), lr=0.001)
+model_thresh.raw[1].layers[0].forward = types.MethodType(forward, model_thresh.raw[1].layers[0])
 
-criterion = nn.CrossEntropyLoss (reduction = 'sum')
+def forward(self, x): 
+    max_val, min_val = 4, 0
+    x = self.layers(x)
+    x = x.masked_fill((x > max_val), max_val)
+    x = x.masked_fill((x < min_val), min_val)
+    return x  
 
-model_qta.qconfig = torch.quantization.get_default_qat_qconfig('fbgemm')
+model_thresh.raw[1].forward = types.MethodType(forward, model_thresh.raw[1])
 
-torch.quantization.prepare_qat(model_qta, inplace=True)
+def forward(self, x): 
+    max_val, min_val = 1.3, 0
+#    x = self.layers(x)
+    output = x.matmul(self.weight.t())
+    if self.bias is not None:
+        output += self.bias
+    x = output
+    x = x.masked_fill((x > max_val), max_val)
+    x = x.masked_fill((x < min_val), min_val)
+    return x  
 
-ntrain_batches = 100
+model_thresh.FC[1].forward = types.MethodType(forward, model_thresh.FC[1])
 
 
-def train_one_epoch(model, criterion, opt, trn_dl, device, ntrain_batches):
-    i = []    
-    ls = random.sample(range(len(trn_dl)), ntrain_batches)
-    
-    model=model.to(device)
-    print(next(model.parameters()).is_cuda)
-    model.train()
-    
-    cnt = 0
-    epoch_loss = 0
-    
-    for i, batch in enumerate(trn_dl):
-#        break
-        if i not in ls:
-            continue
-        print('.', end = '')
-#        print('%d.'%(i), end = '')
-        cnt += 1
-#        x_raw, y_batch = batch
-        x_raw, y_batch = [t.to(device) for t in batch]
-        opt.zero_grad()
-        out = model (x_raw)
-        loss = criterion(out,y_batch)
-        epoch_loss += loss.item()
-        loss.backward()
-        opt.step()
-                
-        if cnt >= ntrain_batches:
-            print('Loss %3.3f' %(epoch_loss / cnt))
-            return
 
-    print('Full Loss', epoch_loss / cnt)
-    return
 
-evaluation1(model_qta,val_dl,device, 30)
-evaluation1(model,val_dl,device, 30)
 
-acc_0 = 0
-for nepoch in range(10):
-    train_one_epoch(model_qta, criterion, opt, trn_dl, device, ntrain_batches)    
-    model_qta.to('cpu')
-    if nepoch > 3:
-        # Freeze quantizer parameters
-        model_qta.apply(torch.quantization.disable_observer)
-    if nepoch > 2:
-        # Freeze batch norm mean and variance estimates
-        model_qta.apply(torch.nn.intrinsic.qat.freeze_bn_stats)
-
-    # Check the accuracy after each epoch
-    quantized_model = torch.quantization.convert(model_qta.eval(), inplace=False)
-    quantized_model.eval()
-#    TP_ECG_rate_taq, FP_ECG_rate_taq,x,y = evaluate(model_qn2,tst_dl)
-    acc = evaluation1(quantized_model,val_dl,'cpu', 30)
-    print(', Epoch %d : accuracy = %2.2f'%(nepoch,acc))
-#    print('Epoch %d :TP rate = %2.2f , FP rate = %2.2f'%(nepoch, TP_ECG_rate_taq, FP_ECG_rate_taq))
-    if acc > acc_0:
-#        pickle.dump(quantized_model,open("quantized_model.pth",'wb'))
-#        torch.jit.save(torch.jit.script(quantized_model), 'quantized_model.pth')
-        quantized_model_best = quantized_model
-        model_qta_best = model_qta
-        acc_0 = acc
-#    elif:
-        
-#quantized_model_best = model_best
-#quantized_model = pickle.load(open("quantized_model.pth",'rb'))
-acc = evaluation1(quantized_model_best,tst_dl,'cpu', 30)
-TP_ECG_rate_taq, FP_ECG_rate_taq,x,y = evaluate(quantized_model_best,tst_dl)
-
-TP_ECG_rate_taq, FP_ECG_rate_taq,x,y = evaluate(model_qta,tst_dl)
+TP_ECG_rate_taq, FP_ECG_rate_taq, list_pred_win, elapsed = \
+    evaluate(model_thresh, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, 
+             device = 'cpu', win_size = win_size, slide = slide)

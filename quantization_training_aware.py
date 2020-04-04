@@ -39,6 +39,9 @@ n_epochs = 200 if n_epochs == '' else int(n_epochs)
 #print("{:>40}  {:}".format("Sliding window mode:", slide))
 quantize_flag = input("Also performing quantization? (def. yes)")
 quantize_flag = True if quantize_flag == '' else False
+
+TP_w = input("Weight of TP in combined accuray measure: (def. 2)")
+TP_w = 2 if TP_w == '' else int(TP_w)
 #%%===============  loading experiment's parameters and batches
 
 print("{:>40}  {:<8s}".format("Loading model:", model_name))
@@ -204,12 +207,12 @@ criterion = nn.CrossEntropyLoss (reduction = 'sum')
 ntrain_batches = 200000
 #n_epochs = 20
 
-
-
+#max_val, min_val = 10, -10
+max_val, min_val = None, None
 
 #model_qta = model_qta.to(device)
 
-e_loss0 = train_one_epoch(model_qta, criterion, opt, trn_dl, device, ntrain_batches)
+#e_loss0 = train_one_epoch(model_qta, criterion, opt, trn_dl, device, ntrain_batches)
 
 model_qta.eval()
 model_qta.fuse_model()
@@ -222,18 +225,28 @@ acc = evaluation1(model,val_dl,device, 30)
 print('%2.2f' %(acc))
 
 print("")
+#acc_0 = evaluation1(model_qta,trn_dl,device, 30)
 print("=========  Intital q-prepared floating point validation accuracy ===============")
 acc_0 = evaluation1(model_qta,val_dl,device, 30)
 print('%2.2f' %(acc_0))
 
 
+#model_mq.qconfig = my_qconfig 
+#for m in model_qta.modules():
+#    try:
+#        m.observer.max_val = max_val if max_val else m.observer.max_val 
+#        m.observer.min_val = min_val if min_val else m.observer.min_val
+#    except:
+#        continue
+
 acc_0 = 0
 nepoch =1
+#e_loss0 = 10000
 #%%
 while nepoch < n_epochs:
     e_loss = train_one_epoch(model_qta, criterion, opt, trn_dl, device, ntrain_batches)
     
-    if nepoch > 3000:
+    if nepoch >= 3000:
         # Freeze quantizer parameters
         model_qta.apply(torch.quantization.disable_observer)
     if nepoch > 2000:
@@ -241,22 +254,21 @@ while nepoch < n_epochs:
         model_qta.apply(torch.nn.intrinsic.qat.freeze_bn_stats)
 
     # Check the accuracy after each epoch
+#    evaluation1(model_qta,val_dl,device, 30)
+    
     model_qta.to('cpu')
     quantized_model = torch.quantization.convert(model_qta.eval(), inplace=False)
 #    quantized_model.eval()
 
 #    acc = evaluation1(quantized_model,val_dl,'cpu', 30)
 #    model_qta.to(device)
-#    acc = evaluation1(model_qta,val_dl,device , 30)
-    
     
     TP_ECG_rate_taq, FP_ECG_rate_taq, list_pred_win, elapsed = \
     evaluate(quantized_model, val_dl, val_idx, data_tag, thresh_AF = thresh_AF, 
              device = 'cpu', win_size = win_size, slide = slide,
              verbose = False)
     
-    acc = 60+ 2*(TP_ECG_rate_taq[0]-90) + 20-FP_ECG_rate_taq[0]
-#    acc = 3.33*acc
+    acc = (80-10*TP_w) + TP_w*(TP_ECG_rate_taq[0]-90) + 20-FP_ECG_rate_taq[0]
     
     
 #    acc = evaluation1(quantized_model,val_dl,'cpu', 30)
@@ -282,9 +294,9 @@ while nepoch < n_epochs:
 #        model_qta_best = model_qta
         acc_0 = acc
 
-    if e_loss < e_loss0:
-        print("")
-        print("original loss is reached")
+#    if e_loss < e_loss0:
+#        print("")
+#        print("original loss is reached")
     nepoch += 1
 #        break
 #    elif:
@@ -297,9 +309,51 @@ model_qta_best = pickle.load(open(result_dir+save_file,'rb'))
 #model_qta_best.qconfig = torch.quantization.get_default_qat_qconfig('fbgemm')
 #torch.quantization.prepare_qat(model_qta_best, inplace=True)
 #model_qta_best.load_state_dict(torch.load(result_dir+save_file, map_location=lambda storage, loc: storage))
-
+    
 #%     
 model_qta_best.to('cpu')
+
+#evaluation1(model_qta_best,val_dl,'cpu', 30)
+manual_range = True
+
+if manual_range:
+    model_qta_best.quant.observer.observer.max_val = 4
+    model_qta_best.quant.observer.observer.min_val = -4
+    for i_layer in [1,2]:
+        for (_,m) in model_qta_best.raw[i_layer].layers._modules.items():
+#            print(m)
+#            print("----------")
+            if type(m) == nn.qat.Conv2d and m.out_channels == m.in_channels:
+               print("layer: "+str(i_layer))
+               print(m.observer.observer.max_val)
+               print(m.observer.observer.min_val)
+               if i_layer == 1:
+                   print("")                   
+#                   m.observer.observer.max_val = 5
+#                   m.observer.observer.min_val = -5
+               else:
+                   print("")
+#                   print(m.observer.observer.max_val)
+#                   print(m.observer.observer.min_val)                   
+#                   m.observer.observer.max_val = 90
+#                   m.observer.observer.min_val = -80
+                   
+           
+            if type(m) == nn.intrinsic.qat.ConvReLU2d:
+               if i_layer == 1:
+                   print("")
+#                   print(m.observer.observer.max_val)
+#                   print(m.observer.observer.min_val)                   
+#                   m.observer.observer.max_val = 10
+                   m.observer.observer.min_val = -50
+                   
+                
+    #        try:
+    #            m.observer.max_val = max_val if max_val else m.observer.max_val 
+    #            m.observer.min_val = min_val if min_val else m.observer.min_val
+    #        except:
+    #            continue
+        
 quantized_model_best = torch.quantization.convert(model_qta_best.eval(), inplace=False)
 
 thresh_AF = 7

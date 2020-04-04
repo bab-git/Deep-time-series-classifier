@@ -35,7 +35,7 @@ from torch.nn import functional as F
 #import pickle
 #from git import Repo
 
-import torch.quantization
+import torch.quantization as qn
 from torch.quantization import QuantStub, DeQuantStub
 
 from torchsummary import summary
