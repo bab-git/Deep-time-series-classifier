@@ -1,8 +1,8 @@
 from default_modules import *
 #%% ============== options
 model_cls, model_name   = option_utils.show_model_chooser()
-dataset, data_name  = option_utils.show_data_chooser()
-save_name           = option_utils.find_save(model_name, data_name, result_dir = result_dir)
+dataset, data_name  = option_utils.show_data_chooser(default = 0)
+save_name           = option_utils.find_save(model_name, data_name, result_dir = result_dir, default = 2)
 if save_name in ['NONE','N']:
     save_name ="2c_2f_k88_s44_sub4_b512_raw_4K_stable"
 #    save_name ="2d_6CN_3FC_no_BN_in_FC_long"
@@ -45,7 +45,7 @@ print("{:>40}  {:<8s}".format("Loading dataset:", dataset))
 load_ECG = torch.load(data_dir+dataset)
 
 slide = input("Sliding window? (def:yes)")
-slide = True if slide == '' else False
+slide = True if slide in ('','yes') else False
 print("{:>40}  {:}".format("Sliding window mode:", slide))
 #%%===============  loading experiment's parameters and batches
 

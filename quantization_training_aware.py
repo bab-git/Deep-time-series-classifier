@@ -314,7 +314,7 @@ model_qta_best = pickle.load(open(result_dir+save_file,'rb'))
 model_qta_best.to('cpu')
 
 #evaluation1(model_qta_best,val_dl,'cpu', 30)
-manual_range = True
+manual_range = False
 
 if manual_range:
     model_qta_best.quant.observer.observer.max_val = 4

@@ -1,84 +1,7 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Sat Apr  4 16:39:00 2020
-
-@author: bhossein
-"""
-
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Thu Jan 23 14:39:37 2020
-
-Report: fix-point quantization and dynamic range
-
-@author: bhossein
-"""
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
-"""
-Created on Wed Jan 22 11:18:34 2020
-
-Training aware quantization
-
-
-@author: bhossein
-"""
-
-import time
-#from collections import defaultdict
-#from functools import partial
-#from multiprocessing import cpu_count
-#from pathlib import Path
-#from textwrap import dedent
-import matplotlib.pyplot as plt
-import numpy as np
-import random
-#import pandas as pd
-
-#from sklearn.externals import joblib
-#from sklearn.model_selection import train_test_split
-#from sklearn.preprocessing import LabelEncoder, StandardScaler
-
-from ptflops import get_model_complexity_info
-from thop import profile
-
-#import torch
-
-from torch import nn
-#from torch import optim
-from torch.nn import functional as F
-#from torch.optim.lr_scheduler import _LRScheduler
-#from torch.utils.data import TensorDataset, DataLoader
-#import datetime
-#import pickle
-#from git import Repo
-
-import torch.quantization
-from torch.quantization import QuantStub, DeQuantStub
-
-from torchsummary import summary
-
-import pickle
-
-import os
-#abspath = os.path.abspath('test_classifier_GPU_load.py')
-#dname = os.path.dirname(abspath)
-#os.chdir(dname)
-
-# os.chdir('/home/bhossein/BMBF project/code_repo')
-#os.chdir('C:\Users\bhossein\Desktop\Hinkelsn\code_repo')
-data_dr = 'data/'
-res_dr = 'results/'
-
-from my_data_classes import create_datasets_file, create_loaders, smooth, create_datasets_win
-import my_net_classes
-from my_net_classes import SepConv1d, _SepConv1d, Flatten, parameters
-import torch
-import pickle
+from default_modules import *
 #import console
 initite = 0
+#%matplotlib inline    
 # %% ================ loading data
 if 'load_ECG' in locals() and initite == 0:
     print('''
@@ -90,7 +13,7 @@ else:
     load_ECG =  torch.load (data_dr+'raw_x_8K_sync_win2K.pt')
 
 
-save_name ="2d_6CN_3FC_no_BN_in_FC_long"
+#save_name ="2d_6CN_3FC_no_BN_in_FC_long"
 
 
 raw_x = load_ECG['raw_x']
@@ -102,7 +25,7 @@ device = torch.device('cuda:0' if torch.cuda.is_available() else 'cpu')
 if type(target) != 'torch.Tensor':
     target = torch.tensor(load_ECG['target']).to(device)
 
-loaded_vars = pickle.load(open(res_dr+"train_"+save_name+"_variables.p","rb"))
+loaded_vars = pickle.load(open(result_dir+"train_"+save_name+"_variables.p","rb"))
 
 params = loaded_vars['params']
 epoch = params.epoch
@@ -127,14 +50,14 @@ num_classes = 2
 
 #%%===============  loading a learned model
 
-save_name ="2d_6CN_3FC_no_BN_in_FC_long"
+#save_name ="2d_6CN_3FC_no_BN_in_FC_long"
 
-model = pickle.load(open(res_dr+'train_'+save_name+'_best.pth', 'rb'))
+model = pickle.load(open(result_dir+'train_'+save_name+'_best.pth', 'rb'))
 
 #%%===============  report
 
-clear = lambda: os.system('clear') #on Windows System
-clear()
+#clear = lambda: os.system('clear') #on Windows System
+#clear()
 
 
 print ('''
@@ -143,7 +66,7 @@ The summary of the 6-layer CNN network:
 ==============================================================================
        ''')
     
-raw_feat, raw_size = 2, 2048
+#raw_feat, raw_size = 2, 2048
     
 print(model)
 
@@ -172,15 +95,15 @@ flops, params = get_model_complexity_info(model, (raw_feat, raw_size), print_per
 
 
 
-print ('''
-==============================================================================
-The network's accuracy:
-==============================================================================
-
-The network has the following accuracy:
-TP: 99.10 , FP: 3.88 AF_threshold = 3 (observing at least 3 AF signs to classify ECG as AF)
-TP: 98.77 , FP: 1.5 AF_threshold  = 7
-       ''')
+#print ('''
+#==============================================================================
+#The network's accuracy:
+#==============================================================================
+#
+#The network has the following accuracy:
+#TP: 99.10 , FP: 3.88 AF_threshold = 3 (observing at least 3 AF signs to classify ECG as AF)
+#TP: 98.77 , FP: 1.5 AF_threshold  = 7
+#       ''')
 
 
 
@@ -218,6 +141,7 @@ params = [];
 model = model.to('cpu')
 for m in model.modules():
 #    print(m)
+#    print("========")
     if type(m) == nn.Conv2d:
 #        print(m)
         params = np.append(params,np.array(m.weight.data.view(-1)))
@@ -242,34 +166,53 @@ print('''
           ''')
 stat_analysis(params,'Histogram of all weights')
 
-for i in range(6):
+#%%  per layer weight
+
+for i in range(len(model.raw)):
     params = []
-    for j in range(3):
-        m = model.raw[i].layers[j]
-#        params = m.weight.data.view(-1)
-        params = np.append(params,np.array(m.weight.data.view(-1)))
-#    if type(m)     == 
-    print('''
+    if type(model.raw[i]) == my_net_classes.SepConv1d_v5:
+        for j in range(3):
+            m = model.raw[i].layers[j]
+    #        params = m.weight.data.view(-1)
+            params = np.append(params,np.array(m.weight.data.view(-1)))
+    #    if type(m)     == 
+        print('''
+    
+              
+    ============= Conv. Layer: %d '''
+               %(i+1))
+        stat_analysis(params,'Histogram of weights in Conv-layer: %d' %(i+1))
 
-          
-============= Conv. Layer: %d '''
-           %(i+1))
-    stat_analysis(params,'Histogram of weights in Conv-layer: %d' %(i+1))
-
+#------------------------------- FC layer
 c = 0
-for i in [1,4]:    
-    c += 1
+for i in range(len(model.FC)):    
+    
     m = model.FC[i].to('cpu')
-    params = np.array(m.weight.data.view(-1))
-    print('''
+    if type(m) == nn.Linear:
+        c += 1
+        params = np.array(m.weight.data.view(-1))
+        print('''
+              
+    ============= Fully connected Layer: %d '''
+               %(c))
+        stat_analysis(params,'Histogram of weights in FC-layer: %d' %(c))
+
+#c = 0
+#for i in range(len(model.FC)):    
+    
+m = model.out[0].to('cpu')
+#    if type(m) == nn.Linear:
+#        c += 1
+params = np.array(m.weight.data.view(-1))
+print('''
           
-============= Fully connected Layer: %d '''
-           %(c))
-    stat_analysis(params,'Histogram of weights in FC-layer: %d' %(c))
+============= Output Layer: '''
+           )
+stat_analysis(params,'Histogram of weights in output layer: ')        
         
 
 # %%-------------- stats on feature maps
-%matplotlib inline    
+#%matplotlib inline    
 print ('''
 
 
@@ -335,7 +278,23 @@ for (name,module) in model.FC._modules.items():
         print('''
               
               ''')
-        print('============= Feature-values, FC layer %d ,'+str(module_n)+' output: ')
+        print('============= Feature-values, FC layer,'+str(module_n)+' output: ')
     
         stat_analysis(features ,"Histogram of feature-values, layer %d , "
-                      %(i_layer+1)+str(module_n)+' output', 'feature-values', color = 'b')           
+                      %(i_layer+1)+str(module_n)+' output', 'feature-values', color = 'b')
+
+module  = model.out
+x = module(x)
+#if type(module) in (nn.Conv2d, nn.BatchNorm2d, nn.ReLU, nn.Linear):
+features = x.data.view(-1).to('cpu')
+#if type(module) == nn.ReLU:
+#    features = np.delete(features,np.where(features == 0))
+
+#module_n = type(module)
+
+print('''
+      
+      ''')
+print('============= Feature-values, Output layer:')
+
+stat_analysis(features ,"Histogram of feature-values, Output layer:", 'feature-values', color = 'b')           
