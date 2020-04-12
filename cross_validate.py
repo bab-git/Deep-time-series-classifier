@@ -1,3 +1,5 @@
+from default_modules import *
+
 import os, sys
 import argparse
 from copy import deepcopy
@@ -17,7 +19,7 @@ from evaluation import evaluate
 
 #%%
 def main(args):
-    os.chdir('/vol/hinkelstn/codes')
+#    os.chdir('/vol/hinkelstn/codes')
 
     model, model_name   = option_utils.show_model_chooser(override=args.model)
     dataset, data_name  = option_utils.show_data_chooser(override=args.data)
@@ -25,11 +27,11 @@ def main(args):
     device              = option_utils.show_gpu_chooser(default=1, override=args.device)
 
     n_splits = 5
-    n_repeats = 2
+    n_repeats = 5
     n_epochs = args.epochs
     lr = args.learning_rate
     batch_size = args.batch_size
-    seed = args.seed
+    seed = 1
     np.random.seed(seed)
 
     print("Using device: {}".format(device))

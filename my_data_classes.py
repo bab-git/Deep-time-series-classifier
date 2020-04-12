@@ -119,6 +119,33 @@ def create_datasets(IDs, target, test_size, valid_pct=0.1, seed=None, t_range=No
     
     return trn_ds, val_ds, tst_ds
 
+#%% ================== cross val datasets
+def create_datasets_cv(raw_x, target, trn_idx, val_idx, tst_idx, use_norm=False, device = torch.device('cpu')):
+    """
+    Creating datasets for cross validation
+    
+    Three datasets are created in total:
+        * training dataset
+        * validation dataset
+        * testing dataset
+    """
+
+    # Normalization to [-1,1] per window. In place to save memory.
+    if use_norm:                             # Just a view, so value changes are applied to raw_x data in memory
+        raw_x -= raw_x.min(dim=2, keepdim=True).values   # Subtract minimum over all values of each ECG sample
+        raw_x /= raw_x.max(dim=2, keepdim=True).values   # Divide by maximum(-minimum) over all values of each ECG sample
+        raw_x *= 2
+        raw_x -= 1
+    
+    trn_ds = TensorDataset(raw_x[trn_idx].float().to(device),
+                           target[trn_idx].long().to(device))    
+    val_ds = TensorDataset(raw_x[val_idx].float().to(device),
+                           target[val_idx].long().to(device))
+    tst_ds = TensorDataset(raw_x[tst_idx].float().to(device),
+                           target[tst_idx].long().to(device))
+    
+    return trn_ds, val_ds, tst_ds
+
 #%% ================== 
 def create_loaders(data, bs=128, jobs=0, bs_val = None):
     """Wraps the datasets returned by create_datasets function with data loaders."""
@@ -491,7 +518,7 @@ def extract_stable_part(data, win_size = 8000, stride = 2000):
     return data[t_range], t_range
 
 #%% ================== cross val datasets
-def create_datasets_cv(raw_x, target, trn_idx, val_idx, tst_idx, use_norm=False, device = torch.device('cpu')):
+def create_datasets_cv(raw_x, target, trn_idx, val_idx, tst_idx, use_norm=False, device = torch.device('cpu'), t_range = None):
     """
     Creating datasets for cross validation
     
@@ -508,11 +535,14 @@ def create_datasets_cv(raw_x, target, trn_idx, val_idx, tst_idx, use_norm=False,
         raw_x *= 2
         raw_x -= 1
     
-    trn_ds = TensorDataset(raw_x[trn_idx].float().to(device),
+    trn_ds = TensorDataset(raw_x[trn_idx,:,t_range.start:t_range.stop].float().to(device),
                            target[trn_idx].long().to(device))    
-    val_ds = TensorDataset(raw_x[val_idx].float().to(device),
+    val_ds = TensorDataset(raw_x[val_idx,:,t_range.start:t_range.stop].float().to(device),
                            target[val_idx].long().to(device))
-    tst_ds = TensorDataset(raw_x[tst_idx].float().to(device),
+    tst_ds = TensorDataset(raw_x[tst_idx,:,t_range.start:t_range.stop].float().to(device),
                            target[tst_idx].long().to(device))
+    
+#    trn_ds = TensorDataset(raw_x[trn_idx,:,t_range.start:t_range.stop].float().to(device),
+#                           target[trn_idx].long().to(device)) 
     
     return trn_ds, val_ds, tst_ds

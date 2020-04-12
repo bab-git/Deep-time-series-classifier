@@ -18,7 +18,7 @@ import random
 #import pandas as pd
 
 #from sklearn.externals import joblib
-#from sklearn.model_selection import train_test_split
+from sklearn.model_selection import RepeatedStratifiedKFold, train_test_split
 #from sklearn.preprocessing import LabelEncoder, StandardScaler
 
 from ptflops import get_model_complexity_info
@@ -57,7 +57,7 @@ except:
     raw_data = "C:/Hinkelstien/data/"
 
 from my_data_classes import create_datasets_file, create_loaders, smooth,\
-    create_datasets_win
+    create_datasets_win, create_datasets_cv
 import my_net_classes
 from my_net_classes import SepConv1d, _SepConv1d, Flatten, parameters
 import torch

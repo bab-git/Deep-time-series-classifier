@@ -5,6 +5,13 @@ seed2 = input ('Enter seed value for randomizing the splits (default = 1):')
 if seed2 != '':
     seed = int(seed2)
 
+CV_flag = input("Cross validation? (0:no, 1:CV_1split, 2:CV_full_train) (def:0)")
+CV_flag = 0 if CV_flag in ('','0') else int(CV_flag)
+
+if CV_flag == 1:
+    cv_idx_w = input("Which CV split to train again? ")
+    cv_idx_w = int(cv_idx_w)    
+
 np.random.seed(seed)
 
 #==================== data IDs
@@ -60,6 +67,13 @@ print("{:>40}".format("creating datasets"))
     
 #test_size = 0.25   
 test_size = 0.3    #default
+batch_size = (2**3)*64   #default = 512
+val_batch_size = batch_size  #default
+#val_batch_size = 4 * batch_size 
+#batch_size = 64
+#batch_size = (2**5)*64
+#batch_size = "full"
+print("chosen batch size: %d, test size: %2.2f" % (batch_size, test_size))
 
 #cuda_num = input("enter cuda number to use: ")
 cuda_num = 0   # export CUDA_VISIBLE_DEVICES=0
@@ -71,50 +85,46 @@ device = torch.device('cuda:'+str(cuda_num) if torch.cuda.is_available() and cud
 #device = torch.device('cuda:4' if torch.cuda.is_available() else 'cpu')
 #device = torch.device('cpu')
 
-if t_shift:
-    raw_x = load_ECG['raw_x']    
-    length = raw_x.shape[2]
-    n_win = np.floor(length / t_shift) - np.floor(t_win / t_shift)    
-    raw_x_extend = torch.empty([raw_x.shape[0]*n_win.astype(int),raw_x.shape[1],t_win])
-    target_extend = torch.empty(raw_x.shape[0]*n_win.astype(int))    
-    target = load_ECG['target']
-
-    print("Extracting temporal windows from ECG files..." )
-                                      
-    for i_data in range(raw_x.shape[0]):    
-#        if i_data % 500 ==0:
-#            print("data number: "+str(i_data))
-        for i_win in range(int(n_win)):
-                    
-            i_ext = i_data*n_win+i_win
-            
-            raw_x_extend[int(i_ext),:,:] = raw_x[i_data,:,i_win*t_shift:i_win*t_shift+t_win] 
-            target_extend[int(i_ext)] = target[i_data]                
-    
-    del raw_x, target
-    raw_x = raw_x_extend.to(device)
-    target = target_extend.to(device)
-    
-else:
-
-    raw_x = load_ECG['raw_x']
+raw_x = load_ECG['raw_x']
 #    raw_x = load_ECG['raw_x'].to(device)
-    #raw_x.pin_memory = True
+#raw_x.pin_memory = True
 #    target = load_ECG['target']
-    target = torch.tensor(load_ECG['target'])
+target = torch.tensor(load_ECG['target'])
+
+data_tag = load_ECG['data_tag']
+
+
+if CV_flag == 2: # CV training
+    n_splits=5
+    n_repeats=5
+    rskf = RepeatedStratifiedKFold(n_splits=5, n_repeats=5, random_state=seed)
+    tp = np.empty(n_splits*n_repeats)
+    fp = np.empty(n_splits*n_repeats)
+    acc = np.empty(n_splits*n_repeats)
+    elapsed = np.empty(n_splits*n_repeats)
     
-    data_tag = load_ECG['data_tag']
 
+elif CV_flag == 1: # re-train a CV split
+    rskf = RepeatedStratifiedKFold(n_splits=5, n_repeats=5, random_state=seed)
+#    print(acc[cv_idx_w])
+#    cv_idx_w = 6
+    for cv_idx, (trn_idx, tst_idx) in enumerate(rskf.split(raw_x, target)):
+        if cv_idx == cv_idx_w:
+            break
+            
+    trn_idx, val_idx = train_test_split(trn_idx, test_size=len(tst_idx), stratify=target[trn_idx], random_state=seed)
+    ecg_datasets = create_datasets_cv(raw_x, target, trn_idx, val_idx, tst_idx, use_norm = False, device = device, t_range = t_range)
+    trn_dl, val_dl, tst_dl = create_loaders(ecg_datasets, bs=batch_size, jobs = 0)
 
-dataset_splits = create_datasets_win(raw_x, target, data_tag, test_size, seed=seed, t_range = t_range, device = device)
-ecg_datasets = dataset_splits[0:3]
-trn_idx, val_idx, tst_idx = dataset_splits[3:6]
+elif CV_flag == 0:
+    dataset_splits = create_datasets_win(raw_x, target, data_tag, test_size, seed=seed, t_range = t_range, device = device)
+    ecg_datasets = dataset_splits[0:3]
+    trn_idx, val_idx, tst_idx = dataset_splits[3:6]
+    
+    
+    trn_dl, val_dl, tst_dl = create_loaders(ecg_datasets, bs=batch_size, jobs = 0, bs_val = val_batch_size)
 
-
-#ecg_datasets = create_datasets_file(raw_x, target, test_size, seed=seed, t_range = t_range, device = device)
-#trn_ds, val_ds, tst_ds = create_datasets_file(raw_x, target, test_size, seed=seed, t_range = t_range)
 trn_ds, val_ds, tst_ds = ecg_datasets
-
 #ecg_datasets = create_datasets(IDs, target, test_size, seed=seed, t_range = t_range)
 
 #print(dedent('''
@@ -128,12 +138,7 @@ print ('device is loaded to device:',device)
 #%% ==================   Initialization              
 
 
-batch_size = (2**3)*64   #default = 512
-val_batch_size = batch_size  #default
-#val_batch_size = 4 * batch_size 
-#batch_size = 64
-#batch_size = (2**5)*64
-#batch_size = "full"
+
 lr = 0.001
 #n_epochs = 3000
 n_epochs = 10000
@@ -147,10 +152,9 @@ step = 2
 loss_history = []
 acc_history = []
 
-trn_dl, val_dl, tst_dl = create_loaders(ecg_datasets, bs=batch_size, jobs = 0, bs_val = val_batch_size)
 
-raw_feat = trn_ds[0][0].shape[0]
-raw_size = trn_ds[0][0].shape[1]
+raw_feat = raw_x.shape[1]
+raw_size = raw_x.shape[2]
 trn_sz = len(trn_ds)
 
 
@@ -233,12 +237,12 @@ else:
 
 
 
+
 criterion = nn.CrossEntropyLoss (reduction = 'sum')
 
 opt = optim.Adam(model.parameters(), lr=lr)
 
 #print('Enter a save-file name for this trainig:')
-print("chosen batch size: %d, test size: %2.2f" % (batch_size, test_size))
 #save_name = input('''Enter a save-file name for this trainig: 
 #    '''+'(default : '+model_name+'_trained)')
 

@@ -62,6 +62,7 @@ models = [
 
 datasets = [
     ("raw_x_8K_nofilter_stable.pt", "raw_data_8k"),
+    ("raw_x_6K_nofilter_stable.pt", "raw_data_6k"),    
     ("raw_x_all_win2K_s1600_IDs.pt","trim_all_2K_win_1600_shift with saved IDs"),
     ("raw_x_all_win2K_s1600.pt",    "trim_all_2K_win_1600_shift"),
     ("raw_x_8K_sync_win1.5K.pt",    "trim_1.5K_win_400_shift"),
