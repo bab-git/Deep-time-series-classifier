@@ -125,9 +125,9 @@ def evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = 3,
         print('{:>40}  {:<8.0f}'.format('Computational complexity:', flops))
         
     if slide:
-        return (TP_ECG_rate,idx_TP), (FP_ECG_rate,idx_FP), list_pred_win, elapsed
+        return (TP_ECG_rate,idx_TP), (FP_ECG_rate,idx_FP), acc, list_pred_win, elapsed
     else:
-        return (TP_ECG_rate,idx_TP), (FP_ECG_rate,idx_FP), list_pred, elapsed
+        return (TP_ECG_rate,idx_TP), (FP_ECG_rate,idx_FP), acc, list_pred, elapsed
         
 #print('True positives on test data:  %2.2f' %(TP_rate))
 #print('False positives on test data:  %2.2f' %(FP_rate))
