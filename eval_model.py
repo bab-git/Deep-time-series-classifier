@@ -1,4 +1,5 @@
 from default_modules import *
+import types
 #%% ============== options
 model_cls, model_name   = option_utils.show_model_chooser()
 dataset, data_name  = option_utils.show_data_chooser(default = 0)
@@ -36,6 +37,10 @@ if save_name in ['NONE','N']:
 
 print("{:>40}  {:<8s}".format("Selected experiment:", save_name))
 
+slide = input("Sliding window? (def:yes)")
+slide = True if slide in ('','yes') else False
+print("{:>40}  {:}".format("Sliding window mode:", slide))
+
 #device              = option_utils.show_gpu_chooser(default=1)
 cuda_num = 0   # export CUDA_VISIBLE_DEVICES=x
 device = torch.device('cuda:'+str(cuda_num) if torch.cuda.is_available() and cuda_num != 'cpu' else 'cpu')
@@ -44,9 +49,7 @@ print("{:>40}  {:<8s}".format("Loading dataset:", dataset))
 
 load_ECG = torch.load(data_dir+dataset)
 
-slide = input("Sliding window? (def:yes)")
-slide = True if slide in ('','yes') else False
-print("{:>40}  {:}".format("Sliding window mode:", slide))
+
 #%%===============  loading experiment's parameters and batches
 
 print("{:>40}  {:<8s}".format("Loading model:", model_name))
@@ -117,7 +120,7 @@ thresh_AF = 5
 win_size = 10
 
 #TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, device = device)
-TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = \
+TP_ECG_rate, FP_ECG_rate, _, _, _ = \
     evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, 
              device = device, win_size = win_size, slide = slide)
 
@@ -443,25 +446,80 @@ TP_ECG_rate_chq, FP_ECG_rate_chq = evaluate(model_stq_ch,tst_dl, thresh_AF = 3)
 # %%================================== Value clipping
 model_thresh = copy.deepcopy(model)
 
-
 def forward(self, x):     
 #    x = f(x)
-    max_val, min_val = 4.5, -3.6
+    max_val, min_val = 2, -2
+#        max_val, min_val = 5.5, -5.6
+    x = torch.nn.MaxPool2d.forward(self,x)
+    x = x.masked_fill((x > max_val), max_val)
+    x = x.masked_fill((x < min_val), min_val)
+    return x  
+
+model_thresh.raw[0].forward = types.MethodType(forward, model_thresh.raw[0])
+
+def forward1(self, x):     
+#    x = f(x)
+    max_val, min_val = 2, -2
+#    max_val, min_val = 4.5, -3.6
     x = torch.nn.Conv2d.forward(self,x)
     x = x.masked_fill((x > max_val), max_val)
     x = x.masked_fill((x < min_val), min_val)
     return x  
 
-model_thresh.raw[1].layers[0].forward = types.MethodType(forward, model_thresh.raw[1].layers[0])
+model_thresh.raw[1].layers[0].forward = types.MethodType(forward1, model_thresh.raw[1].layers[0])
 
-def forward(self, x): 
-    max_val, min_val = 4, 0
-    x = self.layers(x)
+def forward2(self, x):     
+#    x = f(x)
+    max_val, min_val = 1.5, -1
+#    max_val, min_val = 2.5, -1    
+    x = torch.nn.Conv2d.forward(self,x)
     x = x.masked_fill((x > max_val), max_val)
     x = x.masked_fill((x < min_val), min_val)
     return x  
 
-model_thresh.raw[1].forward = types.MethodType(forward, model_thresh.raw[1])
+model_thresh.raw[1].layers[1].forward = types.MethodType(forward2, model_thresh.raw[1].layers[1])
+
+#def forward(self, x): 
+#    max_val, min_val = 4, 0
+#    x = self.layers(x)
+#    x = x.masked_fill((x > max_val), max_val)
+#    x = x.masked_fill((x < min_val), min_val)
+#    return x  
+
+#model_thresh.raw[1].forward = types.MethodType(forward, model_thresh.raw[1])
+
+
+def forward1(self, x):     
+#    x = f(x)
+    max_val, min_val = 2.4, -2.4
+#    max_val, min_val = 4.4, -4.4    
+    x = torch.nn.Conv2d.forward(self,x)
+    x = x.masked_fill((x > max_val), max_val)
+    x = x.masked_fill((x < min_val), min_val)
+    return x  
+
+model_thresh.raw[2].layers[0].forward = types.MethodType(forward1, model_thresh.raw[2].layers[0])
+
+def forward2(self, x):     
+#    x = f(x)
+    max_val, min_val = 7.5, -1
+#    max_val, min_val = 7.5, -1
+    x = torch.nn.Conv2d.forward(self,x)
+    x = x.masked_fill((x > max_val), max_val)
+    x = x.masked_fill((x < min_val), min_val)
+    return x  
+
+model_thresh.raw[2].layers[1].forward = types.MethodType(forward2, model_thresh.raw[2].layers[1])
+
+#def forward(self, x):     
+##    x = f(x)
+#    max_val, min_val = 0.4, 0
+#    x = self.layers(x)
+#    x = x.masked_fill((x > max_val), max_val)
+#    x = x.masked_fill((x < min_val), min_val)
+#    return x  
+
+#model_thresh.raw[2].forward = types.MethodType(forward, model_thresh.raw[2])
 
 def forward(self, x): 
     max_val, min_val = 1.3, 0
@@ -477,9 +535,6 @@ def forward(self, x):
 model_thresh.FC[1].forward = types.MethodType(forward, model_thresh.FC[1])
 
 
-
-
-
-TP_ECG_rate_taq, FP_ECG_rate_taq, list_pred_win, elapsed = \
+TP_ECG_rate_taq, FP_ECG_rate_taq, _, _, _ = \
     evaluate(model_thresh, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, 
              device = 'cpu', win_size = win_size, slide = slide)

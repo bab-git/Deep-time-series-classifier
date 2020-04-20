@@ -126,7 +126,12 @@ def find_save(model_name, data_name, override = None, result_dir = '', default =
     else:
         save_name = glob.glob(result_dir+"*{}*{}*.p".format(model_name, data_name))
         if save_name != []:
-            save_name.sort(key=len)
+            save_name.sort(key=len)            
+            save_name = list(filter(lambda c: ('cv' in c and 
+                                  c[c.index('cv')+2].isdecimal() and 
+                                  c[c.index('cv')+2:c.index('cv')+4]=='1_') or
+                                  'cv' not in c, 
+                                  save_name))            
             l = len(result_dir)
 #            save_name = save_name[0][6+l:-12] # File name without "train_" and "_variables.p"
             save_name = [i[6+l:-12] for i in save_name]

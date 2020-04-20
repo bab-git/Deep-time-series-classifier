@@ -64,6 +64,13 @@ print("{:>40}  {:}".format("Sliding window mode:", slide))
 
 acc_eval = input("Early stop based on accuracy (or TP)? (def. TP)")
 acc_eval = False if acc_eval in ('','TP') else True
+
+feat_dir = "/home/bhossein/BMBF project/Pierre_data/"
+data = np.loadtxt(fname = feat_dir+"Features.txt")
+(x, y_) = np.split(data, [13], axis=1)
+(y_label,y_names) = np.split(y_, [2], axis=1)
+y_label = y_label[:,0]+1
+
 #%%==================== test and train splits
 print("{:>40}".format("creating datasets"))
     
