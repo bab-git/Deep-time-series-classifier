@@ -1,11 +1,13 @@
 from default_modules import *
 import types
 #%% ============== options
+data_dir = '/vol/hinkelstn/codes/'
 model_cls, model_name   = option_utils.show_model_chooser()
 dataset, data_name  = option_utils.show_data_chooser(default = 0)
 save_name           = option_utils.find_save(model_name, data_name, result_dir = result_dir, default = 2)
 if save_name in ['NONE','N']:
-    save_name ="2c_2f_k88_s44_sub4_b512_raw_4K_stable"
+    save_name ="flex_2c8,16_2f16_k8_s4_sub4_b512_raw_2K_stable_cv1"
+#    save_name ="2c_2f_k88_s44_sub4_b512_raw_4K_stable"
 #    save_name ="2d_6CN_3FC_no_BN_in_FC_long"
     #save_name ="2d_6CN_3FC_no_BN_in_FC"
     #save_name = "test_full_6conv_long"

@@ -3,6 +3,7 @@ from default_modules import *
 initite = 0
 #%matplotlib inline    
 # %% ================ loading data
+data_dr = '/vol/hinkelstn/codes/'
 if 'load_ECG' in locals() and initite == 0:
     print('''
         ==================      
@@ -10,10 +11,14 @@ if 'load_ECG' in locals() and initite == 0:
           ''')
     time.sleep(5)
 else:    
-    load_ECG =  torch.load (data_dr+'raw_x_8K_sync_win2K.pt')
+#    load_ECG =  torch.load (data_dr+'raw_x_8K_sync_win2K.pt')
+    load_ECG =  torch.load (data_dr+'raw_x_2K_nofilter_stable.pt')    
+    
 
 
 #save_name ="2d_6CN_3FC_no_BN_in_FC_long"
+save_name ="flex_2c8,16_2f16_k8_s4_sub4_b512_raw_2K_stable_cv1"
+
 
 
 raw_x = load_ECG['raw_x']
@@ -52,7 +57,8 @@ num_classes = 2
 
 #save_name ="2d_6CN_3FC_no_BN_in_FC_long"
 
-model = pickle.load(open(result_dir+'train_'+save_name+'_best.pth', 'rb'))
+#model = pickle.load(open(result_dir+'train_'+save_name+'_best.pth', 'rb'))
+model = torch.load(result_dir+'train_'+save_name+'_best.pth', lambda storage, loc: storage.cuda(device))
 
 #%%===============  report
 
@@ -62,7 +68,7 @@ model = pickle.load(open(result_dir+'train_'+save_name+'_best.pth', 'rb'))
 
 print ('''
 ==============================================================================
-The summary of the 6-layer CNN network:
+The summary of the 2-layer CNN network:
 ==============================================================================
        ''')
     

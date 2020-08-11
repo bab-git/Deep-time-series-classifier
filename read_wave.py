@@ -136,6 +136,7 @@ assert 1== 61090
 
 # %%================= individual files  
 FIR = 0
+pre_proce = 0
 thresh_rate =1.21
            
 #i_file = 1000
@@ -237,9 +238,9 @@ axes[i_ax].grid()
 
 axes[i_ax].set_xlabel('Time steps')
 
-my_data_classes.wave_harsh_peaks(w.data[:,0], th_ratio =  thresh_rate )
-
-my_data_classes.wave_harsh_peaks(w.data[:,1], th_ratio =  thresh_rate)
+if pre_proce:
+    my_data_classes.wave_harsh_peaks(w.data[:,0], th_ratio =  thresh_rate )
+    my_data_classes.wave_harsh_peaks(w.data[:,1], th_ratio =  thresh_rate)
 
 fig, axes = plt.subplots(2, 1, sharex=True)
 labels = ['ECG signal', 'selected part']
@@ -251,8 +252,9 @@ for i_ax in range(2):
         axes[i_ax].set_title(plt_title+', sample_id:'+str(i_file))
 
     data_masked = channel[t_range]
-
-    axes[i_ax].plot(t_range, data_masked,color = 'g', label = 'Selected part') 
+    
+    if pre_proce:
+        axes[i_ax].plot(t_range, data_masked,color = 'g', label = 'Selected part') 
 
     axes[i_ax].grid()
     axes[i_ax].legend()
