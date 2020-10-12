@@ -5,27 +5,38 @@ from torch import cuda, load
 import my_net_classes as net
 # %%
 models = [    
-    (net.Classifier_1d_flex_net,                             "1d_flex_net"),  #   ready to quantize  - drop after relu + BN2d
-    (net.Classifier_1d_3conv_2fc_4str_2sub,                    "3conv_2fc_4str_2sub"),  #sub-sample 2 -  1dconv - 3 conv - 2 FC   ready to quantize  - drop after relu + BN2d
-    (net.Classifier_1d_4c_2fc_sub_qr,                    "1d_4c_2fc_sub2_qr"),  #sub-sample 2 -  1dconv - 4 conv - 2 FC   ready to quantize  - drop after relu + BN2d
-    (net.Classifier_1d_6_conv_v2,                       "2d_6CN_3FC_no_BN_in_FC"), #"1dconv - 6 conv - 3 FC with dropout after relu + BN2d"    
-#    (net.Classifier_4c_2f_k1_16_s1_8_sub,               "4c_2f_k16888_s8444_sub"),
-#    (net.Classifier_4c_2f_s1_2_k1_4_p1_2_half_chan_sub, "4c_2f_k4888_s2444_p2000_halfchan_sub"),
-#    (net.Classifier_1d_4_conv_2_fc_str_4_half_chan_sub, "4con_2fc_str_4_halfchan_sub"),
-#    (net.Classifier_1d_4_conv_2_fc_str_4_k_4_sub,       "4con_2fc_str_4_k_4_sub"),
+    (net.Classifier_1d_flex_net,                        "1d_flex_net"),  #   flexibke network
+    (net.Classifier_1c_1f_sub16_1out_k4,                "1c_1f_k4_sub16_1out"),
+    (net.Classifier_1c_1f_sub16_1out,                   "1c_1f_sub16_1out"),
+    (net.Classifier_1c_1f_sub8_1out,                    "1c_1f_sub8_1out"),
+    (net.Classifier_1c_1f_sub8,                         "1c_1f_sub8"),
+    (net.Classifier_1c_1f_sub4,                         "1c_1f_sub4"),
+    (net.Classifier_1c_2f_sub4,                         "1c_2f_sub4"),
+    (net.Classifier_2f_sub32,                           "2f_sub32_1out"),
+    (net.Classifier_2f_sub16,                           "2f_sub16_1out"),
+    (net.Classifier_2f_sub8,                            "2f_sub8_1out"),
+    (net.Classifier_2f_sub4,                            "2f_sub4_1out"),
+    (net.Classifier_1f_sub4,                            "1f_sub4"),
+    (net.Classifier_ims_nn,                             "ims_nn"),
+    (net.Classifier_1d_2_conv_2_fc_sub4,                "2c_2f_k88_s44_sub4"),
+    (net.Classifier_4c_2f_k4_4_s4_2_sub,                "4c_2f_k8884_s4442_sub"),
+    (net.Classifier_4c_2f_k1_16_s1_8_sub,               "4c_2f_k16888_s8444_sub"),
+    (net.Classifier_4c_2f_s1_2_k1_4_p1_2_half_chan_sub, "4c_2f_k4888_s2444_p2000_halfchan_sub"),
+    (net.Classifier_1d_4_conv_2_fc_str_4_half_chan_sub, "4con_2fc_str_4_halfchan_sub"),
+    (net.Classifier_1d_4_conv_2_fc_str_4_k_4_sub,       "4con_2fc_str_4_k_4_sub"),
     (net.Classifier_1d_4_conv_2_fc_str_4_sub,           "4con_2fc_str_4_sub"),
     (net.Classifier_1d_4_conv_1_pool_2_fc_str_4,        "4con_1pool_2fc_str_4"),
-#    (net.Classifier_1d_5_conv_2_fc_str_4_1out,          "5con_2fc_str_4_1out"),
-#    (net.Classifier_1d_5_conv_2_fc_str_4_sigm_1out,     "5con_2fc_str_4_sigm_1out"),
-#    (net.Classifier_1d_5_conv_2_fc_str_4_sigm_2out,     "5con_2fc_str_4_sigm_2out"),
-#    (net.Classifier_1d_5_conv_2_fc_str_4,               "5con_2fc_str_4"),
-# 	 (net.Classifier_1d_5_conv_1_pool_2_fc_k_4,          "5con_1pool_2fc_k_4"),
-#    (net.Classifier_1d_5_conv_1_pool_2_fc_k1_4,         "5con_1pool_2fc_k1_4"),
-#    (net.Classifier_1d_5_conv_1_pool_2_fc_1_out,        "1d_5con_1pool_2fc_1out"),
-#    (net.Classifier_1d_5_conv_1_pool_2_fc,              "1d_5con_1pool_2fc"),
-#    (net.Classifier_1d_5_conv_1_pool,                   "1d_5con_1pool"),
-#    (net.Classifier_1d_6_conv_2_fc,                     "1d_6con_2fc"),
-#    (net.Classifier_1d_6_conv_nodropbatch,              "1d_6con_nodropbatch"),
+    (net.Classifier_1d_5_conv_2_fc_str_4_1out,          "5con_2fc_str_4_1out"),
+    (net.Classifier_1d_5_conv_2_fc_str_4_sigm_1out,     "5con_2fc_str_4_sigm_1out"),
+    (net.Classifier_1d_5_conv_2_fc_str_4_sigm_2out,     "5con_2fc_str_4_sigm_2out"),
+    (net.Classifier_1d_5_conv_2_fc_str_4,               "5con_2fc_str_4"),
+	(net.Classifier_1d_5_conv_1_pool_2_fc_k_4,          "5con_1pool_2fc_k_4"),
+    (net.Classifier_1d_5_conv_1_pool_2_fc_k1_4,         "5con_1pool_2fc_k1_4"),
+    (net.Classifier_1d_5_conv_1_pool_2_fc_1_out,        "1d_5con_1pool_2fc_1out"),
+    (net.Classifier_1d_5_conv_1_pool_2_fc,              "1d_5con_1pool_2fc"),
+    (net.Classifier_1d_5_conv_1_pool,                   "1d_5con_1pool"),
+    (net.Classifier_1d_6_conv_2_fc,                     "1d_6con_2fc"),
+    (net.Classifier_1d_6_conv_nodropbatch,              "1d_6con_nodropbatch"),
     (net.Classifier_1d_6_conv,                          "1d_6con")
 ]
 
@@ -61,6 +72,7 @@ models = [
 
 
 datasets = [
+    ("raw_x_2K_nofilter_last-512_nozsc.pt", "raw_2K_last-512_nozsc"),
     ("raw_x_8K_nofilter_stable_win2K.pt", "raw_8K_stable_2K_win"),
     ("raw_x_2K_nofilter_stable.pt", "raw_2K_stable"),
     ("raw_x_4K_nofilter_stable.pt", "raw_4K_stable"),

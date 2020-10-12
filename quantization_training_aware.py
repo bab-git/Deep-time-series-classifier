@@ -19,6 +19,7 @@ save_name           = option_utils.find_save(model_name, data_name, result_dir =
 if save_name in ['NONE','N']:
     save_name ="1d_4c_2fc_sub2_qr"
     save_name = "2d_6CN_3FC_no_BN_in_FC_long"
+    save_name = "flex_2c8,16_2f16_k8_s4_b512_raw_2K_last-512_nozsc_sub4_meannorm_cv12"
 
 print("{:>40}  {:<8s}".format("Selected experiment:", save_name))
 
@@ -40,8 +41,12 @@ n_epochs = 200 if n_epochs == '' else int(n_epochs)
 quantize_flag = input("Also performing quantization? (def. yes)")
 quantize_flag = True if quantize_flag == '' else False
 
-TP_w = input("Weight of TP in combined accuray measure: (def. 2)")
-TP_w = 2 if TP_w == '' else int(TP_w)
+TP_w = input("Weight of TP in combined accuray measure: (def. 2) : ")
+TP_w = 2 if TP_w == '' else float(TP_w)
+
+prunned = input("Pruning tag? (def: prune18) : ")
+prunned = "prune18" if prunned == '' else ""
+
 #%%===============  loading experiment's parameters and batches
 
 print("{:>40}  {:<8s}".format("Loading model:", model_name))
@@ -59,6 +64,9 @@ test_size = params.test_size
 np.random.seed(seed)
 t_range = params.t_range
 
+zero_mean = True if hasattr(params, "zero_mean") and params.zero_mean else False
+
+
 #cuda_num = input("cuda number:")
 #cuda_num = 0   # export CUDA_VISIBLE_DEVICES=x
 
@@ -71,11 +79,15 @@ target = load_ECG['target']
 data_tag = load_ECG['data_tag']
 IDs = load_ECG['IDs'] if 'IDs' in load_ECG else []
 
+if hasattr(params, "sub") and params.sub != None:
+    raw_x = raw_x[:, :, ::params.sub]
+
 if type(target) != 'torch.Tensor':
     target = torch.tensor(load_ECG['target']).to(device)
 
 
-dataset_splits = create_datasets_win(raw_x, target, data_tag, test_size, seed=seed, t_range = t_range, device = device)
+dataset_splits = create_datasets_win(raw_x, target, data_tag, test_size, seed=seed, t_range = t_range, 
+                                     zero_mean = zero_mean, device = device )
 ecg_datasets = dataset_splits[0:3]
 trn_idx, val_idx, tst_idx = dataset_splits[3:6]
 #ecg_datasets = create_datasets_file(raw_x, target, test_size, seed=seed, t_range = t_range, device = device)
@@ -96,7 +108,10 @@ num_classes = 2
 #device = torch.device('cuda:4' if torch.cuda.is_available() else 'cpu')
 
 # %%
-model_path = result_dir+'train_'+save_name+'_best.pth'
+if prunned != "":
+    model_path = result_dir+'train_'+save_name+'_best_'+prunned+'.pth'
+else:
+    model_path = result_dir+'train_'+save_name+'_best.pth'
 
 try:
     model = model_cls(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
@@ -107,12 +122,15 @@ try:
         model.load_state_dict(torch.load(model_path, map_location=lambda storage, loc: storage))
 except:    
     model = pickle.load(open(model_path, 'rb'))
+    if type(model) == int:    
+        model = torch.load(model_path, map_location=device)
+    
 
 thresh_AF = 5
 win_size = 10
 
 #TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, device = device)
-TP_ECG_rate, FP_ECG_rate, list_pred_win, elapsed = \
+TP_ECG_rate, FP_ECG_rate, _, _, _ = \
     evaluate(model, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, 
              device = device, win_size = win_size, slide = slide)
 
@@ -151,14 +169,15 @@ def evaluation1(model_test,tst_dl, device = 'cpu', num_batch = len(tst_dl)):
     return acc
 
 #---------------------------------
-def train_one_epoch(model, criterion, opt, trn_dl, device, ntrain_batches):
+def train_one_epoch(model, criterion, opt, trn_dl, device, ntrain_batches, verbose = True):
     if ntrain_batches > len(trn_dl):
         ls = range(len(trn_dl))
     else:
         ls = random.sample(range(len(trn_dl)), ntrain_batches)
     
     model = model.to(device)
-    print(next(model.parameters()).is_cuda)
+    if verbose:
+        print(next(model.parameters()).is_cuda)
     model.train()
     
     cnt = 0
@@ -168,7 +187,8 @@ def train_one_epoch(model, criterion, opt, trn_dl, device, ntrain_batches):
 #        break
         if i not in ls:
             continue
-        print('.', end = '')
+        if verbose:
+            print('.', end = '')
 #        print('%d.'%(i), end = '')
         cnt += 1
 #        x_raw, y_batch = batch
@@ -181,10 +201,12 @@ def train_one_epoch(model, criterion, opt, trn_dl, device, ntrain_batches):
         opt.step()
                 
         if cnt >= ntrain_batches:
-            print('not-complete epoch Loss %3.3f' %(epoch_loss / cnt))
+            if verbose:
+                print('not-complete epoch Loss %3.3f' %(epoch_loss / cnt))
             return epoch_loss / cnt
 
-    print('Complete epoch loss %3.3f' %(epoch_loss / cnt))
+    if verbose:
+        print('Complete epoch loss %3.3f' %(epoch_loss / cnt))
     return epoch_loss / cnt    
 # %%==================================================================== 
 # ================================== Trining aware  Quantization
@@ -198,9 +220,9 @@ device = torch.device('cuda:0' if torch.cuda.is_available() and cuda_num != 'cpu
 model_qta = copy.deepcopy(model)
 model_qta = model_qta.to(device)
 
-
+lr=0.0001
 #opt = torch.optim.SGD(model_qta.parameters(), lr = 0.0001) 
-opt = torch.optim.Adam(model_qta.parameters(), lr=0.0001)
+opt = torch.optim.Adam(model_qta.parameters(), lr=lr)
 
 criterion = nn.CrossEntropyLoss (reduction = 'sum')
 
@@ -217,6 +239,18 @@ max_val, min_val = None, None
 model_qta.eval()
 model_qta.fuse_model()
 model_qta.qconfig = torch.quantization.get_default_qat_qconfig('fbgemm')
+
+#model_qta.qconfig = torch.quantization.QConfig(
+#        activation = qt.MovingAverageMinMaxObserver(dtype=torch.qint8, reduce_range=True, qscheme = torch.per_channel_affine), 
+#        weight=qt.default_observer.with_args(dtype=torch.qint8))
+
+
+#model_qta.qconfig.activation.p.keywords['quant_max']=2**8-1
+#model_qta.qconfig.weight.p.keywords['dtype'] = torch.qint32
+#model_qta.qconfig.weight.p.keywords['quant_max'] = 2**7
+#model_qta.qconfig.weight.p.keywords['quant_min'] = -2**7
+
+
 torch.backends.quantized.engine = 'fbgemm'
 torch.quantization.prepare_qat(model_qta, inplace=True)
 
@@ -246,10 +280,10 @@ nepoch =1
 while nepoch < n_epochs:
     e_loss = train_one_epoch(model_qta, criterion, opt, trn_dl, device, ntrain_batches)
     
-    if nepoch >= 3000:
+    if nepoch >= 300:
         # Freeze quantizer parameters
         model_qta.apply(torch.quantization.disable_observer)
-    if nepoch > 2000:
+    if nepoch > 200:
         # Freeze batch norm mean and variance estimates
         model_qta.apply(torch.nn.intrinsic.qat.freeze_bn_stats)
 
@@ -261,14 +295,15 @@ while nepoch < n_epochs:
 #    quantized_model.eval()
 
 #    acc = evaluation1(quantized_model,val_dl,'cpu', 30)
-#    model_qta.to(device)
+
     
-    TP_ECG_rate_taq, FP_ECG_rate_taq, list_pred_win, elapsed = \
+    TP_ECG_rate_taq, FP_ECG_rate_taq, _, _,_ = \
     evaluate(quantized_model, val_dl, val_idx, data_tag, thresh_AF = thresh_AF, 
              device = 'cpu', win_size = win_size, slide = slide,
              verbose = False)
     
-    acc = (80-10*TP_w) + TP_w*(TP_ECG_rate_taq[0]-90) + 20-FP_ECG_rate_taq[0]
+#    acc =  TP_w*np.sinh(TP_ECG_rate_taq[0]-90) + np.sinh(20-FP_ECG_rate_taq[0])
+    acc = TP_w*TP_ECG_rate_taq[0] -FP_ECG_rate_taq[0]
     
     
 #    acc = evaluation1(quantized_model,val_dl,'cpu', 30)
@@ -277,13 +312,17 @@ while nepoch < n_epochs:
 
     if acc > acc_0:
 #        save_file = save_name+"_qta_full_train.p"
-        save_file = save_name+"_qta_float.pth"
+        save_file = save_name+"_qta_float"+"_"+str(TP_w)+"_"+str(lr)+"_"+prunned+".pth"
+#        save_file = save_name+"_qta.pth"
 #        save_file_Q = save_name+"_qta.pth"
         
 #        model_qta_best = copy.deepcopy(model_qta)
 
 #        pickle.dump(model_qta,open(save_name+"qta_full_train.p",'wb'))
         pickle.dump(model_qta,open(result_dir+save_file,'wb'))
+#        checkpoint = {'model': model_cls,
+#                      'state_dict': model_qta.state_dict()}
+#        torch.save(quantized_model.state_dict(), result_dir+save_file)
 #        torch.save(model_qta.state_dict(), result_dir+save_file)
 #        torch.jit.save(torch.jit.script(model_qta), result_dir+save_file)
 #        pickle.dump(quantized_model,open(result_dir+save_file_Q,'wb'))
@@ -301,8 +340,30 @@ while nepoch < n_epochs:
 #        break
 #    elif:
 #%%     
+#save_file = "flex_2c8,16_2f16_k8_s4_b512_raw_2K_last-512_nozsc_sub4_meannorm_cv12_qta_float_1_0.0001_prune18.pth"
+save_file = "flex_2c8,16_2f16_k8_s4_b512_raw_2K_last-512_nozsc_sub4_meannorm_cv12_qta_float_2_0.0001_prune18.pth"
+#save_file = "flex_2c8,16_2f16_k8_s4_b512_raw_2K_last-512_nozsc_sub4_meannorm_cv12_qta_float_1_0.001_prune18.pth" # Bad!
+#save_file = "flex_2c8,16_2f16_k8_s4_b512_raw_2K_last-512_nozsc_sub4_meannorm_cv12_qta_float_1.5_0.0001_prune18.pth" # Bad!
+#save_file = "flex_2c8,16_2f16_k8_s4_b512_raw_2K_last-512_nozsc_sub4_meannorm_cv12_qta_float_1.5_prune18.pth"
+#save_file = "flex_2c8,16_2f16_k8_s4_b512_raw_2K_last-512_nozsc_sub4_meannorm_cv12_qta_float_1.0_prune18.pth"
+#save_file = "flex_2c8,16_2f16_k8_s4_b512_raw_2K_last-512_nozsc_sub4_meannorm_cv12_qta_float_2_prune18.pth"
+#save_file = "flex_2c8,16_2f16_k8_s4_b512_raw_2K_last-512_nozsc_sub4_meannorm_cv12_qta_float_1.5_1e-05_prune18.pth"
+#save_file = "flex_2c8,16_2f16_k8_s4_b512_raw_2K_last-512_nozsc_sub4_meannorm_cv12_qta_float_2_.pth"
+#save_file = "flex_2c8,16_2f16_k8_s4_b512_raw_2K_last-512_nozsc_sub4_meannorm_cv12_qta_float_1.5_0.001_.pth"
+#save_file = "flex_2c8,16_2f16_k8_s4_b512_raw_2K_last-512_nozsc_sub4_meannorm_cv12_qta_float_1.5_0.0001_.pth"
+#save_file = "flex_2c8,16_2f16_k8_s4_b512_raw_2K_last-512_nozsc_sub4_meannorm_cv12_qta_float_2_0.001_.pth"
+#save_file = "flex_2c8,16_2f16_k8_s4_b512_raw_2K_last-512_nozsc_sub4_meannorm_cv12_qta_float_1_0.0001_.pth"
+#save_file = save_name+"_qta_float.pth"
+#save_file = save_name+"_qta.pth"
+print(save_file)
 model_qta_best = pickle.load(open(result_dir+save_file,'rb'))
-#model_qta_best = copy.deepcopy(model)
+
+#stat = torch.load(result_dir+save_file)
+
+#quantized_model.state_dict(stat)
+#model_qta_best = copy.deepcopy(model_qta)
+#model_qta_best.state_dict(stat)
+
 #model_qta_best = model_qta_best.to(device)
 #model_qta_best.eval()
 #model_qta_best.fuse_model()
@@ -317,17 +378,17 @@ model_qta_best.to('cpu')
 manual_range = False
 
 if manual_range:
-    model_qta_best.quant.observer.observer.max_val = 4
-    model_qta_best.quant.observer.observer.min_val = -4
-    for i_layer in [1,2]:
+#    model_qta_best.quant.observer.observer.max_val = 4
+#    model_qta_best.quant.observer.observer.min_val = -4
+    for i_layer in [0,1]:
         for (_,m) in model_qta_best.raw[i_layer].layers._modules.items():
-#            print(m)
+            print(m)
 #            print("----------")
             if type(m) == nn.qat.Conv2d and m.out_channels == m.in_channels:
                print("layer: "+str(i_layer))
                print(m.observer.observer.max_val)
                print(m.observer.observer.min_val)
-               if i_layer == 1:
+               if i_layer == 0:
                    print("")                   
 #                   m.observer.observer.max_val = 5
 #                   m.observer.observer.min_val = -5
@@ -340,12 +401,12 @@ if manual_range:
                    
            
             if type(m) == nn.intrinsic.qat.ConvReLU2d:
-               if i_layer == 1:
+               if i_layer == 0:
                    print("")
 #                   print(m.observer.observer.max_val)
 #                   print(m.observer.observer.min_val)                   
 #                   m.observer.observer.max_val = 10
-                   m.observer.observer.min_val = -50
+#                   m.observer.observer.min_val = -50
                    
                 
     #        try:
@@ -370,12 +431,12 @@ print('%2.2f' %(acc))
 print("")
 print("=========  Q-trained floating point test result ===============")        
 #TP_ECG_rate_taq, FP_ECG_rate_taq,x,y = evaluate(model_qta_best,tst_dl, device = device, thresh_AF = thresh_AF)
-TP_ECG_rate_taq, FP_ECG_rate_taq, list_pred_win, elapsed = \
+TP_ECG_rate_taq, FP_ECG_rate_taq, _, _,_ = \
     evaluate(model_qta_best, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, 
              device = device, win_size = win_size, slide = slide)
 print("=========  Qquantized-model test result ===============")        
 #TP_ECG_rate_taq, FP_ECG_rate_taq,x,y = evaluate(quantized_model_best,tst_dl, thresh_AF = thresh_AF)
-TP_ECG_rate_taq, FP_ECG_rate_taq, list_pred_win, elapsed = \
+TP_ECG_rate_taq, FP_ECG_rate_taq, _, _,_ = \
     evaluate(quantized_model_best, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, 
              device = 'cpu', win_size = win_size, slide = slide,
              verbose = False)
@@ -386,8 +447,8 @@ print("{:>40}  {:<8.3f}".format("FP rate:", FP_ECG_rate_taq[0]))
 assert 1==2
 # %%======================= loading trained model_qta
 save_file = save_name+"_qta_full_train.p"
-
-model_qta_best = pickle.load(open(save_file, 'rb'))
+ 
+model_qta_best = pickle.load(open(result_dir+save_file, 'rb'))
 model_qta_best.to('cpu')
 quantized_model_best = torch.quantization.convert(model_qta_best.eval(), inplace=False)
 quantized_model_best.eval()

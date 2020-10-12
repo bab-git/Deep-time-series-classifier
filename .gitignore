@@ -18,15 +18,6 @@ train_batch_256_split.p
 train_batch_32_B_split.p
 train_batch_512_B_split.p
 train_batch_512_BNA.pth
-raw_x_40k_50K.pt
-raw_x.pt
-raw_x_all.pt
-raw_x_8K_non_sync.pt
-raw_x_8K_sync.pt
-raw_x_8K_sync_win2K.pt
-./raw_x_8K_sync_win2K.pt
-./raw_x_40k_50K.pt
-./raw_x_all.pt
 ./.git/objects/pack/pack-41f5f727be489f203c1cdd7f656551f5d3e66e52.pack
 ./.git/objects/pack/pack-e7e2027976ed4dae1dd1a491bc00e02b151636a5.pack
 ./.git/objects/pack/pack-7eff8125b8ca511afeee12782b9cf748412c1914.pack
@@ -39,3 +30,4 @@ model_prunned_i*.*
 train_prune_1d*.*
 temp*.*
 train_prunned_*.*
+raw_x*

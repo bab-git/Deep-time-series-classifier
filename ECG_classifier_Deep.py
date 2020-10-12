@@ -51,7 +51,7 @@ load_ECG =  torch.load (data_dir+dataset)
 #load_ECG =  torch.load ('raw_x_8K_sync.pt')
 #load_ECG =  torch.load ('raw_x_8K_sync_win2K.pt')
 t_max = load_ECG['raw_x'][0].shape[1]
-t_win_i = input("Enter the split out of {} (def: {}) : ".format(t_max,t_win)) 
+t_win_i = input("Enter the split out of {} (def: {}) : ".format(t_max,t_max)) 
 t_win = int(t_win_i) if t_win_i != '' else int(t_win)
 print("{:>40}  {:<8d}".format("Extracted window size :", t_win))
 
@@ -197,31 +197,12 @@ def weights_init(m):
 #---------------------- model from scratch
 model_cls, model_name   = option_utils.show_model_chooser()
 if model_name == '1d_flex_net':
-    print('=============== Defining the network structure')
-    convs = input ('convolutions separated by comma (def. 8,8) : ')
-    convs = [8,8] if convs=='' else [int(i) for i in convs.split(",")]
-    
-    FCs = input ('FC layers separated by comma (def. 8) : ')
-    FCs = [8] if FCs == '' else [int(i) for i in FCs.split(",")]
-    
-    pool = input ('Input sub-sampling (def. 4): ')
-    pool = '4' if pool == '' else pool
-#    pool = int(pool)  else 0
-    
-    rest_params = input ('Kernel size, strides, pad (def.: 8,4,2) : ')
-    if rest_params == '':
-        rest_params = [8,4,2]
-    else:
-        rest_params = [int(i) for i in rest_params.split(",")]
-    kernels, strides, pads = rest_params
-            
-#    net = {'conv':convs, 'fc':FCs}
-    net = {'conv':convs, 'fc':FCs, 'kernels': kernels, 'strides': strides, 'pads':pads}
-    if pool not in (None, '', '0'):
-        net['pre'] = 'pool' + pool
-    
-    print('Network summary:')
-    print(net)
+   net, model_name = option_utils.construct_flex_net()
+    if 'pre' in net:  # Subsample before normalization; Not inside network
+        subsmpl = net['pre']
+        raw_x = raw_x[:, :, ::subsmpl]
+        raw_size //= subsmpl
+        del net['pre']
     
     model = model_cls(raw_feat, 2, t_win, net).to(device)
 
@@ -276,6 +257,7 @@ jobs = 0
 use_norm = False
 params = parameters(net, lr, epoch, patience, step, batch_size, t_range, seed, test_size)
 
+#%%    training loop
 if CV_flag == 2:
     for cv_idx, (trn_idx, tst_idx) in enumerate(rskf.split(raw_x, target)):
         print ('======= Traininf CV split: {}  rep: {}'.format(cv_idx % (n_splits)+1, np.floor(cv_idx/n_splits)+1))

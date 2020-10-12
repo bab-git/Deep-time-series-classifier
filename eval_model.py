@@ -84,7 +84,6 @@ IDs = load_ECG['IDs'] if 'IDs' in load_ECG else []
 if type(target) != 'torch.Tensor':
     target = torch.tensor(load_ECG['target']).to(device)
 
-
 dataset_splits = create_datasets_win(raw_x, target, data_tag, test_size, seed=seed, t_range = t_range, device = device)
 ecg_datasets = dataset_splits[0:3]
 trn_idx, val_idx, tst_idx = dataset_splits[3:6]
@@ -117,6 +116,9 @@ try:
         model.load_state_dict(torch.load(model_path, map_location=lambda storage, loc: storage))
 except:    
     model = pickle.load(open(model_path, 'rb'))
+    if type(model) == int:
+        model = torch.load(result_dir+'train_'+save_name+'_best.pth', lambda storage, loc: storage.cuda(device))
+    
 
 thresh_AF = 5
 win_size = 10
@@ -375,7 +377,7 @@ print("{:>40}  {:<8.3f}".format("FP rate:", FP_ECG_rate_taq[0]))
 #import my_net_classes
 #num_calibration_batches = 10
 #model = my_net_classes.Classifier_1d_6_conv_v2(raw_feat, num_classes, raw_size)
-model = pickle.load(open(result_dir+'train_'+save_name+'_best.pth', 'rb'))
+#model = pickle.load(open(result_dir+'train_'+save_name+'_best.pth', 'rb'))
 model.to('cpu')
 model_st = copy.deepcopy(model)
 model_st.eval()
@@ -416,12 +418,12 @@ print('Post Training Quantization: Calibration done')
 
 print("=========  Q-trained floating point test result ===============")        
 #TP_ECG_rate_taq, FP_ECG_rate_taq,x,y = evaluate(model_qta_best,tst_dl, device = device, thresh_AF = thresh_AF)
-TP_ECG_rate_taq, FP_ECG_rate_taq, list_pred_win, elapsed = \
+TP_ECG_rate_taq, FP_ECG_rate_taq, list_pred_win, _,_ = \
     evaluate(model_st, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, 
              device = 'cpu', win_size = win_size, slide = slide)
 print("=========  Qquantized-model test result ===============")        
 #TP_ECG_rate_taq, FP_ECG_rate_taq,x,y = evaluate(quantized_model_best,tst_dl, thresh_AF = thresh_AF)
-TP_ECG_rate_taq, FP_ECG_rate_taq, list_pred_win, elapsed = \
+TP_ECG_rate_taq, FP_ECG_rate_taq, _, _,_ = \
     evaluate(model_stq, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, 
              device = 'cpu', win_size = win_size, slide = slide,
              verbose = False)
@@ -435,6 +437,13 @@ model_ch.to(device)
 model_ch.eval()
 model_ch.fuse_model()
 model_ch.qconfig = torch.quantization.get_default_qconfig('fbgemm')
+
+#model_ch.qconfig = torch.quantization.QConfig(
+#        activation = ob.HistogramObserver.with_args(reduce_range=True), 
+#        weight=ob.PerChannelMinMaxObserver.with_args(dtype=torch.qint32, qscheme=torch.per_channel_symmetric))
+
+#model_ch.qconfig.weight.p.keywords = torch.qint32
+
 print(model_ch.qconfig)
 
 torch.quantization.prepare(model_ch, inplace=True)
@@ -443,8 +452,13 @@ evaluation1(model_ch,val_dl,device)
 model_stq_ch = torch.quantization.convert(model_ch.to('cpu'))
 
 evaluation1(model_stq_ch,tst_dl)
-TP_ECG_rate_chq, FP_ECG_rate_chq = evaluate(model_stq_ch,tst_dl, thresh_AF = 3)
-
+TP_ECG_rate_taq, FP_ECG_rate_taq, _, _,_ = \
+    evaluate(model_stq_ch, tst_dl, tst_idx, data_tag, thresh_AF = thresh_AF, 
+             device = 'cpu', win_size = win_size, slide = False,
+             verbose = False)
+print()
+print("{:>40}  {:<8.3f}".format("TP rate:", TP_ECG_rate_taq[0]))
+print("{:>40}  {:<8.3f}".format("FP rate:", FP_ECG_rate_taq[0]))
 # %%================================== Value clipping
 model_thresh = copy.deepcopy(model)
 

@@ -123,6 +123,12 @@ Statistical analysis of the weights:
 
 
 def stat_analysis(params,title, weight = 'weights', color = 'g'):
+    print ('Total '+weight+': %d' %(len(params)))
+
+    if 'ReLU' in title and weight is not 'weights':
+        n_zero = (params == 0).sum()
+        params = np.delete(params,np.where(params == 0))
+        print ('Number of zero '+weight+': %d' %(n_zero))
     
     print ('Minimum of '+weight+': %3.7f' %(params.min()))
     print ('Maximum of '+weight+': %3.7f' %(params.max()))
@@ -259,8 +265,10 @@ for i_layer in range(3):              #raw layers:
         x = module(x)
         if type(module) in (nn.Conv2d, nn.BatchNorm2d, nn.ReLU):
             features = x.data.view(-1).to('cpu')
-            if type(module) == nn.ReLU:
-                features = np.delete(features,np.where(features == 0))
+#            if type(module) == nn.ReLU:
+#                assert 1==2
+#                features = np.delete(features,np.where(features == 0))
+                
             
             module_n = type(module)
 
@@ -276,8 +284,8 @@ for (name,module) in model.FC._modules.items():
     x = module(x)
     if type(module) in (nn.Conv2d, nn.BatchNorm2d, nn.ReLU, nn.Linear):
         features = x.data.view(-1).to('cpu')
-        if type(module) == nn.ReLU:
-            features = np.delete(features,np.where(features == 0))
+#        if type(module) == nn.ReLU:
+#            features = np.delete(features,np.where(features == 0))
         
         module_n = type(module)
 

@@ -345,7 +345,8 @@ def read_data(save_file = 'temp_save' , t_length = 8000 , t_base = 3000, t_range
 #plt.plot(data_trim[1,:])
 
 #%% ================== test/train using all read data
-def create_datasets_win(raw_x, target, data_tag, test_size, seed=None, t_range=None, device = torch.device('cpu')):
+def create_datasets_win(raw_x, target, data_tag, test_size, seed=None, t_range=None, zero_mean = False,
+                        device = torch.device('cpu') ):
     """
     Creating train/test/validation splits
     
@@ -357,7 +358,13 @@ def create_datasets_win(raw_x, target, data_tag, test_size, seed=None, t_range=N
 #    raw_x = torch.load ('raw_x_all.pt') 
     
 #    raw_t = raw_x[trn_idx,:,t_range.start:t_range.stop]
-       
+    
+    if zero_mean:
+        min_x = raw_x.min(dim=2).values
+        max_x = raw_x.max(dim=2).values
+        raw_x -= raw_x.mean(dim=2, keepdim=True)
+        raw_x /= (max_x - min_x)[:,:,None]
+        
     extend_idx = lambda idx: [i for j in idx for i in np.where(data_tag == j)[0]]
     
 #    idx = np.arange(len(target))

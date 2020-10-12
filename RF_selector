@@ -1,0 +1,36 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Fri Sep 11 14:03:02 2020
+
+@author: bhossein
+"""
+
+% ======= toy data
+n=11;  
+m = 8;
+N=100;
+x = randi(2,N,n)-1;
+x(x==0)=-1;
+x = [x zeros(N,m)];
+x(1:50,n+1:end) = ones(50,m);
+x(51:N,n+1:end) = -ones(50,m);
+n = n+m;
+
+% ========  Integer problem formulation
+ip = find(sign(sum(x,2))>0); 
+A =-x(ip,:);
+A = [A ; x(find(sign(sum(x,2))<0),:)];
+b = -ones(N,1);
+lb = zeros(n,1);
+ub = ones(n,1);
+I0 = ones(n,1);
+intcon = [1:n];
+f = ones(n,1);
+% func = @(I)sum(I);
+find(A*I0-b>0) % testing the formulated constraints: all should be negative
+f'*I0  % objective
+
+% ======== solver
+I = intlinprog(f,intcon,A,b,[],[],lb,ub,I0);
+I'
