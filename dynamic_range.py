@@ -4,6 +4,8 @@ initite = 0
 #%matplotlib inline    
 # %% ================ loading data
 data_dr = '/vol/hinkelstn/codes/'
+result_dir = "/vol/hinkelstn/codes/flex_2c8,16_2f16_k8_s4_nobias_b512_raw_2K_last-512_nozsc_sub4_meannorm/"
+
 if 'load_ECG' in locals() and initite == 0:
     print('''
         ==================      
@@ -17,7 +19,9 @@ else:
 
 
 #save_name ="2d_6CN_3FC_no_BN_in_FC_long"
-save_name ="flex_2c8,16_2f16_k8_s4_sub4_b512_raw_2K_stable_cv1"
+#save_name ="flex_2c8,16_2f16_k8_s4_sub4_b512_raw_2K_stable_cv1"
+save_name = "flex_2c8,16_2f16_k8_s4_nobias_b512_raw_2K_last-512_nozsc_sub4_meannorm"+"_cv15"
+
 
 
 
@@ -59,6 +63,19 @@ num_classes = 2
 
 #model = pickle.load(open(result_dir+'train_'+save_name+'_best.pth', 'rb'))
 model = torch.load(result_dir+'train_'+save_name+'_best.pth', lambda storage, loc: storage.cuda(device))
+
+
+if prune ==1:
+    prune_rate = 40
+    w = model.FC[1].weight.data
+    w1 =  w.view(-1,1)
+    #            (v,ind) =torch.sort(w)
+    (v,ind) = torch.sort(abs(w1), dim = 0)
+    indc = np.ceil(prune_rate*len(ind)/100).astype(int)
+    for i in ind[0:indc]: w1[i] = 0
+    w1 = w1.reshape(w.shape)
+    model.FC[1].weight.data = w1
+
 
 #%%===============  report
 
@@ -124,11 +141,12 @@ Statistical analysis of the weights:
 
 def stat_analysis(params,title, weight = 'weights', color = 'g'):
     print ('Total '+weight+': %d' %(len(params)))
+    n_zero = (params == 0).sum()
+    print ('Number of zero '+weight+': %d' %(n_zero))
+    
+#    if 'ReLU' in title and weight is not 'weights':
+    params = np.delete(params,np.where(params == 0))
 
-    if 'ReLU' in title and weight is not 'weights':
-        n_zero = (params == 0).sum()
-        params = np.delete(params,np.where(params == 0))
-        print ('Number of zero '+weight+': %d' %(n_zero))
     
     print ('Minimum of '+weight+': %3.7f' %(params.min()))
     print ('Maximum of '+weight+': %3.7f' %(params.max()))
@@ -255,7 +273,7 @@ features = x.data.view(-1).to('cpu')
 stat_analysis(features ,"Histogram of feature-values, input layer", 'feature-values', color = 'b')           
 
 model = model.to(device)
-for i_layer in range(3):              #raw layers: 
+for i_layer in range(2):              #raw layers: 
 #            print(i_layer)
     module = model.raw[i_layer]
     if type(model.raw[i_layer]) == nn.MaxPool2d:

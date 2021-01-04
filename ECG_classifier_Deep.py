@@ -50,17 +50,23 @@ load_ECG =  torch.load (data_dir+dataset)
 #load_ECG =  torch.load ('raw_x_6K.pt') 
 #load_ECG =  torch.load ('raw_x_8K_sync.pt')
 #load_ECG =  torch.load ('raw_x_8K_sync_win2K.pt')
-t_max = load_ECG['raw_x'][0].shape[1]
-t_win_i = input("Enter the split out of {} (def: {}) : ".format(t_max,t_max)) 
-t_win = int(t_win_i) if t_win_i != '' else int(t_win)
-print("{:>40}  {:<8d}".format("Extracted window size :", t_win))
 
-t_range = range(t_win)
 
 
 slide = input("Sliding window? (def:no)")
 slide = False if slide == '' else True
 print("{:>40}  {:}".format("Sliding window mode:", slide))
+
+
+t_max = load_ECG['raw_x'][0].shape[1]
+t_win_i = input("Enter the split out of {} (def: {}) : ".format(t_max,t_max)) 
+t_win = int(t_win_i) if t_win_i != '' else int(t_win)
+print("{:>40}  {:<8d}".format("Extracted window size :", t_win))
+
+if slide == False:    
+    t_win = load_ECG['raw_x'][0].shape[1]
+
+t_range = range(t_win)
 
 acc_eval = input("Early stop based on accuracy (or TP)? (def. TP)")
 acc_eval = False if acc_eval in ('','TP') else True
@@ -103,35 +109,7 @@ target = torch.tensor(load_ECG['target'])
 data_tag = load_ECG['data_tag']
 
 
-if CV_flag == 2: # CV training
-    n_splits=5
-    n_repeats=5
-    rskf = RepeatedStratifiedKFold(n_splits=5, n_repeats=5, random_state=seed)
-    tp = np.zeros(n_splits*n_repeats)
-    fp = 100*np.ones(n_splits*n_repeats)
-    acc = np.zeros(n_splits*n_repeats)
-    elapsed = np.empty(n_splits*n_repeats)
-    
 
-elif CV_flag == 1: # re-train a CV split
-    rskf = RepeatedStratifiedKFold(n_splits=5, n_repeats=5, random_state=seed)
-#    print(acc[cv_idx_w])
-#    cv_idx_w = 6
-    for cv_idx, (trn_idx, tst_idx) in enumerate(rskf.split(raw_x, target)):
-        if cv_idx == cv_idx_w:
-            break
-            
-    trn_idx, val_idx = train_test_split(trn_idx, test_size=len(tst_idx), stratify=target[trn_idx], random_state=seed)
-    ecg_datasets = create_datasets_cv(raw_x, target, trn_idx, val_idx, tst_idx, use_norm = False, device = device, t_range = t_range)
-#    trn_dl, val_dl, tst_dl = create_loaders(ecg_datasets, bs=batch_size, jobs = 0)
-#    trn_dl, val_dl, tst_dl = create_loaders(ecg_datasets, bs=batch_size, jobs = 0, bs_val = val_batch_size)
-    trn_ds, val_ds, tst_ds = ecg_datasets
-
-elif CV_flag == 0:
-    dataset_splits = create_datasets_win(raw_x, target, data_tag, test_size, seed=seed, t_range = t_range, device = device)
-    ecg_datasets = dataset_splits[0:3]
-    trn_idx, val_idx, tst_idx = dataset_splits[3:6]
-    trn_ds, val_ds, tst_ds = ecg_datasets
     
     
 #    trn_dl, val_dl, tst_dl = create_loaders(ecg_datasets, bs=batch_size, jobs = 0, bs_val = val_batch_size)
@@ -197,14 +175,18 @@ def weights_init(m):
 #---------------------- model from scratch
 model_cls, model_name   = option_utils.show_model_chooser()
 if model_name == '1d_flex_net':
-   net, model_name = option_utils.construct_flex_net()
+    net, model_name = option_utils.construct_flex_net()
+    bias = input('network with bias?(def: yes)')
+    bias = True if bias in ['','yes'] else False
+    net['bias'] = bias
+    
     if 'pre' in net:  # Subsample before normalization; Not inside network
         subsmpl = net['pre']
         raw_x = raw_x[:, :, ::subsmpl]
         raw_size //= subsmpl
         del net['pre']
     
-    model = model_cls(raw_feat, 2, t_win, net).to(device)
+    model = model_cls(raw_feat, 2, raw_size, net).to(device)
 
 else:
     model = model_cls(raw_feat, num_classes, raw_size, batch_norm = True).to(device)
@@ -230,11 +212,62 @@ model0 = copy.deepcopy(model)
 #    print("Let's use", torch.cuda.device_count(), "GPUs!")    
 #    model = nn.DataParallel(model,device_ids=[0,1,5]).cuda()
 
-save_name = option_utils.build_name(model_name, data_name)
-if model_name == '1d_flex_net':
+use_norm = True
+zero_mean = True
+epoch = 0
+params = parameters(lr=lr, batch_size=batch_size, t_range=range(raw_size),
+                    seed=seed, test_size= test_size, use_norm=use_norm,
+                    zero_mean=zero_mean, sub=subsmpl)
+
+
+if CV_flag == 2: # CV training
+    n_splits=5
+    n_repeats=5
+    rskf = RepeatedStratifiedKFold(n_splits=5, n_repeats=5, random_state=seed)
+    tp = np.zeros(n_splits*n_repeats)
+    fp = 100*np.ones(n_splits*n_repeats)
+    acc = np.zeros(n_splits*n_repeats)
+    elapsed = np.empty(n_splits*n_repeats)
+    
+
+elif CV_flag == 1: # re-train a CV split
+    rskf = RepeatedStratifiedKFold(n_splits=5, n_repeats=5, random_state=seed)
+#    print(acc[cv_idx_w])
+#    cv_idx_w = 6
+    for cv_idx, (trn_idx, tst_idx) in enumerate(rskf.split(raw_x, target)):
+        if cv_idx == cv_idx_w:
+            break
+            
+    trn_idx, val_idx = train_test_split(trn_idx, test_size=len(tst_idx), stratify=target[trn_idx], random_state=seed)
+    ecg_datasets = create_datasets_cv(raw_x, target, trn_idx, val_idx, tst_idx, use_norm = False, device = device, t_range = t_range)
+#    trn_dl, val_dl, tst_dl = create_loaders(ecg_datasets, bs=batch_size, jobs = 0)
+#    trn_dl, val_dl, tst_dl = create_loaders(ecg_datasets, bs=batch_size, jobs = 0, bs_val = val_batch_size)
+    trn_ds, val_ds, tst_ds = ecg_datasets
+
+elif CV_flag == 0:
+#    dataset_splits = create_datasets_win(raw_x, target, data_tag, test_size, seed=seed, t_range = t_range, device = device)
+
+
+
+#    ecg_datasets = dataset_splits[0:3]
+#    trn_idx, val_idx, tst_idx = dataset_splits[3:6]
+    idx = np.arange(len(np.unique(data_tag)))
+    trn_idx, tst_idx = train_test_split(idx, test_size=test_size, random_state=seed)
+    val_idx, tst_idx= train_test_split(tst_idx, test_size=0.5, random_state=seed)
+
+    ecg_datasets = create_datasets_cv(raw_x, target, trn_idx, val_idx, tst_idx, use_norm, zero_mean, device)
+    
+    trn_ds, val_ds, tst_ds = ecg_datasets
+    
+    
+
+
+save_name = option_utils.build_name(model_name, data_name, batch_size, seed=seed, 
+                                    sub=subsmpl, use_norm=use_norm, zero_mean = zero_mean)
+if 'flex' in model_name:
 #    suf0 = '_{}c_{}fc{}_pool{}_ksp{}{}{}'.format(len(convs),len(FCs),FCs[0],pool,kernels,strides,pads)
     acc_suf = 'acc' if acc_eval else 'TP'
-    suf0 = '_{}c{}_{}fc{}_pool{}_{}'.format(len(convs),convs[0],len(FCs),FCs[0], pool, acc_suf)
+    suf0 = '_{}c{}_{}fc{}_{}'.format(len(net['conv']),net['conv'][0],len(net['fc']),net['fc'][0], acc_suf)
 else:
     suf0 = ''
     
@@ -247,15 +280,14 @@ save_name += suffix
 #    save_name = load_model+'_trained'
 print("Result will be saved file into : "+save_name)    
 print('Start model training')
-epoch = 0
+
 
 criterion = nn.CrossEntropyLoss (reduction = 'sum')
 
 thresh_AF = 5
 win_size = 10
 jobs = 0
-use_norm = False
-params = parameters(net, lr, epoch, patience, step, batch_size, t_range, seed, test_size)
+
 
 #%%    training loop
 if CV_flag == 2:
@@ -286,7 +318,8 @@ else:
     opt = optim.Adam(model.parameters(), lr=lr)
     model, tst_dl = train(model, ecg_datasets, opt, criterion, params, save_name, 
                           val_idx, data_tag, thresh_AF, win_size, slide, result_dir,
-                          batch_size=batch_size, n_epochs=n_epochs, loader_jobs=jobs, device=device, visualize=False, acc_eval = acc_eval)
+                          batch_size=batch_size, n_epochs=n_epochs, loader_jobs=jobs, 
+                          device=device, visualize=False, acc_eval = acc_eval)
     
 
 

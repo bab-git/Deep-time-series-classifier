@@ -149,7 +149,7 @@ tp = 0
 fp = 0
 
 ecg_count = 0
-for ecg_file in glob.glob(os.path.join(ecg_dir, "*.wav")):
+for ecg_file in glob.glob(os.path.join(ecg_dir, "*.wav")):    
     ecg_count +=1
 
     if ecg_count % 1000 ==0:

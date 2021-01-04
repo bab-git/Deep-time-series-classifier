@@ -1,10 +1,11 @@
-#import gpustat
+import gpustat
+from os.path import basename, split, join, normpath, abspath
 import glob
 from torch import cuda, load
 
 import my_net_classes as net
-# %%
-models = [    
+
+models = [
     (net.Classifier_1d_flex_net,                        "1d_flex_net"),  #   flexibke network
     (net.Classifier_1c_1f_sub16_1out_k4,                "1c_1f_k4_sub16_1out"),
     (net.Classifier_1c_1f_sub16_1out,                   "1c_1f_sub16_1out"),
@@ -40,57 +41,31 @@ models = [
     (net.Classifier_1d_6_conv,                          "1d_6con")
 ]
 
-
-#save_name ="2d_6CN_3FC_no_BN_in_FC_long"
-#save_name ="2d_6CN_3FC_no_BN_in_FC"
-#save_name = "test_full_6conv_long"
-#save_name = "test_6conv_v2"
-#save_name = "test_full_6conv"
-#save_name = "1d_6_conv_qn"
-#save_name = "1d_5conv_2FC_qn"
-#save_name = "1d_3conv_2FC_v2_seed2"
-#save_name = "1d_3conv_2FC_seed2"
-#save_name = "1d_3conv_2FC_v2_2K_win"
-#save_name = "1d_1_conv_1FC"
-#save_name = "1d_3con_2FC_2K_win"
-#save_name = "1d_6con_2K_win_2d"
-#save_name = "1d_6con_2K_win_test_30"
-#save_name = "1d_6con_b512_trim_2K_win"
-#save_name = "1d_6con_b512_trim_2K_win_s11"
-#save_name = "1d_6con_b512_trim_2K_win_s3"
-#save_name = "1d_6con_b512_trim_2K_seed2"
-#save_name = "1dconv_b512_t4K"
-#save_name = "1dconv_b512_drop1B"
-#save_name = "1dconv_b512_drop1"
-#save_name = "batch_512_BN_B"
-#save_name = "1dconv_b512_BNM_B"
-#save_name = "1dconv_b512_BNA_B"
-#save_name = "batch_512_BNA"
-#save_name = "batch_512_BN"
-#save_name = "batch_512_B"
-#t_stamp = "_batch_512_11_29_17_03"
-
-
 datasets = [
     ("raw_x_2K_nofilter_last-512_nozsc.pt", "raw_2K_last-512_nozsc"),
-    ("raw_x_8K_nofilter_stable_win2K.pt", "raw_8K_stable_2K_win"),
-    ("raw_x_2K_nofilter_stable.pt", "raw_2K_stable"),
-    ("raw_x_4K_nofilter_stable.pt", "raw_4K_stable"),
-    ("raw_x_6K_nofilter_stable.pt", "raw_6K_stable"),
-    ("raw_x_8K_nofilter_stable.pt", "raw_8K_stable"),
-    ("raw_x_all_win2K_s1600.pt",    "trim_all_2K_win_1600_shift"),
-    ("raw_x_8K_sync_win1.5K.pt",    "trim_1.5K_win_400_shift"),
-    ("raw_x_12K_sync_win1.5K.pt",   "trim_1.5K_win"),
-    ("raw_x_10K_sync_win1K.pt",     "trim_1K_win"),
-    ("raw_x_8K_sync_win2K.pt",      "trim_2K_win"),
-    ("raw_x_12K_sync.pt",           "trim_12K"),
-    ("raw_x_10K_sync.pt",           "trim_10K"),
-    ("raw_x_8K_sync.pt",            "trim_8K"),
-    ("raw_x_all.pt",                "trim_all")
+    ("raw_x_2K_nofilter_last-512.pt",       "raw_2K_last-512"),
+    ("raw_x_2K_nofilter_last.pt",           "raw_2K_last"),
+    ("raw_x_2K_nofilter_38Kstart.pt",       "raw_2K_38Kstart"),
+    ("raw_x_2K_nofilter_middle.pt",         "raw_2K_mid"),
+    ("raw_x_2K_nofilter_subsampled.pt",     "raw_2K_sub"),
+    ("raw_x_8K_nofilter_stable_win2K.pt",   "raw_8K_stable_2K_win"),
+    ("raw_x_2K_nofilter_stable.pt",         "raw_2K_stable"),
+    ("raw_x_4K_nofilter_stable.pt",         "raw_4K_stable"),
+    ("raw_x_6K_nofilter_stable.pt",         "raw_6K_stable"),
+    ("raw_x_8K_nofilter_stable.pt",         "raw_8K_stable"),
+    ("raw_x_all_win2K_s1600.pt",            "trim_all_2K_win_1600_shift"),
+    ("raw_x_8K_sync_win1.5K.pt",            "trim_1.5K_win_400_shift"),
+    ("raw_x_12K_sync_win1.5K.pt",           "trim_1.5K_win"),
+    ("raw_x_10K_sync_win1K.pt",             "trim_1K_win"),
+    ("raw_x_8K_sync_win2K.pt",              "trim_2K_win"),
+    ("raw_x_12K_sync.pt",                   "trim_12K"),
+    ("raw_x_10K_sync.pt",                   "trim_10K"),
+    ("raw_x_8K_sync.pt",                    "trim_8K"),
+    ("raw_x_all.pt",                        "trim_all")
 ]
 
 def show_model_chooser(default = 0, override = None):
-    if override:
+    if override != None:
         return models[override]
     print("\n".join(["{}: {}".format(i, name) for i, (_, name) in enumerate(models)]))
     idx = input("Choose model (default {}):".format(default))
@@ -100,8 +75,8 @@ def show_model_chooser(default = 0, override = None):
             return models[idx]
     return models[default]
 
-def show_data_chooser(default = 5, override = None):
-    if override:
+def show_data_chooser(default = 0, override = None):
+    if override != None:
         return datasets[override]
     print("\n".join(["{}: {}".format(i, file_name) for i, (file_name, _) in enumerate(datasets)]))
     idx = input("Choose dataset (default {}):".format(default))
@@ -112,62 +87,136 @@ def show_data_chooser(default = 5, override = None):
     return datasets[default]
 
 def show_gpu_chooser(default = 0, override = None):
-    if override:
+    if override != None:
+        if override.isdecimal():
+            idx = int(override)
+            if cuda.is_available() and idx in range(cuda.device_count()):
+                return "cuda:{}".format(idx)
         return override
     if not cuda.is_available():
         return "cpu"
     gpustat.new_query().print_formatted(no_color=True)
     idx = input("Choose GPU (default {}):".format(default))
+    if idx == "cpu":
+        return "cpu"
     if idx.isdecimal():
         idx = int(idx)
         if idx in range(cuda.device_count()):
             return "cuda:{}".format(idx)
     return "cuda:{}".format(default)
 
-def build_name(model_name, data_name, override = None):
-    if override:
+def show_normalization_chooser(default = False, override = None):
+    if override != None:
         return override
-    save_name0 = "{}_{}".format(model_name, data_name)
-    save_name = input('''Enter a save-file name for this trainig:
-        default is {}   :'''.format(save_name0))
-    save_name = save_name if save_name !='' else save_name0
-#    suffix = input('Enter any suffix for the save file (def: NONE):')
-    return save_name
+    use_norm = default
+    def_string = "Y/n" if default else "y/N"
+    choice = input("Use normalization? {}:".format(def_string))
+    if choice in ["yes", "Yes", "y", "Y"]:
+        use_norm = True
+    elif choice in ["no", "No", "n", "N"]:
+        use_norm = False
+    return use_norm
 
-def find_save(model_name, data_name, override = None, result_dir = '', default = 0):
-    if override:
-        save_name = override
+def build_name(model_name, data_name, batch_size, seed = 1, sub = None, use_norm = False, zero_mean = False, override = None):
+    if override != None:
+        return override
+    if sub:
+        data_name += "_sub{}".format(sub)
+    if use_norm and zero_mean:
+        data_name += "_meannorm"
     else:
-        save_name = glob.glob(result_dir+"*{}*{}*.p".format(model_name, data_name))
-        if save_name != []:
-            save_name.sort(key=len)            
-            save_name = list(filter(lambda c: ('cv' in c and 
-                                  c[c.index('cv')+2].isdecimal() and 
-                                  c[c.index('cv')+2:c.index('cv')+4]=='1_') or
-                                  'cv' not in c, 
-                                  save_name))            
-            l = len(result_dir)
-#            save_name = save_name[0][6+l:-12] # File name without "train_" and "_variables.p"
-            save_name = [i[6+l:-12] for i in save_name]
+        if use_norm:
+            data_name += "_norm"
+        if zero_mean:
+            data_name += "_0mean"
+    if seed != 1:
+        data_name += "_seed{}".format(seed)
+    return "{}_b{}_{}".format(model_name, batch_size, data_name)
+
+def find_save(model_name, data_name, base_dir = "./", cv = False, override = None):
+    cv_str = "_cv" if cv else ""
+    if override != None:
+        save_name = join(base_dir, override)
+    elif model_name == "1d_flex_net":
+        print("Base directory: {}".format(abspath(base_dir)))
+        dirs = sorted(glob.glob(join(base_dir, "*flex_*/")))
+        print("\n".join(["{}: {}".format(i, basename(normpath(name))) for i, name in enumerate(dirs)]))
+        idx = input("Choose model dir or input dir path (default 3):")
+        if idx.isdecimal():
+            idx = int(idx)
+            if idx in range(len(dirs)):
+                save_dir = dirs[idx]
+        elif idx != "":
+            save_dir = idx
         else:
-            save_name = "NONE"
-#    if len(save_name) > 1:
-    print("\n".join(["{}: {}".format(i, file_name) for i,file_name in enumerate(save_name)]))
-    idx = input("Choose model (default {}): ".format(default))
-    if idx.isdecimal():
-        idx = int(idx)
-        if idx in range(len(save_name)):
-            save_name = save_name[idx]
-    elif idx =='':
-        save_name = save_name[default]
+            save_dir = dirs[3]
+
+        flex_list = sorted(set(glob.glob(join(save_dir, "*flex_*{}*.p".format(cv_str)))) - set(glob.glob(join(save_dir, "*cv[1-9]*"))))
+        print("\n".join(["{}: {}".format(i, basename(name)[6:-12]) for i, name in enumerate(flex_list)]))
+        idx = input("Choose model index or input save name (default 0):")
+        if idx.isdecimal():
+            idx = int(idx)
+            if idx in range(len(flex_list)):
+                return save_dir, basename(flex_list[idx])[6:-12]
+        elif idx != "":
+            return save_dir, basename(idx)
+        else:
+            return save_dir, basename(flex_list[0])[6:-12]
     else:
-        save_name = idx
-                
-#    else:        
-#        save_name2 = input("Input saved model name (default {}) :".format(save_name))        
-#        if save_name2 != '':
-#            save_name = save_name2
-    return save_name
+        print("Base directory: {}".format(abspath(base_dir)))
+        dirs = sorted(glob.glob(join(base_dir, "*{}*{}*/".format(model_name, data_name))))
+        print("\n".join(["{}: {}".format(i, basename(normpath(name))) for i, name in enumerate(dirs)]))
+        idx = input("Choose model dir or input dir path (default 0):")
+        if idx.isdecimal():
+            idx = int(idx)
+            if idx in range(len(dirs)):
+                save_dir = dirs[idx]
+        elif idx != "":
+            save_dir = idx
+        else:
+            save_dir = dirs[0]
+        
+        model_list = sorted(set(glob.glob(join(save_dir, "*{}*.p".format(cv_str)))) - set(glob.glob(join(save_dir, "*cv[1-9]*"))))
+        print("\n".join(["{}: {}".format(i, basename(name)[6:-12]) for i, name in enumerate(model_list)]))
+        idx = input("Choose model index or input save name (default 0):")
+        if idx.isdecimal():
+            idx = int(idx)
+            if idx in range(len(model_list)):
+                return save_dir, basename(model_list[idx])[6:-12]
+        elif idx != "":
+            return save_dir, basename(idx)
+        else:
+            return save_dir, basename(model_list[0])[6:-12]
+
+def construct_flex_net():
+    print('=============== Defining the network structure')
+    convstr = input('convolutions separated by comma (e.g. 32,64) : ')
+    convs = [int(i) for i in convstr.split(",")]
+    convstr = convs[0] if len(set(convs)) == 1 else convstr
+    
+    FCstr = input('FC layers separated by comma (e.g. 32,64) : ')
+    FCs = [int(i) for i in FCstr.split(",")]
+    FCstr = FCs[0] if len(set(FCs)) == 1 else FCstr
+    
+    pool = input('Input sub-sampling (e.g. 2): ')
+    
+    rest_params = input('Kernel size, strides, pad (def.: 8,4,2) : ')
+    if rest_params == '':
+        rest_params = [8,4,2]
+    else:
+        rest_params = [int(i) for i in rest_params.split(",")]
+    kernels, strides, pads = rest_params
+            
+    net = {'conv': convs, 'fc': FCs, 'kernels': kernels, 'strides': strides, 'pads': pads}
+    if pool not in (None, '', '0', '1'):
+        net['pre'] = int(pool)
+
+    save_name = "flex_{c}c{cd}_{f}f{fd}_k{k}_s{s}".format(c=len(convs), cd=convstr, f=len(FCs)+1, fd=FCstr, k=kernels, s=strides)
+    
+    print('Network summary: {}'.format(save_name))
+    print(net)
+
+    return net, save_name
 
 def load_partial_weights(model, file_name, device = "cpu"):
     if cuda.is_available():

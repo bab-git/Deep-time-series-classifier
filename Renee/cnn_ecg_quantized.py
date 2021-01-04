@@ -161,6 +161,20 @@ out_bn2 = bn(in_bn)
 print(out_bn)
 print(out_bn2[0,3,0,0])
 
+#%% = wuantized model
+qx = q_model.quant(x)
+print(qx.shape)
+conv1 = q_model.raw[0].layers[0]
+yx = conv1(qx)
+a = conv1.weight().dequantize()
 
-
-
+qxs = qx[0,0,0,0]
+yxs = yx[0,0,0,0]
+i =2
+w = conv1.weight().int_repr()[0,0,0,0:8]
+qw = torch.quantize_per_tensor(convf1.weight.data[0,0,0,0:8], conv1.weight().q_per_channel_scales().data[0], 0, torch.qint8)
+qqx = torch.quantize_per_tensor(x[0,0,0,i:i+8], qx.q_scale(), qx.q_zero_point(), torch.qint8)
+print(qfn.mul(qqx,qw))
+#print(ops.quantized.mul(qqx,qw))
+print(yx[0,0,0,0:4])
+ops.quantized.mul(qqx,qw,scale = conv1.scale, zero_point = conv1.zero_point)

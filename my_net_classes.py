@@ -155,13 +155,13 @@ class SepConv1d_v6(nn.Module):
     a separable convolution layer.
     """
     def __init__(self, ni, no, kernel, stride, pad, drop=0.2, batch_norm = None,
-                 conv_type = '1d', activ=lambda: nn.ReLU(), bias = False):
+                 conv_type = '1d', activ=lambda: nn.ReLU(), bias = True):
     
         super().__init__()
         assert drop is None or (0.0 < drop < 1.0)
         
-        layers = [nn.Conv2d(ni, ni, kernel_size = (1,kernel), stride = (1,stride), padding = (0,pad), groups = ni, bias = False)]
-        layers.append(nn.Conv2d(ni, no, kernel_size=(1,1)), bias = bias)
+        layers = [nn.Conv2d(ni, ni, kernel_size = (1,kernel), stride = (1,stride), padding = (0,pad), groups = ni, bias = bias)]
+        layers.append(nn.Conv2d(ni, no, kernel_size=(1,1)))
         
 #        if drop is not None:
 #            layers.append(nn.Dropout(drop))      
@@ -1359,7 +1359,7 @@ class Classifier_1d_flex_net(nn.Module):
 #        FC_neu = 64
         pre = net['pre'] if 'pre' in net else None
         convs = net['conv']
-        bias = net['bias'] if 'bias' in net else False
+        bias = net['bias'] if 'bias' in net else True
         FCs = net['fc']
         kernels = net['kernels']
         kernels = [kernels]*len(convs) if type(kernels)==int else kernels
@@ -1382,9 +1382,9 @@ class Classifier_1d_flex_net(nn.Module):
             raw_layers = [] 
             
         raw_layers.append(SepConv1d_v6(raw_ni,  convs[0], kernels[0], strides[0], pads[0], 
-                                  drop0, batch_norm, conv_type, bias))  #out: raw_size/str
+                                  drop0, batch_norm, conv_type, bias = bias))  #out: raw_size/str
         [raw_layers.append(SepConv1d_v6(i_ch,  conv, kernel, strd, pad, drop0, 
-                                        batch_norm, conv_type, bias))\
+                                        batch_norm, conv_type, bias = bias))\
                                         for  i_ch, conv, kernel, strd, pad in params]
         
         self.raw = nn.Sequential(*raw_layers)
@@ -1407,7 +1407,7 @@ class Classifier_1d_flex_net(nn.Module):
     
     def fuse_model(self):
         for m in self.modules():
-            if type(m) == SepConv1d_v5:
+            if type(m) == SepConv1d_v6:
                 fuse_profile = ['layers.1', 'layers.2', 'layers.3']
 #                fuse_profile = ['layers.0.pointwise', 'layers.1', 'layers.2']
                 torch.quantization.fuse_modules(m, fuse_profile, inplace=True)

@@ -12,14 +12,86 @@ from default_modules import *
 
 #import torch
 #import pickle
+#%%
+#device = ecg_datasets[0].tensors[0].device
+#device = torch.device('cuda:4' if torch.cuda.is_available() else 'cpu')
+#------------------------------------------   
+def evaluation1(model_test,tst_dl, device = 'cpu', num_batch = len(tst_dl)):
+    model_test.to(device)
+    correct, total = 0, 0
+    with torch.no_grad():
+        print("i_batch:", end =" ")
+        for i_batch, batch in enumerate(tst_dl):
+#            print(i_batch)
+            if i_batch%10 == 0:
+                print(i_batch, end =" ")
+            x_raw, y_batch = [t.to(device) for t in batch]
+            out = model_test(x_raw)
+            preds = F.log_softmax(out, dim = 1).argmax(dim=1)    
+            total += y_batch.size(0)
+            correct += (preds ==y_batch).sum().item() 
+            if i_batch >=num_batch:
+                acc = correct / total * 100
+                return acc
+            
+    acc = correct / total * 100
+#    print("")
+#    print(acc)    
+    return acc
+
+#---------------------------------
+def train_one_epoch(model, criterion, opt, trn_dl, device, ntrain_batches, verbose = True):
+    if ntrain_batches > len(trn_dl):
+        ls = range(len(trn_dl))
+    else:
+        ls = random.sample(range(len(trn_dl)), ntrain_batches)
+    
+    model = model.to(device)
+    if verbose:
+        print(next(model.parameters()).is_cuda)
+    model.train()
+    
+    cnt = 0
+    epoch_loss = 0
+    
+    for i, batch in enumerate(trn_dl):
+#        break
+        if i not in ls:
+            continue
+        if verbose:
+            print('.', end = '')
+#        print('%d.'%(i), end = '')
+        cnt += 1
+#        x_raw, y_batch = batch
+        x_raw, y_batch = [t.to(device) for t in batch]
+        opt.zero_grad()
+        out = model (x_raw)
+        loss = criterion(out,y_batch)
+        epoch_loss += loss.item()
+        loss.backward()
+        opt.step()
+                
+        if cnt >= ntrain_batches:
+            if verbose:
+                print('not-complete epoch Loss %3.3f' %(epoch_loss / cnt))
+            return epoch_loss / cnt
+
+    if verbose:
+        print('Complete epoch loss %3.3f' %(epoch_loss / cnt))
+    return epoch_loss / cnt    
 #%% ============== options
 model_cls, model_name   = option_utils.show_model_chooser()
 dataset, data_name  = option_utils.show_data_chooser(default = 0)
-save_name           = option_utils.find_save(model_name, data_name, result_dir = result_dir, default = 2)
+#save_name           = option_utils.find_save(model_name, data_name, override = 2)
+#save_dir, save_name = option_utils.find_save(model_name, data_name, base_dir = result_dir)
+
+#save_name           = option_utils.find_save(model_name, data_name, result_dir = result_dir, default = 2)
+save_name = 'NONE'
 if save_name in ['NONE','N']:
     save_name ="1d_4c_2fc_sub2_qr"
     save_name = "2d_6CN_3FC_no_BN_in_FC_long"
-    save_name = "flex_2c8,16_2f16_k8_s4_b512_raw_2K_last-512_nozsc_sub4_meannorm_cv12"
+#    save_name = "flex_2c8,16_2f16_k8_s4_b512_raw_2K_last-512_nozsc_sub4_meannorm_cv12"
+    save_name = "flex_2c8,16_2f16_k8_s4_b512_raw_2K_last-512_nozsc_sub4_meannorm"
 
 print("{:>40}  {:<8s}".format("Selected experiment:", save_name))
 
@@ -141,73 +213,7 @@ print('Memory size: ' +str(mem_size))
 if not quantize_flag:
     assert 1==2
 
-#%%
-#device = ecg_datasets[0].tensors[0].device
-#device = torch.device('cuda:4' if torch.cuda.is_available() else 'cpu')
-#------------------------------------------   
-def evaluation1(model_test,tst_dl, device = 'cpu', num_batch = len(tst_dl)):
-    model_test.to(device)
-    correct, total = 0, 0
-    with torch.no_grad():
-        print("i_batch:", end =" ")
-        for i_batch, batch in enumerate(tst_dl):
-#            print(i_batch)
-            if i_batch%10 == 0:
-                print(i_batch, end =" ")
-            x_raw, y_batch = [t.to(device) for t in batch]
-            out = model_test(x_raw)
-            preds = F.log_softmax(out, dim = 1).argmax(dim=1)    
-            total += y_batch.size(0)
-            correct += (preds ==y_batch).sum().item() 
-            if i_batch >=num_batch:
-                acc = correct / total * 100
-                return acc
-            
-    acc = correct / total * 100
-#    print("")
-#    print(acc)    
-    return acc
 
-#---------------------------------
-def train_one_epoch(model, criterion, opt, trn_dl, device, ntrain_batches, verbose = True):
-    if ntrain_batches > len(trn_dl):
-        ls = range(len(trn_dl))
-    else:
-        ls = random.sample(range(len(trn_dl)), ntrain_batches)
-    
-    model = model.to(device)
-    if verbose:
-        print(next(model.parameters()).is_cuda)
-    model.train()
-    
-    cnt = 0
-    epoch_loss = 0
-    
-    for i, batch in enumerate(trn_dl):
-#        break
-        if i not in ls:
-            continue
-        if verbose:
-            print('.', end = '')
-#        print('%d.'%(i), end = '')
-        cnt += 1
-#        x_raw, y_batch = batch
-        x_raw, y_batch = [t.to(device) for t in batch]
-        opt.zero_grad()
-        out = model (x_raw)
-        loss = criterion(out,y_batch)
-        epoch_loss += loss.item()
-        loss.backward()
-        opt.step()
-                
-        if cnt >= ntrain_batches:
-            if verbose:
-                print('not-complete epoch Loss %3.3f' %(epoch_loss / cnt))
-            return epoch_loss / cnt
-
-    if verbose:
-        print('Complete epoch loss %3.3f' %(epoch_loss / cnt))
-    return epoch_loss / cnt    
 # %%==================================================================== 
 # ================================== Trining aware  Quantization
 # ====================================================================     
@@ -316,10 +322,10 @@ while nepoch < n_epochs:
 #        save_file = save_name+"_qta.pth"
 #        save_file_Q = save_name+"_qta.pth"
         
-#        model_qta_best = copy.deepcopy(model_qta)
+        model_qta_best = copy.deepcopy(model_qta)
 
 #        pickle.dump(model_qta,open(save_name+"qta_full_train.p",'wb'))
-        pickle.dump(model_qta,open(result_dir+save_file,'wb'))
+#        pickle.dump(model_qta,open(result_dir+save_file,'wb'))
 #        checkpoint = {'model': model_cls,
 #                      'state_dict': model_qta.state_dict()}
 #        torch.save(quantized_model.state_dict(), result_dir+save_file)
@@ -341,7 +347,7 @@ while nepoch < n_epochs:
 #    elif:
 #%%     
 #save_file = "flex_2c8,16_2f16_k8_s4_b512_raw_2K_last-512_nozsc_sub4_meannorm_cv12_qta_float_1_0.0001_prune18.pth"
-save_file = "flex_2c8,16_2f16_k8_s4_b512_raw_2K_last-512_nozsc_sub4_meannorm_cv12_qta_float_2_0.0001_prune18.pth"
+#save_file = "flex_2c8,16_2f16_k8_s4_b512_raw_2K_last-512_nozsc_sub4_meannorm_cv12_qta_float_2_0.0001_prune18.pth"
 #save_file = "flex_2c8,16_2f16_k8_s4_b512_raw_2K_last-512_nozsc_sub4_meannorm_cv12_qta_float_1_0.001_prune18.pth" # Bad!
 #save_file = "flex_2c8,16_2f16_k8_s4_b512_raw_2K_last-512_nozsc_sub4_meannorm_cv12_qta_float_1.5_0.0001_prune18.pth" # Bad!
 #save_file = "flex_2c8,16_2f16_k8_s4_b512_raw_2K_last-512_nozsc_sub4_meannorm_cv12_qta_float_1.5_prune18.pth"
@@ -473,6 +479,63 @@ print("", file = F)
 F.close()
 
 
+
+#%% to csv
+writer = pd.ExcelWriter('2c_CNN_parameters.xlsx', engine='xlsxwriter')
+workbook  = writer.book
+
+for i, module in enumerate(quantized_model.modules()):
+    if type(module) == torch.nn.quantized.modules.linear.Quantize or\
+        type(module) == torch.nn.quantized.modules.conv.Conv2d or\
+        type(module) == torch.nn.intrinsic.quantized.modules.linear_relu.LinearReLU or\
+        type(module) == torch.nn.intrinsic.quantized.modules.conv_relu.ConvReLU2d or\
+        type(module) == torch.nn.quantized.modules.linear.Linear:
+        col = 0
+        
+        if type(module) == torch.nn.quantized.modules.linear.Quantize:
+            sheet = 'Input'            
+        elif hasattr(module,'in_channels'):
+            sheet = 'Conv_'+str(module.in_channels)+'x'+str(module.out_channels)
+        else:
+            sheet = 'FC'+str(module.in_features)+'x'+str(module.out_features)
+            
+        df = pd.DataFrame(data =[''])
+        df.to_excel(writer, sheet, startcol=0, startrow=0, header = False, index = False)
+        worksheet = writer.sheets[sheet]
+        
+        scale = module.scale
+        zp = module.zero_point    
+        columns=['Output Scale', 'Output zero point']
+
+        worksheet.write_row(0,col, columns)
+        worksheet.write_row(1,col, [scale, zp])
+        worksheet.set_column(0, 1, 16)
+        
+        if hasattr(module,'weight'):
+            col += 3    
+            weights = module.weight().int_repr().data
+            w = np.transpose(weights.squeeze().numpy())
+            df = pd.DataFrame(data = w)
+            worksheet.write_row(0,col, ['Weights'])
+            df.to_excel(writer, sheet, startcol=col, startrow=1, header = False, index = False)
+            col += 1 + w.shape[1]
+            
+            wscale = module.weight().q_per_channel_scales()
+            wzp = module.weight().q_per_channel_zero_points()
+            df = pd.DataFrame(data = np.column_stack((wscale, wzp)), columns = ['scale', 'zero point'])
+            df.to_excel(writer, sheet, startcol=col, startrow=0, index = False)
+            worksheet.set_column(col, col+1, 16)
+        
+            col += 3        
+            b = module.bias()
+            if  type(b) == torch.Tensor:
+                bias = module.bias().data
+    #            b = np.transpose(bias.squeeze().numpy())
+                worksheet.write_row(0,col, ['Bias'])
+                worksheet.write_column(1,col, bias.numpy())
+
+        
+writer.save()        
 #%% Debug
 i,batch = next(enumerate(trn_dl))
 x_raw = batch[0].to('cpu')

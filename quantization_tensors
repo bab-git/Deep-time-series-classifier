@@ -1,0 +1,21 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+"""
+Created on Tue Oct 20 10:15:31 2020
+
+@author: bhossein
+"""
+
+a = torch.rand(10)
+b = torch.rand(10)
+min_a = min(a)
+min_b = min(b)
+max_a = max(a)
+max_b = max(b)
+scale_a = (max_a - min_a) / (qmax - qmin)
+zpt_a = qmin - min_a / scale_a
+scale_b = (max_b - min_b) / (qmax - qmin)
+zpt_b = qmin - min_b / scale_b
+a_quant = torch.quantize_per_tensor(a, scale_a, -127, torch.qint8)
+b_quant = torch.quantize_per_tensor(b, scale_b, -127, torch.qint8)
+a_quant + b_quant
