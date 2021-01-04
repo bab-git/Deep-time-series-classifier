@@ -1,5 +1,7 @@
-# Deep time series classifeir
+# Deep time series classifier
 
-This a part of the project which was about classificaiton of biomedical sensory data with a deep learning based architecture.
+This code is a part of the project, which was about biomedical sensory data classification with a deep learning-based architecture.
 
-The significant part of the design is the light structure of the network as well as an efficient preprocesing step for the inputs which allow us to obtain satisfactory performance even by using a simple 3-4 layers CNN mdodels.
+The significant part of the design is the light structure of the network and an efficient preprocessing step for the inputs that allow us to obtain satisfactory performance even by using a simple 3-4 layers CNN models.
+
+Due to confidentiality agreements of the project, the complete designed framework and the whole dataset cannot be share online.
